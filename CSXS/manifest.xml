@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ExtensionBundleId="com.layertool.panel" ExtensionBundleVersion="1.0.0" Version="10.0">
+  <ExtensionList>
+    <Extension Id="com.layertool.panel" Version="1.0.0"/>
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="PHXS" Version="[22.0,99.9]"/>
+      <Host Name="PHSP" Version="[22.0,99.9]"/>
+    </HostList>
+    <LocaleList>
+      <Locale Code="All"/>
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="10.0"/>
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.layertool.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./dist/index.html</MainPath>
+          <ScriptPath>./dist/jsx/hostscript.js</ScriptPath>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>图层处理工具</Menu>
+          <Geometry>
+            <Size>
+              <Height>400</Height>
+              <Width>300</Width>
+            </Size>
+            <MinSize>
+              <Height>200</Height>
+              <Width>250</Width>
+            </MinSize>
+            <MaxSize>
+              <Height>800</Height>
+              <Width>500</Width>
+            </MaxSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

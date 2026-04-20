@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES3",
+    "module": "ES2015",
+    "moduleResolution": "node",
+    "outDir": "./dist/jsx",
+    "rootDir": "./src/jsx",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["ps-extendscript-types"],
+    "removeComments": true,
+    "lib": ["ES5"],
+    "noImplicitAny": false
+  },
+  "include": [
+    "src/jsx/**/*.ts"
+  ]
+}
+ 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图层处理工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>图层处理工具</h1>
+    <div class="doc-info" id="docInfo">未检测到打开的文档</div>
+    <div class="layer-info" id="layerInfo">未选中图层</div>
+  </div>
+
+  <div class="status-bar" id="statusBar">就绪</div>
+
+  <!-- 调试面板 -->
+  <div class="debug-toggle" id="debugToggle">
+    <span>调试模式</span>
+    <label class="switch">
+      <input type="checkbox" id="debugMode">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="debug-panel" id="debugPanel" style="display: none;">
+    <div class="debug-header">
+      <span>通信日志</span>
+      <button class="btn btn-sm" id="btnClearLogs">清空</button>
+    </div>
+    <div class="debug-logs" id="debugLogs"></div>
+  </div>
+
+  <script src="lib/CSInterface.js"></script>
+  <script src="bundle.js"></script>
+</body>
+</html>
