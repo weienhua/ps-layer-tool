@@ -5,7 +5,8 @@ Adobe Photoshop CEP 面板插件，兼容 PS 2021（v22.0）及以上版本。
 ## 技术栈
 
 - **面板侧**：TypeScript → webpack → ES6 bundle
-- **宿主脚本侧**：TypeScript → tsc → ES3（ExtendScript，PS 进程内执行）
+- **宿主脚本侧**：TypeScript → webpack(ts-loader) → ES3（ExtendScript，PS 进程内执行）
+- **宿主运行时增强**：`extendscript-es5-shim`（在 ES3 运行时补充部分 ES5 API）
 - **类型**：`ps-extendscript-types`（宿主）/ 自定义 `cep-panel.d.ts`（面板）
 - **CEP 版本**：10.0+，扩展 ID：`com.layertool.panel`
 
@@ -16,15 +17,15 @@ Adobe Photoshop CEP 面板插件，兼容 PS 2021（v22.0）及以上版本。
 ├── src/
 │   ├── lib/CSInterface.js     # Adobe 官方库，不要修改，构建时原样复制
 │   ├── types/cep-panel.d.ts   # CSInterface 全局类型（最小化声明）
-│   ├── jsx/hostscript.ts      # 宿主脚本，tsc 编译为 ES3
+│   ├── jsx/hostscript.ts      # 宿主脚本，webpack(ts-loader) 构建为 ES3
 │   ├── bridge.ts              # evalScript 封装，Promise 化通信
 │   ├── index.ts               # 面板 UI 控制器
 │   └── index.html             # 面板 HTML 模板
 ├── dist/                      # 构建产物，不要手动编辑
 │   ├── lib/CSInterface.js     # 从 src/lib/ 原样复制
-│   └── jsx/hostscript.js      # tsc 编译产物（ES3）
+│   └── jsx/hostscript.js      # webpack 构建产物（ES3）
 ├── tsconfig.json              # 面板侧：target ES6，排除 src/jsx/
-└── tsconfig.jsx.json          # 宿主侧：target ES3，noLib，types: ps-extendscript-types
+└── tsconfig.jsx.json          # 宿主侧：target ES3，types: ps-extendscript-types
 ```
 
 ## 构建命令
@@ -32,7 +33,7 @@ Adobe Photoshop CEP 面板插件，兼容 PS 2021（v22.0）及以上版本。
 ```bash
 npm install                # 安装依赖
 npm run build              # 完整构建（webpack + tsc）
-npm run build:jsx          # 仅编译宿主脚本：tsc -p tsconfig.jsx.json
+npm run build:jsx          # 仅构建宿主脚本：webpack --config webpack.config.jsx.js
 npm run dev                # 面板侧 webpack watch
 npm run clean              # 清理 dist/
 ```
@@ -43,7 +44,7 @@ npm run clean              # 清理 dist/
 面板（Chromium）                          PS 宿主（ExtendScript）
 ────────────────                          ──────────────────────
 src/index.ts                              src/jsx/hostscript.ts
-src/bridge.ts                                 ↓ tsc (ES3)
+src/bridge.ts                                 ↓ webpack(ts-loader) (ES3)
     │                                     dist/jsx/hostscript.js
     │  cs.evalScript("fn()")  ──────────→     全局函数
     │  callback(result)       ←──────────     return string
@@ -74,11 +75,14 @@ function getDocumentName(): string {
 - `"__NO_DOCUMENT__"` → 无打开文档
 - `"__ERROR__:<msg>"` → 运行时异常
 
-**ES3 限制**（`noLib: true`，无 polyfill）：
-- `const`/`let` → tsc 自动编译为 `var` ✅
-- 箭头函数 → tsc 自动编译为 `function` ✅
-- `Array.forEach` / `Object.keys` → ES5 API，ExtendScript 不支持 ❌
-- 模板字符串 → tsc 自动编译为字符串拼接 ✅
+**ES3 + shim 能力边界**（`target: ES3` + `extendscript-es5-shim`）：
+- `const`/`let`、箭头函数、模板字符串等语法 → 由 TypeScript 编译降级，可使用
+- 部分 ES5 API（如常见数组/对象辅助方法）→ 由 `extendscript-es5-shim` 在运行时补充，通常可用
+- ExtendScript/Photoshop 宿主限制（DOM 能力、执行环境差异）→ 仍然存在，不会被 shim 消除
+- 对兼容性敏感的逻辑建议优先使用保守写法，并加 `try/catch` 兜底
+
+当前项目已在宿主入口文件 `src/jsx/hostscript.ts` 中引入：
+- `import "extendscript-es5-shim";`
 
 ## 面板通信约定（src/bridge.ts）
 

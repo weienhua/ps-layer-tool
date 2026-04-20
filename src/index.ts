@@ -103,7 +103,7 @@ class LayerToolUI {
     // 每 500ms 刷新一次选中图层信息
     this.refreshTimer = window.setInterval(() => {
       this.refreshSelectedLayer();
-    }, 20000);
+    }, 200);
   }
 
   /**
