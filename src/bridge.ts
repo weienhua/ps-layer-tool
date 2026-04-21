@@ -45,6 +45,7 @@ export interface SelectedLayerInfo {
   centerY: number;
   rotation: number;
   text: TextLayerInfo | null;
+  path: string;
 }
 
 export interface SelectedLayersInfoResponse {

@@ -166,7 +166,7 @@ class LayerToolUI {
     this.sortSelect.value = "xAsc";
     this.scaleAnimInput.value = "";
     this.rotateAnimInput.value = "";
-    this.templateInput.value = 'name="{name}" type="{type}" x="{x}" y="{y}" w="{width}" h="{height}" rotation="{rotation}"';
+    this.templateInput.value = 'x="{x}" y="{y}" ';
   }
 
   private startDocRefresh(): void {
@@ -201,7 +201,7 @@ class LayerToolUI {
       sortBy: this.sortSelect.value as SortType,
       scaleAnim: this.scaleAnimInput.value.trim(),
       rotateAnim: this.rotateAnimInput.value.trim(),
-      template: this.templateInput.value.trim() || 'x="{x}" y="{y}"'
+      template: this.templateInput.value || 'x="{x}" y="{y}" '
     };
   }
 
@@ -216,6 +216,7 @@ class LayerToolUI {
       { key: "rotation", desc: "旋转角度" },
       { key: "centerX", desc: "中心X坐标" },
       { key: "centerY", desc: "中心Y坐标" },
+      { key: "path", desc: "图层路径" },
       { key: "scaleAnim", desc: "缩放动画" },
       { key: "rotateAnim", desc: "旋转动画" },
       { key: "fontSize", desc: "字体大小" },
@@ -265,7 +266,19 @@ class LayerToolUI {
   private loadPresets(): void {
     try {
       const raw = localStorage.getItem(LayerToolUI.PRESET_STORAGE_KEY);
-      if (!raw) return;
+      if (!raw) {
+        this.presets = [{
+          id: "default",
+          name: "默认",
+          anchor: "topLeft",
+          sortBy: "xAsc",
+          scaleAnim: "",
+          rotateAnim: "",
+          template: 'x="{x}" y="{y}" '
+        }];
+        this.persistPresets();
+        return;
+      }
       const parsed = JSON.parse(raw) as PresetConfig[];
       if (Array.isArray(parsed)) {
         this.presets = parsed;
@@ -451,6 +464,7 @@ class LayerToolUI {
       rotateAnim: preset.rotateAnim,
       centerX: String(layer.centerX),
       centerY: String(layer.centerY),
+      path: layer.path || "",
       fontSize: layer.text?.fontSize != null ? String(layer.text.fontSize) : "",
       fontColor: layer.text?.fontColor || "",
       text: layer.text?.content || ""

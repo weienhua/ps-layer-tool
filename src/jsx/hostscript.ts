@@ -183,6 +183,38 @@ function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => number): an
   };
 }
 
+function selectLayerByID(id: number): void {
+  var desc = new ActionDescriptor();
+  var ref = new ActionReference();
+  ref.putIdentifier(stringIDToTypeID("layer"), id);
+  desc.putReference(charIDToTypeID("null"), ref);
+  desc.putBoolean(stringIDToTypeID("makeVisible"), false);
+  executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
+}
+
+function getLayerPathByLayer(layer: any): string {
+  var names: string[] = [];
+  var cur: any = layer;
+  while (cur && cur.typename !== "Document") {
+    names.unshift(cur.name);
+    cur = cur.parent;
+  }
+  return names.join("/");
+}
+
+function getLayerPath(layerId: number): string {
+  try {
+    var doc = app.activeDocument;
+    if (!doc) return "";
+    selectLayerByID(layerId);
+    var layer = doc.activeLayer;
+    if (!layer) return "";
+    return getLayerPathByLayer(layer);
+  } catch (e) {
+    return "";
+  }
+}
+
 function getSelectedLayersInfo(): string {
   log("getSelectedLayersInfo called");
   try {
@@ -204,6 +236,7 @@ function getSelectedLayersInfo(): string {
       var isText = layerDesc.hasKey(s2t("textKey"));
       var isSmartObject = layerDesc.hasKey(s2t("smartObject"));
       var baseInfo = isSmartObject ? getSmartObjectLayerInfo(layerDesc, s2t) : getNormalLayerInfo(layerDesc, s2t);
+      var layerPath = getLayerPath(layerId);
       layers.push({
         id: layerId,
         name: layerName,
@@ -216,7 +249,8 @@ function getSelectedLayersInfo(): string {
         centerX: baseInfo.centerX,
         centerY: baseInfo.centerY,
         rotation: baseInfo.rotation,
-        text: baseInfo.text ? baseInfo.text : null
+        text: baseInfo.text ? baseInfo.text : null,
+        path: layerPath
       });
     }
     var doc = Document.activeDocument();
