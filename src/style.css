@@ -184,6 +184,27 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+.template-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.hint-var {
+  color: var(--primary);
+  font-family: Consolas, Monaco, monospace;
+  margin-right: 4px;
+}
+
+.hint-desc {
+  color: var(--text-muted);
+  margin-right: 12px;
+}
+
 .row {
   display: flex;
   flex-direction: column;

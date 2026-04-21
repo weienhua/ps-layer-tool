@@ -38,6 +38,7 @@ class LayerToolUI {
   private presetList = document.getElementById("presetList") as HTMLDivElement;
   private outputText = document.getElementById("outputText") as HTMLTextAreaElement;
   private btnCopyOutput = document.getElementById("btnCopyOutput") as HTMLButtonElement;
+  private templateHint = document.getElementById("templateHint") as HTMLDivElement;
 
   // 调试面板元素
   private debugModeCheckbox = document.getElementById("debugMode") as HTMLInputElement;
@@ -52,6 +53,7 @@ class LayerToolUI {
     this.initDebugPanel();
     this.startDocRefresh();
     this.renderPresetList();
+    this.renderTemplateHint();
   }
 
   private bindEvents(): void {
@@ -201,6 +203,26 @@ class LayerToolUI {
       rotateAnim: this.rotateAnimInput.value.trim(),
       template: this.templateInput.value.trim() || 'x="{x}" y="{y}"'
     };
+  }
+
+  private renderTemplateHint(): void {
+    const vars = [
+      { key: "name", desc: "图层名称" },
+      { key: "type", desc: "图层类型" },
+      { key: "x", desc: "锚点X坐标" },
+      { key: "y", desc: "锚点Y坐标" },
+      { key: "width", desc: "宽度" },
+      { key: "height", desc: "高度" },
+      { key: "rotation", desc: "旋转角度" },
+      { key: "centerX", desc: "中心X坐标" },
+      { key: "centerY", desc: "中心Y坐标" },
+      { key: "scaleAnim", desc: "缩放动画" },
+      { key: "rotateAnim", desc: "旋转动画" },
+      { key: "fontSize", desc: "字体大小" },
+      { key: "fontColor", desc: "字体颜色" },
+      { key: "text", desc: "文字内容" }
+    ];
+    this.templateHint.innerHTML = vars.map(v => `<span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span>`).join("");
   }
 
   private savePreset(): void {
