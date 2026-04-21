@@ -282,13 +282,10 @@ class LayerToolUI {
     }
     this.presetList.innerHTML = this.presets.map((preset) => {
       return `
-        <div class="preset-item">
+        <div class="preset-item" data-id="${preset.id}" draggable="true">
+          <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
           <div class="preset-main">
             <span class="preset-name">${this.escapeHtml(preset.name)}</span>
-            <div class="preset-actions">
-              <button class="btn btn-sm" data-action="run" data-id="${preset.id}">使用</button>
-              <button class="btn btn-sm" data-action="delete" data-id="${preset.id}">删除</button>
-            </div>
           </div>
           <div class="preset-meta">
             <div class="preset-anchor-grid">${this.getAnchorGridHtml(preset.anchor)}</div>
@@ -299,22 +296,71 @@ class LayerToolUI {
       `;
     }).join("");
 
-    this.presetList.querySelectorAll("button[data-action='run']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const id = (el as HTMLButtonElement).dataset.id!;
+    let draggedId: string | null = null;
+
+    this.presetList.querySelectorAll(".preset-item").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.matches(".preset-delete")) return;
+        const id = (el as HTMLElement).dataset.id!;
         const preset = this.presets.find((p) => p.id === id);
         if (!preset) return;
         this.applyPresetToForm(preset);
         void this.fetchLayersWithConfig(preset);
       });
+
+      el.addEventListener("dragstart", (e) => {
+        draggedId = (el as HTMLElement).dataset.id!;
+        el.classList.add("dragging");
+        e.stopPropagation();
+      });
+
+      el.addEventListener("dragend", () => {
+        el.classList.remove("dragging");
+        draggedId = null;
+      });
+
+      el.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!draggedId) return;
+        const targetId = (el as HTMLElement).dataset.id!;
+        if (targetId !== draggedId) {
+          el.classList.add("drag-over");
+        }
+      });
+
+      el.addEventListener("dragleave", () => {
+        el.classList.remove("drag-over");
+      });
+
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        el.classList.remove("drag-over");
+        if (!draggedId) return;
+        const targetId = (el as HTMLElement).dataset.id!;
+        if (targetId === draggedId) return;
+        this.reorderPresets(draggedId, targetId);
+      });
     });
 
     this.presetList.querySelectorAll("button[data-action='delete']").forEach((el) => {
-      el.addEventListener("click", () => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
         const id = (el as HTMLButtonElement).dataset.id!;
         this.deletePreset(id);
       });
     });
+  }
+
+  private reorderPresets(draggedId: string, targetId: string): void {
+    const draggedIdx = this.presets.findIndex((p) => p.id === draggedId);
+    const targetIdx = this.presets.findIndex((p) => p.id === targetId);
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    const [draggedPreset] = this.presets.splice(draggedIdx, 1);
+    this.presets.splice(targetIdx, 0, draggedPreset);
+    this.persistPresets();
+    this.renderPresetList();
+    this.setStatus("预设顺序已更新");
   }
 
   private async fetchLayersWithCurrentForm(): Promise<void> {

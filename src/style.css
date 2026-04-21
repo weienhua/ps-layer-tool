@@ -196,10 +196,10 @@ textarea:focus-visible {
 }
 
 .anchor-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto;
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 6px;
 }
 
 input[type="text"],
@@ -215,6 +215,13 @@ textarea {
   line-height: 1.4;
 }
 
+#anchorSelect {
+  width: auto;
+  min-width: 64px;
+  flex-grow: 1;
+  max-width: 120px;
+}
+
 input[type="text"]:focus,
 select:focus,
 textarea:focus {
@@ -224,12 +231,14 @@ textarea:focus {
 textarea {
   resize: vertical;
   min-height: 72px;
+  margin-top: 12px;
 }
 
 .actions {
   flex-direction: row;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 12px;
 }
 
 .action-group {
@@ -239,19 +248,20 @@ textarea {
 .anchor-grid-selector {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 6px;
+  gap: 2px;
+  padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--bg-input);
+  flex-shrink: 0;
 }
 
 .anchor-grid-cell {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border: 1px solid var(--border-strong);
   background: #2a2f37;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
@@ -273,7 +283,7 @@ textarea {
 
 .preset-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -281,18 +291,57 @@ textarea {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-width: 120px;
+  max-width: 200px;
+  flex: 1 1 140px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  padding: 8px 24px 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.preset-item.dragging {
+  opacity: 0.5;
+  border-color: var(--primary);
+}
+
+.preset-item.drag-over {
+  border-color: var(--primary);
+  border-style: dashed;
 }
 
 .preset-item:hover,
 .preset-item:focus-within {
   background: var(--bg-card-hover);
   border-color: var(--primary);
+}
+
+.preset-item:hover .preset-delete,
+.preset-item:focus-within .preset-delete {
+  opacity: 1;
+}
+
+.preset-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--error);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.preset-delete:hover {
+  opacity: 1;
 }
 
 .preset-name {
@@ -323,7 +372,8 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .preset-anchor-grid {
@@ -396,8 +446,13 @@ textarea {
 
 @media (max-width: 420px) {
   .anchor-row {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     align-items: stretch;
+  }
+  .preset-item {
+    min-width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
   }
 }
 
