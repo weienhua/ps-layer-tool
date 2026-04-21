@@ -13,7 +13,7 @@
 ## 技术栈
 
 - **面板侧**: TypeScript + webpack → ES6
-- **宿主侧**: TypeScript + photoshop-script-api + webpack → ES3 (ExtendScript) + `extendscript-es5-shim` (部分 ES5 API 兼容)
+- **宿主侧**: TypeScript + photoshop-script-api + webpack → ES3 (ExtendScript)
 - **通信**: CEP `evalScript` 桥接
 - **CEP 版本**: 10.0+
 - **兼容 Photoshop**: 2021 (v22.0) 及以上
@@ -140,13 +140,6 @@ defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 | 修改代码后不更新 | 未重新构建 | 运行 `npm run build` 后重启 PS |
 
 ## 开发
-
-### 宿主脚本兼容性（ES3 + shim）
-
-- 宿主构建目标仍是 ES3（见 `tsconfig.jsx.json` 与 `webpack.config.jsx.js`）。
-- `src/jsx/hostscript.ts` 已引入 `extendscript-es5-shim`，可放宽部分 ES5 API 限制。
-- 这不等于完整 ES5+ 运行时，Photoshop ExtendScript 的宿主限制仍然存在。
-- 建议优先使用保守写法，并对不确定 API 增加 `try/catch` 与兜底返回。
 
 ### 构建命令
 

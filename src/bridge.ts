@@ -24,6 +24,35 @@ export interface DocumentInfo {
   height: number;
 }
 
+export type LayerType = "normal" | "smartObject" | "text";
+
+export interface TextLayerInfo {
+  content: string;
+  fontSize: number | null;
+  fontColor: string;
+}
+
+export interface SelectedLayerInfo {
+  id: number;
+  name: string;
+  layerType: LayerType;
+  order: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  centerX: number;
+  centerY: number;
+  rotation: number;
+  text: TextLayerInfo | null;
+}
+
+export interface SelectedLayersInfoResponse {
+  document: { name: string };
+  layers: SelectedLayerInfo[];
+  skipped: Array<{ id: number; name: string; reason: string }>;
+}
+
 export class PSBridge {
   private csInterface: CSInterface;
 
@@ -83,6 +112,14 @@ export class PSBridge {
     });
   }
 
+  private escapeForSingleQuotedString(value: string): string {
+    return value
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/\r/g, "\\r")
+      .replace(/\n/g, "\\n");
+  }
+
   /**
    * 解析 ExtendScript 返回的结果
    */
@@ -131,6 +168,18 @@ export class PSBridge {
    */
   async getSelectedLayerName(): Promise<PSResult<{ name: string | null }>> {
     return this.evalScript<{ name: string | null }>("$.HostScript.getSelectedLayerName()");
+  }
+
+  /**
+   * 获取当前选中图层的详细信息
+   */
+  async getSelectedLayersInfo(): Promise<PSResult<SelectedLayersInfoResponse>> {
+    return this.evalScript<SelectedLayersInfoResponse>("$.HostScript.getSelectedLayersInfo()");
+  }
+
+  async copyText(text: string): Promise<PSResult<string>> {
+    const safe = this.escapeForSingleQuotedString(text);
+    return this.evalScript<string>(`$.HostScript.copyTextToClipboard('${safe}')`);
   }
 }
 

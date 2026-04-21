@@ -7,10 +7,82 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="header">
+  <div class="container">
+  <div class="header card">
     <h1>图层处理工具</h1>
     <div class="doc-info" id="docInfo">未检测到打开的文档</div>
-    <div class="layer-info" id="layerInfo">未选中图层</div>
+  </div>
+
+  <div class="section card preset-form">
+    <div class="section-title">预设配置</div>
+    <div class="row">
+      <label>预设名</label>
+      <input type="text" id="presetName" placeholder="例如：UI导出模板">
+    </div>
+    <div class="row">
+      <label>位置锚点</label>
+      <div class="anchor-row">
+        <select id="anchorSelect">
+          <option value="topLeft">左上</option>
+          <option value="topCenter">上中</option>
+          <option value="topRight">右上</option>
+          <option value="middleLeft">左中</option>
+          <option value="center">中心</option>
+          <option value="middleRight">右中</option>
+          <option value="bottomLeft">左下</option>
+          <option value="bottomCenter">下中</option>
+          <option value="bottomRight">右下</option>
+        </select>
+        <div class="anchor-grid-selector" id="anchorGridSelector">
+          <button class="anchor-grid-cell" type="button" data-anchor="topLeft" aria-label="左上锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="topCenter" aria-label="上中锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="topRight" aria-label="右上锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="middleLeft" aria-label="左中锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="center" aria-label="中心锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="middleRight" aria-label="右中锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="bottomLeft" aria-label="左下锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="bottomCenter" aria-label="下中锚点"></button>
+          <button class="anchor-grid-cell" type="button" data-anchor="bottomRight" aria-label="右下锚点"></button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <label>排序方式</label>
+      <select id="sortSelect">
+        <option value="xAsc">按 X 升序</option>
+        <option value="yAsc">按 Y 升序</option>
+        <option value="psOrderBottomToTop">按 PS 图层顺序（下到上）</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>缩放动画</label>
+      <input type="text" id="scaleAnimInput" placeholder='例如：(1-0.1*sin((#loop-100*0)/300))'>
+    </div>
+    <div class="row">
+      <label>旋转动画</label>
+      <input type="text" id="rotateAnimInput" placeholder='例如：(5*sin((#loop-100*0)/300))'>
+    </div>
+    <div class="row">
+      <label>输出模板</label>
+      <textarea id="templateInput" rows="3" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'></textarea>
+    </div>
+    <div class="row actions action-group">
+      <button class="btn btn-primary" id="btnFetchLayers">获取选中图层信息</button>
+      <button class="btn" id="btnSavePreset">保存预设</button>
+    </div>
+  </div>
+
+  <div class="section card">
+    <div class="section-title">预设列表</div>
+    <div id="presetList" class="preset-list"></div>
+  </div>
+
+  <div class="section card">
+    <div class="section-title">输出结果</div>
+    <div class="row actions">
+      <button class="btn" id="btnCopyOutput">复制输出</button>
+    </div>
+    <textarea id="outputText" rows="8" readonly></textarea>
   </div>
 
   <div class="status-bar" id="statusBar">就绪</div>
@@ -34,5 +106,6 @@
 
   <script src="lib/CSInterface.js"></script>
   <script src="bundle.js"></script>
+  </div>
 </body>
 </html>
