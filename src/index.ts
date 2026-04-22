@@ -492,12 +492,17 @@ class LayerToolUI {
     } else {
       this.setStatus("复制失败，请检查 Photoshop 状态", true);
     }
-  }
+}
 
   private async fetchLayersWithConfig(preset: PresetConfig): Promise<void> {
     const result = await psBridge.getSelectedLayersInfo();
     if (!result.success || !result.data) {
       this.setStatus(`获取图层失败: ${result.error || "未知错误"}`, true);
+      return;
+    }
+    if (result.data.layers.length === 0) {
+      this.outputText.value = "";
+      this.setStatus("未选中图层", true);
       return;
     }
     const sorted = this.sortLayers(result.data.layers, preset.sortBy);
@@ -509,7 +514,7 @@ class LayerToolUI {
     if (copied) {
       this.setStatus(`获取成功：${sorted.length} 个图层${skippedCount ? `，跳过 ${skippedCount} 个图层组` : ""}，已复制`);
     } else {
-      this.setStatus("已生成输出，但复制到剪贴板失败，请点击“复制输出”重试", true);
+      this.setStatus('已生成输出，但复制到剪贴板失败，请点击"复制输出"重试', true);
     }
   }
 
