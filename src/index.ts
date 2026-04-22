@@ -295,7 +295,7 @@ class LayerToolUI {
   private getSortLabel(sortBy: SortType): string {
     if (sortBy === "xAsc") return "按 X 升序";
     if (sortBy === "yAsc") return "按 Y 升序";
-    return "按 PS 图层顺序（下到上）";
+    return "按PS图层顺序";
   }
 
   private getAnchorGridHtml(anchor: AnchorType): string {
