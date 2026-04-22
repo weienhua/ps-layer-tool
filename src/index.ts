@@ -30,11 +30,24 @@ interface PresetConfig {
 }
 
 /**
+ * 模板预设选项
+ */
+type TemplatePreset = "position" | "size" | "custom";
+
+/**
  * LayerToolUI - 图层工具面板主类
  * 管理面板 UI 交互、预设配置、图层信息获取等功能
  */
 class LayerToolUI {
   private static readonly PRESET_STORAGE_KEY = "layerTool.presets.v1";
+  
+  /**
+   * 模板预设列表
+   */
+  private static readonly TEMPLATE_PRESETS: Record<Exclude<TemplatePreset, "custom">, string> = {
+    position: 'x="{x}" y="{y}" ',
+    size: 'x="{x}" y="{y}" w="{width}" h="{height}" '
+  };
   private debugMode = false;
   private logs: Array<{type: string; data: any; time: Date}> = [];
   private docRefreshTimer: number | null = null;
@@ -50,7 +63,9 @@ class LayerToolUI {
   private sortSelect = document.getElementById("sortSelect") as HTMLSelectElement;
   private scaleAnimInput = document.getElementById("scaleAnimInput") as HTMLInputElement;
   private rotateAnimInput = document.getElementById("rotateAnimInput") as HTMLInputElement;
-  private templateInput = document.getElementById("templateInput") as HTMLTextAreaElement;
+  private templateSelect = document.getElementById("templateSelect") as HTMLSelectElement;
+  private templateInput = document.getElementById("templateInput") as HTMLInputElement;
+  private templateInputRow = document.getElementById("templateInputRow") as HTMLDivElement;
   private btnSavePreset = document.getElementById("btnSavePreset") as HTMLButtonElement;
   private presetList = document.getElementById("presetList") as HTMLDivElement;
   private outputText = document.getElementById("outputText") as HTMLTextAreaElement;
@@ -124,6 +139,10 @@ class LayerToolUI {
     this.btnCopyOutput.addEventListener("click", () => {
       void this.copyCurrentOutput();
     });
+
+    this.templateSelect.addEventListener("change", () => {
+      this.onTemplateSelectChange();
+    });
   }
 
   /**
@@ -192,7 +211,24 @@ class LayerToolUI {
     this.sortSelect.value = "xAsc";
     this.scaleAnimInput.value = "";
     this.rotateAnimInput.value = "";
-    this.templateInput.value = 'x="{x}" y="{y}" ';
+    this.templateSelect.value = "position";
+    this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS.position;
+    this.onTemplateSelectChange();
+  }
+
+  /**
+   * 处理模板选择变化
+   */
+  private onTemplateSelectChange(): void {
+    const value = this.templateSelect.value as TemplatePreset;
+    if (value === "custom") {
+      this.templateInputRow.style.display = "flex";
+      this.templateHint.style.display = "flex";
+    } else {
+      this.templateInputRow.style.display = "none";
+      this.templateHint.style.display = "none";
+      this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS[value as Exclude<TemplatePreset, "custom">];
+    }
   }
 
   /**
@@ -226,18 +262,25 @@ class LayerToolUI {
     this.setStatus("就绪");
   }
 
-  /**
+/**
    * 获取当前表单配置
    * @returns 预设配置（不含 ID）
    */
   private getCurrentFormConfig(): Omit<PresetConfig, "id"> {
+    const selectValue = this.templateSelect.value;
+    let template: string;
+    if (selectValue === "custom") {
+      template = this.templateInput.value;
+    } else {
+      template = LayerToolUI.TEMPLATE_PRESETS[selectValue as "position" | "size"];
+    }
     return {
       name: this.presetName.value.trim(),
       anchor: this.anchorSelect.value as AnchorType,
       sortBy: this.sortSelect.value as SortType,
       scaleAnim: this.scaleAnimInput.value.trim(),
       rotateAnim: this.rotateAnimInput.value.trim(),
-      template: this.templateInput.value || 'x="{x}" y="{y}" '
+      template: template || LayerToolUI.TEMPLATE_PRESETS.position
     };
   }
 
@@ -299,7 +342,23 @@ class LayerToolUI {
     this.sortSelect.value = preset.sortBy;
     this.scaleAnimInput.value = preset.scaleAnim;
     this.rotateAnimInput.value = preset.rotateAnim;
-    this.templateInput.value = preset.template;
+    
+    // 检查模板值是否匹配预设
+    const presets = LayerToolUI.TEMPLATE_PRESETS;
+    let matched = false;
+    for (const key in presets) {
+      if (presets[key as "position" | "size"] === preset.template) {
+        this.templateSelect.value = key;
+        this.templateInput.value = presets[key as "position" | "size"];
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      this.templateSelect.value = "custom";
+      this.templateInput.value = preset.template;
+    }
+    this.onTemplateSelectChange();
   }
 
   /**

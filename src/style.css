@@ -439,6 +439,39 @@ textarea {
   white-space: nowrap;
 }
 
+.template-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-input-row input {
+  width: 100%;
+  font-family: Consolas, Monaco, monospace;
+}
+
+.template-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.template-hint .hint-var,
+.template-hint .hint-desc {
+  white-space: nowrap;
+}
+
 .preset-template-preview {
   display: none;
   position: absolute;

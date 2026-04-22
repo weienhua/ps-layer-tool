@@ -64,8 +64,17 @@
     </div>
     <div class="row">
       <label>输出模板</label>
-      <textarea id="templateInput" rows="3" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'></textarea>
-      <div class="template-hint" id="templateHint"></div>
+      <div class="template-row">
+        <select id="templateSelect">
+          <option value="position">x="{x}" y="{y}"</option>
+          <option value="size">x="{x}" y="{y}" w="{width}" h="{height}"</option>
+          <option value="custom">自定义...</option>
+        </select>
+      </div>
+      <div class="template-input-row" id="templateInputRow" style="display: none;">
+        <input type="text" id="templateInput" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'>
+        <div class="template-hint" id="templateHint"></div>
+      </div>
     </div>
     <div class="row actions action-group">
       <button class="btn btn-primary" id="btnFetchLayers">获取选中图层信息</button>
