@@ -1,16 +1,29 @@
-// PS 通信桥接层 - Promise 化封装
+/**
+ * PSBridge - PS 通信桥接层
+ * 提供面板与 Photoshop 宿主脚本通信的 Promise 化封装
+ */
 
 // 调试开关 - 可以通过 window.DEBUG 全局控制
 const DEBUG = (window as any).DEBUG || false;
 
-// 通信日志回调
+/**
+ * 通信日志回调类型
+ */
 export type LogCallback = (type: 'send' | 'receive' | 'error', data: any) => void;
 let logCallback: LogCallback | null = null;
 
+/**
+ * 设置日志回调
+ * @param callback 日志回调函数
+ */
 export function setLogCallback(callback: LogCallback | null) {
   logCallback = callback;
 }
 
+/**
+ * PS 操作结果接口
+ * @template T 数据类型
+ */
 export interface PSResult<T> {
   success: boolean;
   data?: T;
@@ -18,20 +31,32 @@ export interface PSResult<T> {
   noDocument?: boolean;
 }
 
+/**
+ * 文档信息接口
+ */
 export interface DocumentInfo {
   name: string;
   width: number;
   height: number;
 }
 
+/**
+ * 图层类型
+ */
 export type LayerType = "normal" | "smartObject" | "text";
 
+/**
+ * 文字图层信息接口
+ */
 export interface TextLayerInfo {
   content: string;
   fontSize: number | null;
   fontColor: string;
 }
 
+/**
+ * 选中图层信息接口
+ */
 export interface SelectedLayerInfo {
   id: number;
   name: string;
@@ -48,15 +73,25 @@ export interface SelectedLayerInfo {
   path: string;
 }
 
+/**
+ * 选中图层信息响应接口
+ */
 export interface SelectedLayersInfoResponse {
   document: { name: string };
   layers: SelectedLayerInfo[];
   skipped: Array<{ id: number; name: string; reason: string }>;
 }
 
+/**
+ * PSBridge - PS 通信类
+ * 封装与 Photoshop 宿主脚本的通信逻辑
+ */
 export class PSBridge {
   private csInterface: CSInterface;
 
+  /**
+   * 构造函数
+   */
   constructor() {
     this.csInterface = new (window as any).CSInterface();
   }
@@ -113,6 +148,11 @@ export class PSBridge {
     });
   }
 
+  /**
+   * 转义单引号字符串
+   * @param value 原始字符串
+   * @returns 转义后的字符串
+   */
   private escapeForSingleQuotedString(value: string): string {
     return value
       .replace(/\\/g, "\\\\")
@@ -160,12 +200,20 @@ export class PSBridge {
   /**
    * 获取当前文档信息
    */
+  /**
+   * 获取当前文档信息
+   * @returns Promise 封装的结果
+   */
   async getDocumentInfo(): Promise<PSResult<DocumentInfo>> {
     return this.evalScript<DocumentInfo>("$.HostScript.getDocumentInfo()");
   }
 
   /**
    * 获取当前选中图层的名称
+   */
+  /**
+   * 获取当前选中图层的名称
+   * @returns Promise 封装的结果
    */
   async getSelectedLayerName(): Promise<PSResult<{ name: string | null }>> {
     return this.evalScript<{ name: string | null }>("$.HostScript.getSelectedLayerName()");
@@ -174,15 +222,26 @@ export class PSBridge {
   /**
    * 获取当前选中图层的详细信息
    */
+  /**
+   * 获取当前选中图层的详细信息
+   * @returns Promise 封装的结果
+   */
   async getSelectedLayersInfo(): Promise<PSResult<SelectedLayersInfoResponse>> {
     return this.evalScript<SelectedLayersInfoResponse>("$.HostScript.getSelectedLayersInfo()");
   }
 
+  /**
+   * 复制文本到剪贴板
+   * @param text 要复制的文本
+   * @returns Promise 封装的结果
+   */
   async copyText(text: string): Promise<PSResult<string>> {
     const safe = this.escapeForSingleQuotedString(text);
     return this.evalScript<string>(`$.HostScript.copyTextToClipboard('${safe}')`);
   }
 }
 
-// 导出单例
+/**
+ * 导出 PSBridge 单例
+ */
 export const psBridge = new PSBridge();

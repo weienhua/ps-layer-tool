@@ -1,11 +1,24 @@
 import { psBridge, SelectedLayerInfo, setLogCallback } from "./bridge";
 
+/**
+ * 锚点类型 - 九宫格位置
+ */
 type AnchorType =
   | "topLeft" | "topCenter" | "topRight"
   | "middleLeft" | "center" | "middleRight"
   | "bottomLeft" | "bottomCenter" | "bottomRight";
+
+/**
+ * 排序类型
+ * - xAsc: 按 X 升序
+ * - yAsc: 按 Y 升序
+ * - psOrderBottomToTop: 按 PS 图层顺序
+ */
 type SortType = "xAsc" | "yAsc" | "psOrderBottomToTop";
 
+/**
+ * 预设配置接口
+ */
 interface PresetConfig {
   id: string;
   name: string;
@@ -16,6 +29,10 @@ interface PresetConfig {
   template: string;
 }
 
+/**
+ * LayerToolUI - 图层工具面板主类
+ * 管理面板 UI 交互、预设配置、图层信息获取等功能
+ */
 class LayerToolUI {
   private static readonly PRESET_STORAGE_KEY = "layerTool.presets.v1";
   private debugMode = false;
@@ -46,6 +63,9 @@ class LayerToolUI {
   private debugLogs = document.getElementById("debugLogs") as HTMLDivElement;
   private btnClearLogs = document.getElementById("btnClearLogs") as HTMLButtonElement;
 
+  /**
+   * 构造函数 - 初始化面板
+   */
   constructor() {
     this.initDefaultForm();
     this.loadPresets();
@@ -56,6 +76,9 @@ class LayerToolUI {
     this.renderTemplateHint();
   }
 
+  /**
+   * 绑定 DOM 事件
+   */
   private bindEvents(): void {
     // 调试面板事件
     this.debugModeCheckbox.addEventListener("change", (e) => {
@@ -161,6 +184,9 @@ class LayerToolUI {
     this.debugLogs.innerHTML = html || '<div class="empty-state">暂无日志</div>';
   }
 
+  /**
+   * 初始化默认表单值
+   */
   private initDefaultForm(): void {
     this.setAnchor("topLeft");
     this.sortSelect.value = "xAsc";
@@ -169,6 +195,9 @@ class LayerToolUI {
     this.templateInput.value = 'x="{x}" y="{y}" ';
   }
 
+  /**
+   * 启动文档信息定时刷新
+   */
   private startDocRefresh(): void {
     void this.refreshDocumentInfo();
     this.docRefreshTimer = window.setInterval(() => {
@@ -176,6 +205,9 @@ class LayerToolUI {
     }, 60000);
   }
 
+  /**
+   * 刷新文档信息显示
+   */
   private async refreshDocumentInfo(): Promise<void> {
     const result = await psBridge.getDocumentInfo();
 
@@ -194,6 +226,10 @@ class LayerToolUI {
     this.setStatus("就绪");
   }
 
+  /**
+   * 获取当前表单配置
+   * @returns 预设配置（不含 ID）
+   */
   private getCurrentFormConfig(): Omit<PresetConfig, "id"> {
     return {
       name: this.presetName.value.trim(),
@@ -205,6 +241,9 @@ class LayerToolUI {
     };
   }
 
+  /**
+   * 渲染模板变量提示
+   */
   private renderTemplateHint(): void {
     const vars = [
       { key: "name", desc: "图层名称" },
@@ -226,6 +265,9 @@ class LayerToolUI {
     this.templateHint.innerHTML = vars.map(v => `<span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span>`).join("");
   }
 
+  /**
+   * 保存预设配置
+   */
   private savePreset(): void {
     const config = this.getCurrentFormConfig();
     if (!config.name) {
@@ -247,6 +289,10 @@ class LayerToolUI {
     this.setStatus(`预设已保存：${config.name}`);
   }
 
+  /**
+   * 将预设应用到表单
+   * @param preset 预设配置
+   */
   private applyPresetToForm(preset: PresetConfig): void {
     this.presetName.value = preset.name;
     this.setAnchor(preset.anchor);
@@ -256,6 +302,10 @@ class LayerToolUI {
     this.templateInput.value = preset.template;
   }
 
+  /**
+   * 删除预设配置
+   * @param presetId 预设 ID
+   */
   private deletePreset(presetId: string): void {
     this.presets = this.presets.filter((p) => p.id !== presetId);
     this.persistPresets();
@@ -263,6 +313,9 @@ class LayerToolUI {
     this.setStatus("预设已删除");
   }
 
+  /**
+   * 从 localStorage 加载预设配置
+   */
   private loadPresets(): void {
     try {
       const raw = localStorage.getItem(LayerToolUI.PRESET_STORAGE_KEY);
@@ -288,16 +341,29 @@ class LayerToolUI {
     }
   }
 
+  /**
+   * 保存预设配置到 localStorage
+   */
   private persistPresets(): void {
     localStorage.setItem(LayerToolUI.PRESET_STORAGE_KEY, JSON.stringify(this.presets));
   }
 
+  /**
+   * 获取排序类型的显示标签
+   * @param sortBy 排序类型
+   * @returns 显示标签
+   */
   private getSortLabel(sortBy: SortType): string {
     if (sortBy === "xAsc") return "按 X 升序";
     if (sortBy === "yAsc") return "按 Y 升序";
     return "按PS图层顺序";
   }
 
+  /**
+   * 生成锚点九宫格的 HTML
+   * @param anchor 当前选中的锚点
+   * @returns HTML 字符串
+   */
   private getAnchorGridHtml(anchor: AnchorType): string {
     const anchors: AnchorType[] = [
       "topLeft", "topCenter", "topRight",
@@ -310,6 +376,9 @@ class LayerToolUI {
     }).join("");
   }
 
+  /**
+   * 渲染预设列表
+   */
   private renderPresetList(): void {
     if (this.presets.length === 0) {
       this.presetList.innerHTML = '<div class="empty-state">暂无预设</div>';
@@ -387,6 +456,11 @@ class LayerToolUI {
     });
   }
 
+  /**
+   * 重新排序预设配置
+   * @param draggedId 被拖拽的预设 ID
+   * @param targetId 目标位置的预设 ID
+   */
   private reorderPresets(draggedId: string, targetId: string): void {
     const draggedIdx = this.presets.findIndex((p) => p.id === draggedId);
     const targetIdx = this.presets.findIndex((p) => p.id === targetId);
@@ -398,11 +472,20 @@ class LayerToolUI {
     this.setStatus("预设顺序已更新");
   }
 
+  /**
+   * 使用当前表单配置获取图层信息
+   */
   private async fetchLayersWithCurrentForm(): Promise<void> {
     const current = this.getCurrentFormConfig();
     await this.fetchLayersWithConfig({ ...current, id: "current" });
   }
 
+  /**
+   * 根据锚点类型计算图层锚点坐标
+   * @param layer 图层信息
+   * @param anchor 锚点类型
+   * @returns 锚点坐标
+   */
   private getAnchorXY(layer: SelectedLayerInfo, anchor: AnchorType): { x: number; y: number } {
     const left = layer.x;
     const top = layer.y;
@@ -424,6 +507,10 @@ class LayerToolUI {
     return map[anchor];
   }
 
+  /**
+   * 设置锚点
+   * @param anchor 锚点类型
+   */
   private setAnchor(anchor: AnchorType): void {
     this.anchorSelect.value = anchor;
     this.anchorGridSelector.querySelectorAll(".anchor-grid-cell").forEach((el) => {
@@ -438,6 +525,12 @@ class LayerToolUI {
     });
   }
 
+  /**
+   * 排序图层
+   * @param layers 图层数组
+   * @param sortBy 排序类型
+   * @returns 排序后的图层数组
+   */
   private sortLayers(layers: SelectedLayerInfo[], sortBy: SortType): SelectedLayerInfo[] {
     const list = layers.slice();
     if (sortBy === "xAsc") {
@@ -450,6 +543,12 @@ class LayerToolUI {
     return list;
   }
 
+  /**
+   * 格式化图层输出行
+   * @param layer 图层信息
+   * @param preset 预设配置
+   * @returns 格式化后的字符串
+   */
   private formatLayerLine(layer: SelectedLayerInfo, preset: PresetConfig): string {
     const anchor = this.getAnchorXY(layer, preset.anchor);
     const scope: Record<string, string> = {
@@ -474,12 +573,20 @@ class LayerToolUI {
     });
   }
 
+  /**
+   * 复制输出文本到剪贴板
+   * @param text 要复制的文本
+   * @returns 是否复制成功
+   */
   private async copyOutputText(text: string): Promise<boolean> {
     if (!text) return false;
     const copyResult = await psBridge.copyText(text);
     return !!copyResult.success;
   }
 
+  /**
+   * 复制当前输出文本
+   */
   private async copyCurrentOutput(): Promise<void> {
     const text = this.outputText.value;
     if (!text) {
@@ -494,6 +601,10 @@ class LayerToolUI {
     }
 }
 
+  /**
+   * 使用预设配置获取图层信息
+   * @param preset 预设配置
+   */
   private async fetchLayersWithConfig(preset: PresetConfig): Promise<void> {
     const result = await psBridge.getSelectedLayersInfo();
     if (!result.success || !result.data) {
@@ -521,6 +632,11 @@ class LayerToolUI {
   /**
    * 设置状态栏消息
    */
+  /**
+   * 设置状态栏消息
+   * @param message 消息文本
+   * @param isError 是否为错误消息
+   */
   private setStatus(message: string, isError = false): void {
     this.statusBar.textContent = message;
     this.statusBar.className = "status-bar" + (isError ? " error" : " success");
@@ -529,6 +645,11 @@ class LayerToolUI {
   /**
    * HTML 转义
    */
+  /**
+   * HTML 转义
+   * @param text 原始文本
+   * @returns 转义后的 HTML 安全文本
+   */
   private escapeHtml(text: string): string {
     const div = document.createElement("div");
     div.textContent = text;
@@ -536,7 +657,9 @@ class LayerToolUI {
   }
 }
 
-// 初始化
+/**
+ * 初始化面板
+ */
 document.addEventListener("DOMContentLoaded", () => {
   new LayerToolUI();
 });

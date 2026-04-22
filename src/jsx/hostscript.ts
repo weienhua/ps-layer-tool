@@ -72,15 +72,31 @@ function getSelectedLayerName(): string {
   }
 }
 
+/**
+ * RGB 转十六进制颜色
+ * @param r 红色分量 (0-255)
+ * @param g 绿色分量 (0-255)
+ * @param b 蓝色分量 (0-255)
+ * @returns 十六进制颜色字符串
+ */
 function rgbToHex(r: number, g: number, b: number): string {
   var n = (1 << 24) + (r << 16) + (g << 8) + b;
   return "#" + n.toString(16).slice(1);
 }
 
+/**
+ * 四舍五入取整
+ * @param num 数值
+ * @returns 取整后的数值
+ */
 function roundValue(num: number): number {
   return Math.round(num);
 }
 
+/**
+ * 获取选中图层的引用列表
+ * @returns 图层引用数组
+ */
 function getSelectedLayerRefs(): any[] {
   var refs: any[] = [];
   var s2t = stringIDToTypeID;
@@ -96,6 +112,12 @@ function getSelectedLayerRefs(): any[] {
   return refs;
 }
 
+/**
+ * 获取普通图层的详细信息
+ * @param layerDesc 图层描述符
+ * @param s2t 字符串转类型 ID 函数
+ * @returns 图层信息对象
+ */
 function getNormalLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
   var bounds = layerDesc.getObjectValue(s2t("bounds"));
   var left = bounds.getUnitDoubleValue(s2t("left"));
@@ -146,6 +168,12 @@ function getNormalLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
   };
 }
 
+/**
+ * 获取智能对象图层的详细信息
+ * @param layerDesc 图层描述符
+ * @param s2t 字符串转类型 ID 函数
+ * @returns 图层信息对象
+ */
 function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
   if (!layerDesc.hasKey(s2t("smartObjectMore"))) {
     return getNormalLayerInfo(layerDesc, s2t);
@@ -183,6 +211,10 @@ function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => number): an
   };
 }
 
+/**
+ * 根据图层 ID 选中图层
+ * @param id 图层 ID
+ */
 function selectLayerByID(id: number): void {
   var desc = new ActionDescriptor();
   var ref = new ActionReference();
@@ -192,6 +224,11 @@ function selectLayerByID(id: number): void {
   executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
 }
 
+/**
+ * 根据图层对象获取图层路径
+ * @param layer 图层对象
+ * @returns 图层路径字符串
+ */
 function getLayerPathByLayer(layer: any): string {
   var names: string[] = [];
   var cur: any = layer;
@@ -202,6 +239,11 @@ function getLayerPathByLayer(layer: any): string {
   return names.join("/");
 }
 
+/**
+ * 根据图层 ID 获取图层路径
+ * @param layerId 图层 ID
+ * @returns 图层路径字符串
+ */
 function getLayerPath(layerId: number): string {
   try {
     var doc = app.activeDocument;
@@ -266,6 +308,11 @@ function getSelectedLayersInfo(): string {
   }
 }
 
+/**
+ * 复制文本到剪贴板
+ * @param text 要复制的文本
+ * @returns 状态码
+ */
 function copyTextToClipboard(text: string): string {
   log("copyTextToClipboard called");
   try {
@@ -279,7 +326,9 @@ function copyTextToClipboard(text: string): string {
   }
 }
 
-// 暴露到全局（ExtendScript 方式）
+/**
+ * 暴露到全局（ExtendScript 方式）
+ */
 // @ts-ignore
 $ = $ || {};
 // @ts-ignore
