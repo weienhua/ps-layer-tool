@@ -236,7 +236,12 @@ function getLayerPathByLayer(layer: any): string {
     names.unshift(cur.name);
     cur = cur.parent;
   }
-  return names.join("/");
+  // Remove the last element (current layer's name), keep only groups
+  var groups = names.slice(0, -1);
+  if (groups.length === 0) {
+    return "";
+  }
+  return groups.join("/") + "/";
 }
 
 /**

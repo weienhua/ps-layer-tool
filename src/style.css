@@ -439,32 +439,38 @@ textarea {
   white-space: nowrap;
 }
 
-.template-row {
+.template-select-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.template-input-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.template-input-row input {
-  width: 100%;
+#templateInput {
   font-family: Consolas, Monaco, monospace;
+  resize: both;
+  min-height: 40px;
 }
 
 .template-hint {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  padding: 6px 8px;
+  gap: 6px 10px;
+  padding: 8px 10px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 10px;
+  line-height: 1.6;
+}
+
+.template-hint .hint-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .template-hint .hint-var,

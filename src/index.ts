@@ -64,8 +64,7 @@ class LayerToolUI {
   private scaleAnimInput = document.getElementById("scaleAnimInput") as HTMLInputElement;
   private rotateAnimInput = document.getElementById("rotateAnimInput") as HTMLInputElement;
   private templateSelect = document.getElementById("templateSelect") as HTMLSelectElement;
-  private templateInput = document.getElementById("templateInput") as HTMLInputElement;
-  private templateInputRow = document.getElementById("templateInputRow") as HTMLDivElement;
+  private templateInput = document.getElementById("templateInput") as HTMLTextAreaElement;
   private btnSavePreset = document.getElementById("btnSavePreset") as HTMLButtonElement;
   private presetList = document.getElementById("presetList") as HTMLDivElement;
   private outputText = document.getElementById("outputText") as HTMLTextAreaElement;
@@ -213,7 +212,6 @@ class LayerToolUI {
     this.rotateAnimInput.value = "";
     this.templateSelect.value = "position";
     this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS.position;
-    this.onTemplateSelectChange();
   }
 
   /**
@@ -222,12 +220,10 @@ class LayerToolUI {
   private onTemplateSelectChange(): void {
     const value = this.templateSelect.value as TemplatePreset;
     if (value === "custom") {
-      this.templateInputRow.style.display = "flex";
-      this.templateHint.style.display = "flex";
+      this.templateInput.value = "";
+      this.templateInput.focus();
     } else {
-      this.templateInputRow.style.display = "none";
-      this.templateHint.style.display = "none";
-      this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS[value as Exclude<TemplatePreset, "custom">];
+      this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS[value as "position" | "size"];
     }
   }
 
@@ -267,20 +263,13 @@ class LayerToolUI {
    * @returns 预设配置（不含 ID）
    */
   private getCurrentFormConfig(): Omit<PresetConfig, "id"> {
-    const selectValue = this.templateSelect.value;
-    let template: string;
-    if (selectValue === "custom") {
-      template = this.templateInput.value;
-    } else {
-      template = LayerToolUI.TEMPLATE_PRESETS[selectValue as "position" | "size"];
-    }
     return {
       name: this.presetName.value.trim(),
       anchor: this.anchorSelect.value as AnchorType,
       sortBy: this.sortSelect.value as SortType,
       scaleAnim: this.scaleAnimInput.value.trim(),
       rotateAnim: this.rotateAnimInput.value.trim(),
-      template: template || LayerToolUI.TEMPLATE_PRESETS.position
+      template: this.templateInput.value.trim() || LayerToolUI.TEMPLATE_PRESETS.position
     };
   }
 
@@ -298,14 +287,16 @@ class LayerToolUI {
       { key: "rotation", desc: "旋转角度" },
       { key: "centerX", desc: "中心X坐标" },
       { key: "centerY", desc: "中心Y坐标" },
-      { key: "path", desc: "图层路径" },
+      { key: "path", desc: "图层路径 (例:组A/组B/)" },
       { key: "scaleAnim", desc: "缩放动画" },
       { key: "rotateAnim", desc: "旋转动画" },
       { key: "fontSize", desc: "字体大小" },
       { key: "fontColor", desc: "字体颜色" },
       { key: "text", desc: "文字内容" }
     ];
-    this.templateHint.innerHTML = vars.map(v => `<span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span>`).join("");
+    this.templateHint.innerHTML = vars.map(v => 
+      `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
+    ).join("");
   }
 
   /**
