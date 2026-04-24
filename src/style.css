@@ -465,6 +465,14 @@ textarea {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+.custom-select-trigger .select-value {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
 .custom-select-trigger:hover {
   background: var(--bg-input-focus);
 }

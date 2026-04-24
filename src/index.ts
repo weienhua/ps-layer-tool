@@ -100,7 +100,9 @@ class LayerToolUI {
         this.templatePresets = [];
         return;
       }
-      this.templatePresets = (result.data as string).split("\n").filter((line: string) => line.trim() !== "");
+      this.templatePresets = (result.data as string).split("\n")
+        .map((line: string) => line.replace(/\r$/, ""))
+        .filter((line: string) => line !== "");
     } catch (e) {
       console.error("加载模板预设失败:", e);
       this.templatePresets = [];
@@ -146,7 +148,7 @@ class LayerToolUI {
         el.classList.add("selected");
         displayText = el.textContent || "自定义";
         if (value === "custom") {
-          displayText = this.templateInput.value || "自定义";
+          displayText = "自定义";
         }
       }
     });
@@ -332,8 +334,8 @@ class LayerToolUI {
   private onTemplateSelectChange(value?: string): void {
     const selectedValue = value || this.getTemplateSelectValue();
     if (selectedValue === "custom") {
-      this.templateInput.value = "";
-      this.templateInput.focus();
+      this.templateInput.value = 'x="{x}" y="{y}" ';
+      this.updateTemplateSelectDisplay("custom");
     } else {
       if (this.templatePresets.length === 0) {
         this.templateInput.value = "";
@@ -341,6 +343,7 @@ class LayerToolUI {
       }
       const index = parseInt(selectedValue, 10);
       this.templateInput.value = this.templatePresets[index] || "";
+      this.updateTemplateSelectDisplay(selectedValue);
     }
   }
 
@@ -415,7 +418,7 @@ class LayerToolUI {
       sortBy: this.sortSelect.value as SortType,
       scaleAnim: this.scaleAnimInput.value.trim(),
       rotateAnim: this.rotateAnimInput.value.trim(),
-      template: this.templateInput.value.trim() || this.templatePresets[0]
+      template: this.templateInput.value
     };
   }
 
@@ -494,7 +497,6 @@ class LayerToolUI {
       this.setTemplateSelectValue("custom");
       this.templateInput.value = preset.template;
     }
-    this.onTemplateSelectChange();
   }
 
   /**
