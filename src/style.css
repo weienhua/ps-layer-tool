@@ -33,6 +33,7 @@ body {
 }
 
 .container {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -83,6 +84,56 @@ body {
 
 .status-bar.error {
   color: var(--error);
+}
+
+/* Toast 提示样式 */
+.toast-container {
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 20px;
+  border-radius: 0 0 6px 6px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(58, 141, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: toastFadeIn 0.3s ease-out;
+}
+
+.toast.success {
+  background: rgba(63, 185, 80, 0.95);
+}
+
+.toast.error {
+  background: rgba(248, 81, 73, 0.95);
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast.fade-out {
+  animation: toastFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
 }
 
 .empty-state {

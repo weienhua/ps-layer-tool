@@ -70,6 +70,7 @@ class LayerToolUI {
   private debugPanel = document.getElementById("debugPanel") as HTMLDivElement;
   private debugLogs = document.getElementById("debugLogs") as HTMLDivElement;
   private btnClearLogs = document.getElementById("btnClearLogs") as HTMLButtonElement;
+  private toastContainer = document.getElementById("toastContainer") as HTMLDivElement;
 
   /**
    * 构造函数 - 初始化面板
@@ -806,11 +807,13 @@ class LayerToolUI {
     const result = await psBridge.getSelectedLayersInfo();
     if (!result.success || !result.data) {
       this.setStatus(`获取图层失败: ${result.error || "未知错误"}`, true);
+      this.showToast("获取图层失败", true);
       return;
     }
     if (result.data.layers.length === 0) {
       this.outputText.value = "";
       this.setStatus("未选中图层", true);
+      this.showToast("未选中图层", true);
       return;
     }
     const sorted = this.sortLayers(result.data.layers, preset.sortBy);
@@ -821,8 +824,10 @@ class LayerToolUI {
     const skippedCount = result.data.skipped.length;
     if (copied) {
       this.setStatus(`获取成功：${sorted.length} 个图层${skippedCount ? `，跳过 ${skippedCount} 个图层组` : ""}，已复制`);
+      this.showToast(`获取成功：${sorted.length} 个图层${skippedCount ? `，跳过 ${skippedCount} 个图层组` : ""}`);
     } else {
       this.setStatus('已生成输出，但复制到剪贴板失败，请点击"复制输出"重试', true);
+      this.showToast("复制到剪贴板失败", true);
     }
   }
 
@@ -837,6 +842,27 @@ class LayerToolUI {
   private setStatus(message: string, isError = false): void {
     this.statusBar.textContent = message;
     this.statusBar.className = "status-bar" + (isError ? " error" : " success");
+  }
+
+  /**
+   * 显示 Toast 提示
+   * @param message 提示消息
+   * @param isError 是否为错误提示
+   */
+  private showToast(message: string, isError = false): void {
+    const toast = document.createElement("div");
+    toast.className = "toast" + (isError ? " error" : " success");
+    toast.textContent = message;
+    this.toastContainer.appendChild(toast);
+
+    // 2 秒后开始淡出
+    setTimeout(() => {
+      toast.classList.add("fade-out");
+      // 淡出动画结束后移除元素
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 2000);
   }
 
   /**
