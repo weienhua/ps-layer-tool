@@ -175,7 +175,7 @@ function getNormalLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
  * @returns 图层信息对象
  */
 function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
-  if (!layerDesc.hasKey(s2t("smartObjectMore"))) {
+    if (!layerDesc.hasKey(s2t("smartObjectMore"))) {
     return getNormalLayerInfo(layerDesc, s2t);
   }
   var soMore = layerDesc.getObjectValue(s2t("smartObjectMore"));
@@ -283,11 +283,13 @@ function getSelectedLayersInfo(): string {
       var isText = layerDesc.hasKey(s2t("textKey"));
       var isSmartObject = layerDesc.hasKey(s2t("smartObject"));
       var baseInfo = isSmartObject ? getSmartObjectLayerInfo(layerDesc, s2t) : getNormalLayerInfo(layerDesc, s2t);
+      var layerType = isSmartObject ? "smartObject" : "normal";
+      layerType = isText ? "text" : layerType;
       var layerPath = getLayerPath(layerId);
       layers.push({
         id: layerId,
         name: layerName,
-        layerType: isText ? "text" : (isSmartObject ? "smartObject" : "normal"),
+        layerType: layerType,
         order: i,
         x: baseInfo.x,
         y: baseInfo.y,
