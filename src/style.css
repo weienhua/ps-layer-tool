@@ -445,6 +445,101 @@ textarea {
   gap: 6px;
 }
 
+/* 自定义下拉组件 */
+.custom-select {
+  position: relative;
+}
+
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-main);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.custom-select-trigger:hover {
+  background: var(--bg-input-focus);
+}
+
+.custom-select-trigger:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(58, 141, 255, 0.25);
+}
+
+.custom-select-trigger .select-arrow {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.custom-select.open .custom-select-trigger .select-arrow {
+  transform: rotate(180deg);
+}
+
+.custom-select.open .custom-select-trigger {
+  border-color: var(--primary);
+  background: var(--bg-input-focus);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  display: none;
+}
+
+.custom-select.open .custom-select-dropdown {
+  display: block;
+}
+
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-main);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.custom-select-option::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-select-option:hover {
+  background: var(--bg-card-hover);
+}
+
+.custom-select-option.selected {
+  background: var(--primary);
+  color: #fff;
+}
+
+.custom-select-option:focus-visible {
+  outline: none;
+  background: var(--bg-card-hover);
+}
+
 #templateInput {
   font-family: Consolas, Monaco, monospace;
   resize: both;

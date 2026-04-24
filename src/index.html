@@ -64,12 +64,14 @@
     </div>
     <div class="row">
       <label>输出模板</label>
-      <select id="templateSelect">
-        <option value="position">x="{x}" y="{y}"</option>
-        <option value="size">x="{x}" y="{y}" w="{width}" h="{height}"</option>
-        <option value="custom">自定义</option>
-      </select>
-      <textarea id="templateInput" rows="2" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'></textarea>
+      <div class="custom-select" id="templateSelectWrapper">
+        <div class="custom-select-trigger" id="templateSelectTrigger" tabindex="0">
+          <span class="select-value">加载中...</span>
+          <span class="select-arrow">▼</span>
+        </div>
+        <div class="custom-select-dropdown" id="templateSelectDropdown"></div>
+      </div>
+      <textarea id="templateInput" rows="4" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'></textarea>
       <div class="template-hint" id="templateHint"></div>
     </div>
     <div class="row actions action-group">

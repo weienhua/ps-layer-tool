@@ -30,11 +30,6 @@ interface PresetConfig {
 }
 
 /**
- * 模板预设选项
- */
-type TemplatePreset = "position" | "size" | "custom";
-
-/**
  * LayerToolUI - 图层工具面板主类
  * 管理面板 UI 交互、预设配置、图层信息获取等功能
  */
@@ -42,12 +37,9 @@ class LayerToolUI {
   private static readonly PRESET_STORAGE_KEY = "layerTool.presets.v1";
   
   /**
-   * 模板预设列表
+   * 模板预设列表 - 从 presets.txt 动态加载
    */
-  private static readonly TEMPLATE_PRESETS: Record<Exclude<TemplatePreset, "custom">, string> = {
-    position: 'x="{x}" y="{y}" ',
-    size: 'x="{x}" y="{y}" w="{width}" h="{height}" '
-  };
+  private templatePresets: string[] = [];
   private debugMode = false;
   private logs: Array<{type: string; data: any; time: Date}> = [];
   private docRefreshTimer: number | null = null;
@@ -63,7 +55,9 @@ class LayerToolUI {
   private sortSelect = document.getElementById("sortSelect") as HTMLSelectElement;
   private scaleAnimInput = document.getElementById("scaleAnimInput") as HTMLInputElement;
   private rotateAnimInput = document.getElementById("rotateAnimInput") as HTMLInputElement;
-  private templateSelect = document.getElementById("templateSelect") as HTMLSelectElement;
+  private templateSelect = document.getElementById("templateSelectWrapper") as HTMLDivElement;
+  private templateSelectTrigger = document.getElementById("templateSelectTrigger") as HTMLDivElement;
+  private templateSelectDropdown = document.getElementById("templateSelectDropdown") as HTMLDivElement;
   private templateInput = document.getElementById("templateInput") as HTMLTextAreaElement;
   private btnSavePreset = document.getElementById("btnSavePreset") as HTMLButtonElement;
   private presetList = document.getElementById("presetList") as HTMLDivElement;
@@ -81,13 +75,103 @@ class LayerToolUI {
    * 构造函数 - 初始化面板
    */
   constructor() {
-    this.initDefaultForm();
-    this.loadPresets();
-    this.bindEvents();
-    this.initDebugPanel();
-    this.startDocRefresh();
-    this.renderPresetList();
-    this.renderTemplateHint();
+    this.loadTemplatePresets().then(() => {
+      this.initDefaultForm();
+      this.loadPresets();
+      this.bindEvents();
+      this.initDebugPanel();
+      this.startDocRefresh();
+      this.renderPresetList();
+      this.renderTemplateHint();
+    });
+  }
+
+  /**
+   * 从 presets.txt 加载模板预设列表
+   */
+  private async loadTemplatePresets(): Promise<void> {
+    try {
+      const cs = new (window as any).CSInterface();
+      const extPath = cs.getSystemPath("extension");
+      const filePath = extPath + "/dist/lib/presets.txt";
+      const result = (window as any).cep.fs.readFile(filePath);
+      if (result.err !== 0) {
+        console.error("读取 presets.txt 失败，错误码：" + result.err);
+        this.templatePresets = [];
+        return;
+      }
+      this.templatePresets = (result.data as string).split("\n").filter((line: string) => line.trim() !== "");
+    } catch (e) {
+      console.error("加载模板预设失败:", e);
+      this.templatePresets = [];
+    }
+    this.renderTemplatePresets();
+  }
+
+  /**
+   * 渲染模板预设下拉列表
+   */
+  private renderTemplatePresets(): void {
+    this.templateSelectDropdown.innerHTML = "";
+    let selectedIndex = 0;
+
+    this.templatePresets.forEach((template, index) => {
+      const option = document.createElement("div");
+      option.className = "custom-select-option";
+      option.textContent = template;
+      option.dataset.value = String(index);
+      this.templateSelectDropdown.appendChild(option);
+    });
+
+    const customOption = document.createElement("div");
+    customOption.className = "custom-select-option";
+    customOption.textContent = "自定义";
+    customOption.dataset.value = "custom";
+    this.templateSelectDropdown.appendChild(customOption);
+
+    this.updateTemplateSelectDisplay(String(selectedIndex));
+  }
+
+  /**
+   * 更新自定义下拉显示
+   */
+  private updateTemplateSelectDisplay(value: string): void {
+    const options = this.templateSelectDropdown.querySelectorAll(".custom-select-option");
+    let displayText = "请选择模板";
+
+    options.forEach((opt) => {
+      const el = opt as HTMLDivElement;
+      el.classList.remove("selected");
+      if (el.dataset.value === value) {
+        el.classList.add("selected");
+        displayText = el.textContent || "自定义";
+        if (value === "custom") {
+          displayText = this.templateInput.value || "自定义";
+        }
+      }
+    });
+
+    const valueSpan = this.templateSelectTrigger.querySelector(".select-value") as HTMLSpanElement;
+    if (valueSpan) {
+      valueSpan.textContent = displayText;
+    }
+
+    (this as any)._templateSelectValue = value;
+  }
+
+  /**
+   * 获取当前选择的值
+   */
+  private getTemplateSelectValue(): string {
+    return (this as any)._templateSelectValue || "0";
+  }
+
+  /**
+   * 设置模板选择值
+   */
+  private setTemplateSelectValue(value: string): void {
+    (this as any)._templateSelectValue = value;
+    this.updateTemplateSelectDisplay(value);
   }
 
   /**
@@ -139,8 +223,36 @@ class LayerToolUI {
       void this.copyCurrentOutput();
     });
 
-    this.templateSelect.addEventListener("change", () => {
-      this.onTemplateSelectChange();
+    this.templateSelectTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleTemplateSelect();
+    });
+
+    this.templateSelectTrigger.addEventListener("keydown", (e) => {
+      const keyEvent = e as KeyboardEvent;
+      if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+        e.preventDefault();
+        this.toggleTemplateSelect();
+      } else if (keyEvent.key === "ArrowDown") {
+        e.preventDefault();
+        this.openTemplateSelect();
+      } else if (keyEvent.key === "ArrowUp") {
+        e.preventDefault();
+        this.openTemplateSelect();
+      }
+    });
+
+    this.templateSelectDropdown.addEventListener("click", (e) => {
+      const target = e.target as HTMLDivElement;
+      if (target.classList.contains("custom-select-option")) {
+        const value = target.dataset.value || "custom";
+        this.onTemplateSelectChange(value);
+        this.closeTemplateSelect();
+      }
+    });
+
+    document.addEventListener("click", () => {
+      this.closeTemplateSelect();
     });
   }
 
@@ -210,21 +322,55 @@ class LayerToolUI {
     this.sortSelect.value = "xAsc";
     this.scaleAnimInput.value = "";
     this.rotateAnimInput.value = "";
-    this.templateSelect.value = "position";
-    this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS.position;
+    this.setTemplateSelectValue("0");
+    this.templateInput.value = this.templatePresets[0] || "";
   }
 
   /**
    * 处理模板选择变化
    */
-  private onTemplateSelectChange(): void {
-    const value = this.templateSelect.value as TemplatePreset;
-    if (value === "custom") {
+  private onTemplateSelectChange(value?: string): void {
+    const selectedValue = value || this.getTemplateSelectValue();
+    if (selectedValue === "custom") {
       this.templateInput.value = "";
       this.templateInput.focus();
     } else {
-      this.templateInput.value = LayerToolUI.TEMPLATE_PRESETS[value as "position" | "size"];
+      if (this.templatePresets.length === 0) {
+        this.templateInput.value = "";
+        return;
+      }
+      const index = parseInt(selectedValue, 10);
+      this.templateInput.value = this.templatePresets[index] || "";
     }
+  }
+
+  /**
+   * 切换自定义下拉显示
+   */
+  private toggleTemplateSelect(): void {
+    if (this.templateSelect.classList.contains("open")) {
+      this.closeTemplateSelect();
+    } else {
+      this.openTemplateSelect();
+    }
+  }
+
+  /**
+   * 打开自定义下拉
+   */
+  private openTemplateSelect(): void {
+    this.templateSelect.classList.add("open");
+    const firstOption = this.templateSelectDropdown.querySelector(".custom-select-option") as HTMLDivElement;
+    if (firstOption) {
+      firstOption.focus();
+    }
+  }
+
+  /**
+   * 关闭自定义下拉
+   */
+  private closeTemplateSelect(): void {
+    this.templateSelect.classList.remove("open");
   }
 
   /**
@@ -269,7 +415,7 @@ class LayerToolUI {
       sortBy: this.sortSelect.value as SortType,
       scaleAnim: this.scaleAnimInput.value.trim(),
       rotateAnim: this.rotateAnimInput.value.trim(),
-      template: this.templateInput.value.trim() || LayerToolUI.TEMPLATE_PRESETS.position
+      template: this.templateInput.value.trim() || this.templatePresets[0]
     };
   }
 
@@ -323,7 +469,7 @@ class LayerToolUI {
     this.setStatus(`预设已保存：${config.name}`);
   }
 
-  /**
+/**
    * 将预设应用到表单
    * @param preset 预设配置
    */
@@ -335,18 +481,17 @@ class LayerToolUI {
     this.rotateAnimInput.value = preset.rotateAnim;
     
     // 检查模板值是否匹配预设
-    const presets = LayerToolUI.TEMPLATE_PRESETS;
     let matched = false;
-    for (const key in presets) {
-      if (presets[key as "position" | "size"] === preset.template) {
-        this.templateSelect.value = key;
-        this.templateInput.value = presets[key as "position" | "size"];
+    for (let i = 0; i < this.templatePresets.length; i++) {
+      if (this.templatePresets[i] === preset.template) {
+        this.setTemplateSelectValue(String(i));
+        this.templateInput.value = this.templatePresets[i];
         matched = true;
         break;
       }
     }
     if (!matched) {
-      this.templateSelect.value = "custom";
+      this.setTemplateSelectValue("custom");
       this.templateInput.value = preset.template;
     }
     this.onTemplateSelectChange();
@@ -392,7 +537,7 @@ class LayerToolUI {
   }
 
   /**
-   * 保存预设配置到 localStorage
+   * 保存到 localStorage
    */
   private persistPresets(): void {
     localStorage.setItem(LayerToolUI.PRESET_STORAGE_KEY, JSON.stringify(this.presets));
@@ -420,9 +565,9 @@ class LayerToolUI {
       "middleLeft", "center", "middleRight",
       "bottomLeft", "bottomCenter", "bottomRight"
     ];
-    return anchors.map((cellAnchor) => {
-      const activeClass = cellAnchor === anchor ? " is-active" : "";
-      return `<span class="preset-anchor-cell${activeClass}" aria-hidden="true"></span>`;
+    return anchors.map((a) => {
+      const active = a === anchor ? " is-active" : "";
+      return `<button class="anchor-grid-cell${active}" data-anchor="${a}" aria-pressed="${a === anchor}"></button>`;
     }).join("");
   }
 

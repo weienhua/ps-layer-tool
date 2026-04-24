@@ -54,4 +54,17 @@ declare enum SystemPathType {
   HOST_APPLICATION = 'hostApplication'
 }
 
+declare interface FileSystem {
+  readFile(path: string): string;
+  writeFile(path: string, content: string): boolean;
+  writeFileFile(path: string, content: string, encoding: string): boolean;
+  exists(path: string): boolean;
+}
+
+declare interface CepModule {
+  fs: FileSystem;
+}
+
+declare const cep: CepModule;
+
 declare const csInterface: CSInterface;
