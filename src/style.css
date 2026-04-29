@@ -87,19 +87,25 @@ body {
 }
 
 /* Toast 提示样式 */
-.toast-container {
+#toastContainer {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  z-index: 60;
   pointer-events: none;
 }
 
 .toast {
   padding: 10px 20px;
-  border-radius: 0 0 6px 6px;
+  border-radius: 6px;
   font-size: 12px;
   color: #fff;
   background: rgba(58, 141, 255, 0.95);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   text-align: center;
   animation: toastFadeIn 0.3s ease-out;
+  margin-bottom: 4px;
 }
 
 .toast.success {
