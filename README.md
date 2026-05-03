@@ -1,14 +1,19 @@
 # 图层处理工具 - Photoshop CEP 插件
 
-基于 [photoshop-script-api](https://github.com/emptykid/photoshop-script-api) 的 Photoshop CEP 面板插件，提供图层管理功能。
+基于 [photoshop-script-api](https://github.com/emptykid/photoshop-script-api) 的 Photoshop CEP 面板插件，提供预设驱动的图层信息提取与格式化导出功能。
 
 ## 功能特性
 
-- 查看当前文档信息和图层列表
-- 选中、创建、删除、重命名图层
-- 切换图层可见性
-- 导出文档为 Web 格式
-- 调整画布大小
+- **图层信息提取**：获取选中图层的坐标、尺寸、中心点、旋转角度、文字内容、字体大小、颜色等
+- **预设模板系统**：7 条内置输出模板（坐标、XML、动画等），支持用户自定义和保存预设
+- **格式化输出**：基于模板变量（`{x}`, `{y}`, `{width}`, `{name}` 等）将图层信息格式化为文本
+- **排序方式**：按 X 升序 / Y 升序 / PS 图层顺序
+- **锚点选择**：3×3 网格可视化锚点选择器（左上、中上、右上、左中、中心、右中、左下、中下、右下）
+- **动画表达式**：支持 `#loop`、`sin`、`cos` 等数学函数的动态表达式输入
+- **预设管理**：localStorage 持久化存储，支持拖拽排序和删除
+- **一键复制**：格式化结果一键复制到系统剪贴板
+- **Toast 提示**：操作反馈动画提示
+- **调试面板**：内置可收起的通信日志查看器
 
 ## 技术栈
 
@@ -26,13 +31,20 @@
 ├── src/
 │   ├── jsx/
 │   │   ├── hostscript.ts     # 宿主脚本入口
-│   │   └── ps-api/           # photoshop-script-api 源代码
+│   │   └── ps-api/           # photoshop-script-api 源代码（vendored）
+│   ├── lib/
+│   │   ├── CSInterface.js    # Adobe 官方 CEP 库（v10.0.0）
+│   │   └── presets.txt       # 内置模板预设（7 条）
 │   ├── types/
 │   │   └── cep-panel.d.ts    # CEP 面板类型声明
 │   ├── bridge.ts             # PS 通信桥接层
 │   ├── index.ts              # 面板 UI 控制器
 │   ├── index.html            # 面板 HTML 模板
-│   └── style.css             # 面板样式
+│   └── style.css             # 面板样式（暗色主题）
+├── doc/
+│   ├── Windows.png           # Windows 安装示意图
+│   └── csxs.reg/             # Windows 注册表文件（调试模式）
+├── test.jsx                  # 遗留 ExtendScript 测试脚本
 ├── dist/                     # 构建产物
 ├── webpack.config.js         # 面板 webpack 配置
 ├── webpack.config.jsx.js     # 宿主脚本 webpack 配置
@@ -77,6 +89,8 @@ Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.11" `
   -Name "PlayerDebugMode" -Value "1" -Type DWord
 ```
 
+也可使用 `doc/csxs.reg/` 目录中的注册表文件直接导入。
+
 **macOS**:
 ```bash
 defaults write com.adobe.CSXS.10 PlayerDebugMode 1   # PS 2021
@@ -91,43 +105,14 @@ defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 
 ### 面板侧调试 (Chromium DevTools)
 
-1. **打开调试页面**
-   - 在 Chrome 浏览器中访问: `http://localhost:8088`
-   - 或使用 CEFClient 工具
-
-2. **查看控制台日志**
-   ```typescript
-   // 在 index.ts 中使用
-   console.log('调试信息', data);
-   console.error('错误信息', err);
-   ```
-
-3. **调试面板代码**
-   - Chrome DevTools 中可以看到 `bundle.js`
-   - 使用 Source Map 调试原始 TypeScript 代码
+1. **打开调试页面**：在 Chrome 浏览器中访问 `http://localhost:8088`
+2. **查看控制台日志**：使用 `console.log` / `console.error`
+3. **调试面板代码**：Chrome DevTools 中可看到 `bundle.js`，配合 Source Map 调试原始 TypeScript
 
 ### 宿主脚本调试
 
-1. **ExtendScript Toolkit** (已废弃，但仍可用)
-   - 打开 ESTK，连接 Photoshop
-   - 选择 `dist/jsx/hostscript.js` 进行调试
-
-2. **日志输出**
-   ```typescript
-   // 在 hostscript.ts 中使用
-   $.writeln('日志信息: ' + JSON.stringify(data));
-   ```
-   - 查看位置: `~/Library/Logs/Adobe/Photoshop/ScriptingListener.log` (macOS)
-   - 或 Photoshop 的 `window.console`
-
-3. **错误处理**
-   ```typescript
-   try {
-     // 操作代码
-   } catch (e) {
-     return "__ERROR__:" + e.toString();
-   }
-   ```
+1. 使用 `$.writeln()` 输出日志（面板内置的调试面板也可查看通信日志）
+2. 日志位置: `~/Library/Logs/Adobe/Photoshop/ScriptingListener.log` (macOS)
 
 ### 常见问题
 
@@ -146,40 +131,57 @@ defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 ```bash
 npm run build              # 完整构建
 npm run build:jsx          # 仅编译宿主脚本
+npm run build:jsx:debug    # 宿主脚本开发模式
 npm run build:panel        # 仅构建面板
+npm run build:panel:debug  # 面板开发模式
 npm run dev                # 面板开发模式 (watch)
+npm run dev:jsx            # 宿主脚本开发模式 (watch)
 npm run clean              # 清理 dist
 ```
+
+### 模板变量参考
+
+| 变量 | 说明 |
+|------|------|
+| `{name}` | 图层名（去扩展名） |
+| `{x}`, `{y}` | 锚点坐标 |
+| `{width}`, `{height}` | 图层宽高 |
+| `{centerX}`, `{centerY}` | 图层中心点坐标 |
+| `{rotation}` | 旋转角度（度） |
+| `{path}` | 图层组路径 |
+| `{text}` | 文字图层内容 |
+| `{fontSize}` | 文字图层字号 |
+| `{fontColor}` | 文字颜色 (#RRGGBB) |
+| `{scaleAnim}` | 缩放动画表达式 |
+| `{rotateAnim}` | 旋转动画表达式 |
 
 ### 添加新功能
 
 1. **宿主脚本** (`src/jsx/hostscript.ts`):
    ```typescript
-   export default {
-     // 添加新方法
-     myNewFunction(arg: string): string {
-       try {
-         // 使用 photoshop-script-api
-         const doc = Document.activeDocument();
-         // ... 操作
-         return JSON.stringify(result);
-       } catch (e) {
-         return "__ERROR__:" + e;
-       }
+   // 添加全局函数
+   function myNewFunction(param: string): string {
+     try {
+       // PS ExtendScript 逻辑
+       return JSON.stringify(result);
+     } catch (e) {
+       return "__ERROR__:" + e;
      }
    }
+   // 在底部注册
+   $.HostScript.myNewFunction = myNewFunction;
    ```
 
 2. **桥接层** (`src/bridge.ts`):
    ```typescript
-   async myNewFunction(arg: string): Promise<PSResult<SomeType>> {
-     return this.evalScript<SomeType>(`HostScript.myNewFunction("${arg}")`);
+   async myNewFunction(param: string): Promise<PSResult<SomeType>> {
+     const safe = this.escapeForSingleQuotedString(param);
+     return this.evalScript<SomeType>(`$.HostScript.myNewFunction('${safe}')`);
    }
    ```
 
 3. **UI 层** (`src/index.ts`):
    ```typescript
-   // 调用新方法
    const result = await psBridge.myNewFunction('test');
    ```
 
@@ -187,23 +189,43 @@ npm run clean              # 清理 dist
 
 ## API 参考
 
-### Document API
+### HostScript 函数
 
-- `getDocumentInfo()` - 获取文档信息 (名称、尺寸、分辨率)
-- `saveDocument()` - 保存文档
-- `resizeCanvas(width, height)` - 调整画布大小
-- `exportToWeb(path, filename)` - 导出为 Web 格式
+| 函数 | 说明 | 返回 |
+|------|------|------|
+| `getDocumentInfo()` | 获取文档名和尺寸 | `{ name, width, height }` |
+| `getSelectedLayerName()` | 获取选中图层名 | `{ name }` |
+| `getSelectedLayersInfo()` | 获取选中图层详细信息 | `{ document, layers[], skipped[] }` |
+| `copyTextToClipboard(text)` | 复制文本到剪贴板 | `__OK__` |
 
-### Layer API
+### PSBridge 方法
 
-- `getAllLayers()` - 获取所有图层
-- `getSelectedLayers()` - 获取选中的图层
-- `selectLayerById(id)` - 通过 ID 选中图层
-- `selectLayerByName(name)` - 通过名称选中图层
-- `createNewLayer()` - 创建新图层
-- `deleteLayerById(id)` - 删除图层
-- `setLayerName(id, name)` - 设置图层名称
-- `toggleLayerVisibility(id, show)` - 切换图层可见性
+| 方法 | 对应 HostScript 函数 |
+|------|---------------------|
+| `getDocumentInfo()` | `$.HostScript.getDocumentInfo()` |
+| `getSelectedLayerName()` | `$.HostScript.getSelectedLayerName()` |
+| `getSelectedLayersInfo()` | `$.HostScript.getSelectedLayersInfo()` |
+| `copyText(text)` | `$.HostScript.copyTextToClipboard('...')` |
+
+### LayerInfo 结构
+
+```typescript
+interface SelectedLayerInfo {
+  id: number;           // 图层 ID
+  name: string;         // 图层名称
+  layerType: "normal" | "smartObject" | "text";
+  order: number;        // 选择顺序
+  x: number;            // 锚点 X 坐标
+  y: number;            // 锚点 Y 坐标
+  width: number;        // 宽度
+  height: number;       // 高度
+  centerX: number;      // 中心点 X
+  centerY: number;      // 中心点 Y
+  rotation: number;     // 旋转角度
+  text: TextLayerInfo | null;  // 文字信息
+  path: string;         // 图层组路径
+}
+```
 
 ## 许可证
 

@@ -12,7 +12,10 @@
       "Bash(grep -o '\\\\$\\\\.HostScript\\\\|\\\\$=\\\\$' dist/jsx/hostscript.js)",
       "Bash(grep -o '\\\\$\\\\.HostScript\\\\|\\\\.HostScript' dist/jsx/hostscript.js)",
       "Bash(npx tsc:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
