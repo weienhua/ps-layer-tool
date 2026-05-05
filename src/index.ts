@@ -72,6 +72,19 @@ class LayerToolUI {
   private btnClearLogs = document.getElementById("btnClearLogs") as HTMLButtonElement;
   private toastContainer = document.getElementById("toastContainer") as HTMLDivElement;
 
+  // 导出 Tab 元素
+  private exportPath = document.getElementById("exportPath") as HTMLInputElement;
+  private btnBrowsePath = document.getElementById("btnBrowsePath") as HTMLButtonElement;
+  private exportFormat = document.getElementById("exportFormat") as HTMLSelectElement;
+  private cbExportHidden = document.getElementById("cbExportHidden") as HTMLInputElement;
+  private cbExportXML = document.getElementById("cbExportXML") as HTMLInputElement;
+  private btnExportSelected = document.getElementById("btnExportSelected") as HTMLButtonElement;
+  private btnExportGroup = document.getElementById("btnExportGroup") as HTMLButtonElement;
+  private btnExportAll = document.getElementById("btnExportAll") as HTMLButtonElement;
+  private exportProgress = document.getElementById("exportProgress") as HTMLDivElement;
+  private progressText = document.getElementById("progressText") as HTMLSpanElement;
+  private exportResultList = document.getElementById("exportResultList") as HTMLDivElement;
+
   /**
    * 构造函数 - 初始化面板
    */
@@ -82,6 +95,7 @@ class LayerToolUI {
       this.bindEvents();
       this.initDebugPanel();
       this.startDocRefresh();
+      this.initExportPath();
       this.renderPresetList();
       this.renderTemplateHint();
     });
@@ -181,6 +195,18 @@ class LayerToolUI {
    * 绑定 DOM 事件
    */
   private bindEvents(): void {
+    // Tab 切换事件
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tabId = (btn as HTMLElement).dataset.tab;
+        if (!tabId) return;
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(tabId === "layerInfo" ? "tabLayerInfo" : "tabLayerExport")?.classList.add("active");
+      });
+    });
+
     // 调试面板事件
     this.debugModeCheckbox.addEventListener("change", (e) => {
       this.debugMode = (e.target as HTMLInputElement).checked;
@@ -256,6 +282,23 @@ class LayerToolUI {
 
     document.addEventListener("click", () => {
       this.closeTemplateSelect();
+    });
+
+    // 导出 Tab 事件
+    this.btnBrowsePath.addEventListener("click", () => {
+      void this.handleBrowsePath();
+    });
+
+    this.btnExportSelected.addEventListener("click", () => {
+      void this.handleExportSelected();
+    });
+
+    this.btnExportGroup.addEventListener("click", () => {
+      void this.handleExportGroup();
+    });
+
+    this.btnExportAll.addEventListener("click", () => {
+      void this.handleExportAll();
     });
   }
 
@@ -406,6 +449,16 @@ class LayerToolUI {
     const info = result.data!;
     this.docInfo.textContent = `${info.name} (${info.width}x${info.height}px)`;
     this.setStatus("就绪");
+  }
+
+  /**
+   * 初始化默认导出路径为 PSD 所在目录/export
+   */
+  private async initExportPath(): Promise<void> {
+    const result = await psBridge.getDocumentPath();
+    if (result.success && result.data && result.data.path) {
+      this.exportPath.value = result.data.path + "/export";
+    }
   }
 
 /**
@@ -832,8 +885,244 @@ class LayerToolUI {
   }
 
   /**
-   * 设置状态栏消息
+   * 浏览按钮 - 选择导出文件夹
    */
+  private async handleBrowsePath(): Promise<void> {
+    const result = await psBridge.selectFolderDialog();
+    if (result.success && result.data) {
+      this.exportPath.value = result.data.path;
+    }
+  }
+
+  /**
+   * 获取导出公共参数
+   */
+  private getExportParams() {
+    return {
+      exportPath: this.exportPath.value.trim(),
+      format: this.exportFormat.value as "PNGFormat" | "JPEG" | "bMPFormat",
+      includeHidden: this.cbExportHidden.checked,
+      exportXML: this.cbExportXML.checked
+    };
+  }
+
+  /**
+   * 导出选中图层（非组）
+   */
+  private async handleExportSelected(): Promise<void> {
+    const params = this.getExportParams();
+    if (!params.exportPath) {
+      this.showToast("请先选择导出路径", true);
+      return;
+    }
+
+    // 确保目录存在
+    const dirResult = await psBridge.ensureDirectory(params.exportPath);
+    if (!dirResult.success) {
+      this.showToast("创建导出目录失败: " + dirResult.error, true);
+      return;
+    }
+
+    // 保存历史快照
+    const snapshot = await psBridge.saveHistoryState();
+    if (!snapshot.success) {
+      this.showToast("保存历史状态失败: " + snapshot.error, true);
+      return;
+    }
+
+    // 收集图层
+    const collectResult = await psBridge.collectLayersForExport(params.includeHidden);
+    if (!collectResult.success || !collectResult.data) {
+      this.showToast("收集图层失败: " + collectResult.error, true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    const layers = collectResult.data.layers;
+    if (layers.length === 0) {
+      this.showToast("未选中图层（或选中的都是图层组）", true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    // 逐层导出
+    this.showExportProgress(0, layers.length);
+    const results: any[] = [];
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const exportResult = await psBridge.exportSingleLayer(
+        layer.id, params.exportPath, params.format, layer.groupPath, params.includeHidden
+      );
+      if (exportResult.success && exportResult.data) {
+        results.push(exportResult.data);
+      }
+      this.showExportProgress(i + 1, layers.length);
+    }
+    this.hideExportProgress();
+
+    // 导出 XML
+    if (params.exportXML && results.length > 0) {
+      await psBridge.exportLayerInfoXML(params.exportPath, JSON.stringify(results));
+    }
+
+    // 恢复历史快照
+    await psBridge.restoreHistoryState();
+
+    this.renderExportResult(results);
+    this.showToast(`已导出 ${results.length} 个文件`);
+  }
+
+  /**
+   * 导出选中图层组
+   */
+  private async handleExportGroup(): Promise<void> {
+    const params = this.getExportParams();
+    if (!params.exportPath) {
+      this.showToast("请先选择导出路径", true);
+      return;
+    }
+
+    const dirResult = await psBridge.ensureDirectory(params.exportPath);
+    if (!dirResult.success) {
+      this.showToast("创建导出目录失败: " + dirResult.error, true);
+      return;
+    }
+
+    const snapshot = await psBridge.saveHistoryState();
+    if (!snapshot.success) {
+      this.showToast("保存历史状态失败: " + snapshot.error, true);
+      return;
+    }
+
+    // 收集选中图层组内的子图层
+    const collectResult = await psBridge.collectGroupLayersForExport(params.includeHidden);
+    if (!collectResult.success || !collectResult.data) {
+      this.showToast("收集图层失败: " + collectResult.error, true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    const layers = collectResult.data.layers;
+    if (layers.length === 0) {
+      this.showToast("选中的图层组内没有可导出的图层", true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    // 逐层导出
+    this.showExportProgress(0, layers.length);
+    const results: any[] = [];
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const exportResult = await psBridge.exportSingleLayer(
+        layer.id, params.exportPath, params.format, layer.groupPath, params.includeHidden
+      );
+      if (exportResult.success && exportResult.data) {
+        results.push(exportResult.data);
+      }
+      this.showExportProgress(i + 1, layers.length);
+    }
+    this.hideExportProgress();
+
+    if (params.exportXML && results.length > 0) {
+      await psBridge.exportLayerInfoXML(params.exportPath, JSON.stringify(results));
+    }
+
+    await psBridge.restoreHistoryState();
+
+    this.renderExportResult(results);
+    this.showToast(`已导出 ${results.length} 个文件`);
+  }
+
+  /**
+   * 导出全部图层
+   */
+  private async handleExportAll(): Promise<void> {
+    const params = this.getExportParams();
+    if (!params.exportPath) {
+      this.showToast("请先选择导出路径", true);
+      return;
+    }
+
+    const dirResult = await psBridge.ensureDirectory(params.exportPath);
+    if (!dirResult.success) {
+      this.showToast("创建导出目录失败: " + dirResult.error, true);
+      return;
+    }
+
+    const snapshot = await psBridge.saveHistoryState();
+    if (!snapshot.success) {
+      this.showToast("保存历史状态失败: " + snapshot.error, true);
+      return;
+    }
+
+    const collectResult = await psBridge.collectAllLayersForExport(params.includeHidden);
+    if (!collectResult.success || !collectResult.data) {
+      this.showToast("收集图层失败: " + collectResult.error, true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    // 过滤掉组，只导出实际图层
+    const layers = collectResult.data.layers.filter(l => !l.isGroup);
+    if (layers.length === 0) {
+      this.showToast("文档中没有可导出的图层", true);
+      await psBridge.restoreHistoryState();
+      return;
+    }
+
+    this.showExportProgress(0, layers.length);
+    const results: any[] = [];
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const exportResult = await psBridge.exportSingleLayer(
+        layer.id, params.exportPath, params.format, layer.groupPath, params.includeHidden
+      );
+      if (exportResult.success && exportResult.data) {
+        results.push(exportResult.data);
+      }
+      this.showExportProgress(i + 1, layers.length);
+    }
+    this.hideExportProgress();
+
+    if (params.exportXML && results.length > 0) {
+      await psBridge.exportLayerInfoXML(params.exportPath, JSON.stringify(results));
+    }
+
+    await psBridge.restoreHistoryState();
+
+    this.renderExportResult(results);
+    this.showToast(`已导出 ${results.length} 个文件`);
+  }
+
+  /**
+   * 显示导出进度
+   */
+  private showExportProgress(current: number, total: number): void {
+    this.exportProgress.style.display = "block";
+    this.progressText.textContent = `导出中... ${current}/${total}`;
+  }
+
+  /**
+   * 隐藏导出进度
+   */
+  private hideExportProgress(): void {
+    this.exportProgress.style.display = "none";
+  }
+
+  /**
+   * 渲染导出结果列表
+   */
+  private renderExportResult(results: any[]): void {
+    if (results.length === 0) {
+      this.exportResultList.innerHTML = '<div class="empty-state">导出失败</div>';
+      return;
+    }
+    this.exportResultList.innerHTML = results.map(r =>
+      `<div class="export-result-item">${this.escapeHtml(r.filePath)} (${r.w}×${r.h})</div>`
+    ).join("");
+  }
+
   /**
    * 设置状态栏消息
    * @param message 消息文本

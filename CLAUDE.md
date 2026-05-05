@@ -74,6 +74,11 @@ Promise<PSResult<T>>
 
 **关键约束**：两侧完全隔离，只能通过字符串传递数据。
 
+## 代码规范
+
+- **注释**：TS/JS 代码使用 JSDoc + 中文描述，函数、类、接口必须有注释
+- **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
+
 ## 宿主脚本约定（src/jsx/hostscript.ts）
 
 所有通过 `$.HostScript` 暴露的函数必须是**全局函数**，返回值只能是**字符串**。

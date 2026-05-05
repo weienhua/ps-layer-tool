@@ -83,6 +83,55 @@ export interface SelectedLayersInfoResponse {
 }
 
 /**
+ * 文档路径响应接口
+ */
+export interface DocumentPathResponse {
+  path: string;
+}
+
+/**
+ * 待导出图层信息接口
+ */
+export interface LayerForExport {
+  id: number;
+  name: string;
+  groupPath: string;
+  isGroup: boolean;
+}
+
+/**
+ * 收集图层结果接口
+ */
+export interface CollectLayersResult {
+  layers: LayerForExport[];
+}
+
+/**
+ * 单个图层导出结果接口
+ */
+export interface ExportSingleResult {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  filePath: string;
+}
+
+/**
+ * 导出格式类型
+ */
+export type ExportFormat = "PNGFormat" | "JPEG" | "bMPFormat";
+
+/**
+ * 历史状态响应接口
+ */
+export interface HistoryStateResponse {
+  name: string;
+  index: number;
+}
+
+/**
  * PSBridge - PS 通信类
  * 封装与 Photoshop 宿主脚本的通信逻辑
  */
@@ -238,6 +287,92 @@ export class PSBridge {
   async copyText(text: string): Promise<PSResult<string>> {
     const safe = this.escapeForSingleQuotedString(text);
     return this.evalScript<string>(`$.HostScript.copyTextToClipboard('${safe}')`);
+  }
+
+  /**
+   * 获取当前文档路径
+   */
+  async getDocumentPath(): Promise<PSResult<DocumentPathResponse>> {
+    return this.evalScript<DocumentPathResponse>("$.HostScript.getDocumentPath()");
+  }
+
+  /**
+   * 确保目录存在
+   * @param dirPath 目录路径
+   */
+  async ensureDirectory(dirPath: string): Promise<PSResult<void>> {
+    const safe = this.escapeForSingleQuotedString(dirPath);
+    return this.evalScript<void>(`$.HostScript.ensureDirectory('${safe}')`);
+  }
+
+  /**
+   * 打开原生文件夹选择对话框
+   */
+  async selectFolderDialog(): Promise<PSResult<DocumentPathResponse>> {
+    return this.evalScript<DocumentPathResponse>("$.HostScript.selectFolderDialog()");
+  }
+
+  /**
+   * 收集选中图层的导出信息
+   * @param includeHidden 是否包含不可见图层
+   */
+  async collectLayersForExport(includeHidden: boolean): Promise<PSResult<CollectLayersResult>> {
+    return this.evalScript<CollectLayersResult>(`$.HostScript.collectLayersForExport(${includeHidden})`);
+  }
+
+  /**
+   * 收集文档全部图层的导出信息
+   * @param includeHidden 是否包含不可见图层
+   */
+  async collectAllLayersForExport(includeHidden: boolean): Promise<PSResult<CollectLayersResult>> {
+    return this.evalScript<CollectLayersResult>(`$.HostScript.collectAllLayersForExport(${includeHidden})`);
+  }
+
+  /**
+   * 收集选中图层组内的所有子图层
+   * @param includeHidden 是否包含不可见图层
+   */
+  async collectGroupLayersForExport(includeHidden: boolean): Promise<PSResult<CollectLayersResult>> {
+    return this.evalScript<CollectLayersResult>(`$.HostScript.collectGroupLayersForExport(${includeHidden})`);
+  }
+
+  /**
+   * 导出单个图层
+   * @param layerId 图层 ID
+   * @param exportPath 导出路径
+   * @param format 导出格式
+   * @param groupPath 图层组路径
+   * @param includeHidden 是否包含不可见图层
+   */
+  async exportSingleLayer(layerId: number, exportPath: string, format: ExportFormat, groupPath: string, includeHidden: boolean): Promise<PSResult<ExportSingleResult>> {
+    const safePath = this.escapeForSingleQuotedString(exportPath);
+    const safeGroup = this.escapeForSingleQuotedString(groupPath);
+    return this.evalScript<ExportSingleResult>(`$.HostScript.exportSingleLayer(${layerId}, '${safePath}', '${format}', '${safeGroup}', ${includeHidden})`);
+  }
+
+  /**
+   * 导出图层信息 XML
+   * @param exportPath 导出路径
+   * @param layersJson 图层数据 JSON 字符串
+   */
+  async exportLayerInfoXML(exportPath: string, layersJson: string): Promise<PSResult<void>> {
+    const safePath = this.escapeForSingleQuotedString(exportPath);
+    const safeJson = this.escapeForSingleQuotedString(layersJson);
+    return this.evalScript<void>(`$.HostScript.exportLayerInfoXML('${safePath}', '${safeJson}')`);
+  }
+
+  /**
+   * 保存当前历史状态
+   */
+  async saveHistoryState(): Promise<PSResult<HistoryStateResponse>> {
+    return this.evalScript<HistoryStateResponse>("$.HostScript.saveHistoryState()");
+  }
+
+  /**
+   * 恢复历史状态
+   */
+  async restoreHistoryState(): Promise<PSResult<void>> {
+    return this.evalScript<void>("$.HostScript.restoreHistoryState()");
   }
 }
 

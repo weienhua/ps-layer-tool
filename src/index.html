@@ -18,6 +18,15 @@
       <div class="doc-info" id="docInfo">未检测到打开的文档</div>
     </div>
 
+    <!-- Tab 导航栏 -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="layerInfo">图层信息</button>
+      <button class="tab-btn" data-tab="layerExport">图层处理</button>
+    </div>
+
+    <!-- 图层信息 Tab -->
+    <div class="tab-content active" id="tabLayerInfo">
+
     <div class="section card preset-form">
       <div class="section-title">预设配置</div>
       <div class="row">
@@ -97,6 +106,64 @@
       </div>
       <textarea id="outputText" rows="8" readonly></textarea>
     </div>
+
+    </div><!-- /tabLayerInfo -->
+
+    <!-- 图层处理 Tab -->
+    <div class="tab-content" id="tabLayerExport">
+      <!-- 导出设置 -->
+      <div class="section card">
+        <div class="section-title">导出设置</div>
+        <div class="row">
+          <label>导出路径</label>
+          <div class="export-path-row">
+            <input type="text" id="exportPath" placeholder="选择导出路径...">
+            <button class="btn btn-sm" id="btnBrowsePath">浏览</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>导出格式</label>
+          <select id="exportFormat">
+            <option value="PNGFormat" selected>PNG</option>
+            <option value="JPEG">JPG</option>
+            <option value="bMPFormat">BMP</option>
+          </select>
+        </div>
+        <div class="row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="cbExportHidden">
+            <span>导出不可见图层</span>
+          </label>
+        </div>
+        <div class="row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="cbExportXML">
+            <span>导出图层信息 XML (manifest.xml)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 导出操作 -->
+      <div class="section card">
+        <div class="section-title">导出操作</div>
+        <div class="export-actions">
+          <button class="btn btn-primary" id="btnExportSelected">导出选中图层</button>
+          <button class="btn" id="btnExportGroup">导出选中图层组</button>
+          <button class="btn" id="btnExportAll">导出全部图层</button>
+        </div>
+        <div class="export-progress" id="exportProgress" style="display:none;">
+          <span class="progress-text" id="progressText">导出中...</span>
+        </div>
+      </div>
+
+      <!-- 导出结果 -->
+      <div class="section card">
+        <div class="section-title">导出结果</div>
+        <div id="exportResultList" class="export-result-list">
+          <div class="empty-state">尚未导出</div>
+        </div>
+      </div>
+    </div><!-- /tabLayerExport -->
 
     <div class="status-bar" id="statusBar">就绪</div>
 

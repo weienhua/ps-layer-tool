@@ -4,7 +4,7 @@ if (typeof Symbol === "undefined") var Symbol = { toStringTag: "Symbol.toStringT
 import "extendscript-es5-shim";
 
 // 导入库的 API
-import { Document, Layer } from "./ps-api/src/index";
+import { Document, Layer, History, Utils } from "./ps-api/src/index";
 
 declare function executeActionGet(ref: any): any;
 declare function executeAction(typeID: number, desc: any, mode: any): any;
@@ -22,8 +22,13 @@ function log(msg: string, data?: any): void {
   if (DEBUG) {
     var now = new Date();
     var timestamp = now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds();
-    var logMsg = "[" + timestamp + "] [HostScript] " + msg + (data ? ": " + JSON.stringify(data) : "");
-    $.writeln(logMsg);
+    var dataStr = "";
+    if (data) {
+      dataStr = ": " + JSON.stringify(data);
+    }
+    var logMsg = "[" + timestamp + "] [HostScript] " + msg + dataStr;
+    alert(logMsg);
+    // $.writeln(logMsg);
   }
 }
 
@@ -273,8 +278,14 @@ function getSelectedLayersInfo(): string {
     for (var i = 0; i < refs.length; i++) {
       var layerRef = refs[i];
       var layerDesc = executeActionGet(layerRef);
-      var layerName = layerDesc.hasKey(s2t("name")) ? layerDesc.getString(s2t("name")) : "";
-      var layerId = layerDesc.hasKey(s2t("layerID")) ? layerDesc.getInteger(s2t("layerID")) : -1;
+      var layerName = "";
+      if (layerDesc.hasKey(s2t("name"))) {
+        layerName = layerDesc.getString(s2t("name"));
+      }
+      var layerId = -1;
+      if (layerDesc.hasKey(s2t("layerID"))) {
+        layerId = layerDesc.getInteger(s2t("layerID"));
+      }
       var layerSection = typeIDToStringID(layerDesc.getEnumerationValue(s2t("layerSection")));
       if (layerSection === "layerSectionStart") {
         skipped.push({ id: layerId, name: layerName, reason: "layerGroup" });
@@ -282,10 +293,22 @@ function getSelectedLayersInfo(): string {
       }
       var isText = layerDesc.hasKey(s2t("textKey"));
       var isSmartObject = layerDesc.hasKey(s2t("smartObject"));
-      var baseInfo = isSmartObject ? getSmartObjectLayerInfo(layerDesc, s2t) : getNormalLayerInfo(layerDesc, s2t);
-      var layerType = isSmartObject ? "smartObject" : "normal";
-      layerType = isText ? "text" : layerType;
+      var baseInfo = getNormalLayerInfo(layerDesc, s2t);
+      if (isSmartObject) {
+        baseInfo = getSmartObjectLayerInfo(layerDesc, s2t);
+      }
+      var layerType = "normal";
+      if (isSmartObject) {
+        layerType = "smartObject";
+      }
+      if (isText) {
+        layerType = "text";
+      }
       var layerPath = getLayerPath(layerId);
+      var textInfo = null;
+      if (baseInfo.text) {
+        textInfo = baseInfo.text;
+      }
       layers.push({
         id: layerId,
         name: layerName,
@@ -298,12 +321,15 @@ function getSelectedLayersInfo(): string {
         centerX: baseInfo.centerX,
         centerY: baseInfo.centerY,
         rotation: baseInfo.rotation,
-        text: baseInfo.text ? baseInfo.text : null,
+        text: textInfo,
         path: layerPath
       });
     }
     var doc = Document.activeDocument();
-    var docName = doc ? doc.name() : "";
+    var docName = "";
+    if (doc) {
+      docName = doc.name();
+    }
     return JSON.stringify({
       document: { name: docName },
       layers: layers,
@@ -334,6 +360,346 @@ function copyTextToClipboard(text: string): string {
 }
 
 /**
+ * 获取当前文档的文件路径
+ * @returns JSON 字符串或状态码
+ */
+function getDocumentPath(): string {
+  log("getDocumentPath called");
+  try {
+    if (app.documents.length === 0) return "__NO_DOCUMENT__";
+    var doc = Document.activeDocument();
+    if (!doc) return "__NO_DOCUMENT__";
+    var path = doc.path();
+    if (!path) return JSON.stringify({ path: "" });
+    return JSON.stringify({ path: (path as any).fsName });
+  } catch (e) {
+    log("getDocumentPath error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 确保目录存在，不存在则创建
+ * @param dirPath 目录路径
+ * @returns 状态码
+ */
+function ensureDirectory(dirPath: string): string {
+  log("ensureDirectory called", dirPath);
+  try {
+    var folder = new Folder(dirPath);
+    if (!folder.exists) {
+      folder.create();
+    }
+    return "__OK__";
+  } catch (e) {
+    log("ensureDirectory error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 打开原生文件夹选择对话框
+ * @returns JSON 字符串或取消状态
+ */
+function selectFolderDialog(): string {
+  log("selectFolderDialog called");
+  try {
+    var folder = Folder.selectDialog("选择导出文件夹");
+    if (!folder) return "__CANCEL__";
+    return JSON.stringify({ path: folder.fsName });
+  } catch (e) {
+    log("selectFolderDialog error", String(e));
+    return "__CANCEL__";
+  }
+}
+
+/**
+ * 保存当前历史状态快照
+ * @returns JSON 字符串包含快照索引
+ */
+function saveHistoryState(): string {
+  log("saveHistoryState called");
+  try {
+    if (app.documents.length === 0) return "__NO_DOCUMENT__";
+    var history = new History();
+    history.saveState();
+    var current = history.current();
+    return JSON.stringify({ name: current.name, index: app.activeDocument.historyStates.length - 1 });
+  } catch (e) {
+    log("saveHistoryState error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 恢复到之前保存的历史状态
+ * @returns 状态码
+ */
+function restoreHistoryState(): string {
+  log("restoreHistoryState called");
+  try {
+    var history = new History();
+    history.restoreState();
+    return "__OK__";
+  } catch (e) {
+    log("restoreHistoryState error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 获取图层文件扩展名
+ * @param format 导出格式
+ * @returns 文件扩展名
+ */
+function getLayerExtension(format: string): string {
+  if (format === "JPEG") return ".jpg";
+  if (format === "bMPFormat") return ".bmp";
+  return ".png";
+}
+
+/**
+ * 收集选中图层的导出信息（不含组）
+ * @param includeHidden 是否包含不可见图层
+ * @returns JSON 字符串
+ */
+function collectLayersForExport(includeHidden: boolean): string {
+  log("collectLayersForExport called", { includeHidden: includeHidden });
+  try {
+    if (app.documents.length === 0) return "__NO_DOCUMENT__";
+    var selectedLayers = Layer.getSelectedLayers();
+    var result: any[] = [];
+    for (var i = 0; i < selectedLayers.length; i++) {
+      var layer = selectedLayers[i];
+      if (!includeHidden && !layer.visible()) continue;
+      if (layer.isGroupLayer()) continue;
+      result.push({
+        id: layer.id,
+        name: layer.name(),
+        groupPath: getLayerPathByLayer(layer),
+        isGroup: false
+      });
+    }
+    return JSON.stringify({ layers: result });
+  } catch (e) {
+    log("collectLayersForExport error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 收集文档全部图层的导出信息
+ * @param includeHidden 是否包含不可见图层
+ * @returns JSON 字符串
+ */
+function collectAllLayersForExport(includeHidden: boolean): string {
+  log("collectAllLayersForExport called", { includeHidden: includeHidden });
+  try {
+    if (app.documents.length === 0) return "__NO_DOCUMENT__";
+    var result: any[] = [];
+    Layer.loopLayers(function(layer: any) {
+      if (!includeHidden && !layer.visible()) return;
+      result.push({
+        id: layer.id,
+        name: layer.name(),
+        groupPath: getLayerPathByLayer(layer),
+        isGroup: layer.isGroupLayer()
+      });
+    });
+    return JSON.stringify({ layers: result });
+  } catch (e) {
+    log("collectAllLayersForExport error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 递归收集组内子图层
+ * @param groupId 组图层 ID
+ * @param includeHidden 是否包含不可见图层
+ * @param result 收集结果数组（累加）
+ */
+function collectGroupChildrenRecursive(groupId: number, includeHidden: boolean, result: any[]): void {
+  var group = new Layer(groupId);
+  if (!group.isGroupLayer()) return;
+  var subIds = group.getSubLayerIds();
+  for (var i = 0; i < subIds.length; i++) {
+    var child = new Layer(subIds[i]);
+    if (!includeHidden && !child.visible()) continue;
+    if (child.isGroupLayer()) {
+      collectGroupChildrenRecursive(child.id, includeHidden, result);
+    } else {
+      result.push({
+        id: child.id,
+        name: child.name(),
+        groupPath: getLayerPathByLayer(child),
+        isGroup: false
+      });
+    }
+  }
+}
+
+/**
+ * 收集选中图层组内的所有子图层
+ * @param includeHidden 是否包含不可见图层
+ * @returns JSON 字符串
+ */
+function collectGroupLayersForExport(includeHidden: boolean): string {
+  log("collectGroupLayersForExport called", { includeHidden: includeHidden });
+  try {
+    if (app.documents.length === 0) return "__NO_DOCUMENT__";
+    var selectedLayers = Layer.getSelectedLayers();
+    var result: any[] = [];
+    for (var i = 0; i < selectedLayers.length; i++) {
+      var layer = selectedLayers[i];
+      if (layer.isGroupLayer()) {
+        collectGroupChildrenRecursive(layer.id, includeHidden, result);
+      }
+    }
+    return JSON.stringify({ layers: result });
+  } catch (e) {
+    log("collectGroupLayersForExport error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 导出单个图层
+ * @param layerId 图层 ID
+ * @param exportPath 导出路径
+ * @param format 导出格式
+ * @param groupPath 图层组路径
+ * @param includeHidden 是否包含不可见图层
+ * @returns JSON 字符串包含裁剪后的位置和尺寸
+ */
+function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean): string {
+  log("exportSingleLayer called", { layerId: layerId, format: format, groupPath: groupPath });
+  var originalDoc = Document.activeDocument();
+  if (!originalDoc) return "__NO_DOCUMENT__";
+  var newDoc: any = null;
+  var wasHidden = false;
+
+  try {
+    // 选中目标图层
+    selectLayerByID(layerId);
+    var targetLayer = app.activeDocument.activeLayer;
+
+    // 检查可见性
+    if (!targetLayer.visible) {
+      if (!includeHidden) return JSON.stringify({ skipped: true });
+      wasHidden = true;
+      targetLayer.visible = true;
+    }
+
+    // 在切换文档前，记录原始位置和图层名（避免 stale reference）
+    var originalBounds = app.activeDocument.activeLayer.bounds;
+    var origX = Math.round(originalBounds[0].as("px"));
+    var origY = Math.round(originalBounds[1].as("px"));
+    var layerName = targetLayer.name;
+
+    // 创建新文档（非破坏性）
+    newDoc = Document.fromSelectedLayers();
+
+    // JPG 格式：填充白色背景（使用 Action Manager 确保兼容性）
+    if (format === "JPEG") {
+      var flatDesc = new ActionDescriptor();
+      executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
+    }
+
+    // 裁剪透明像素
+    newDoc.trim();
+
+    // 获取裁剪后尺寸
+    var w = Math.round(newDoc.size().width);
+    var h = Math.round(newDoc.size().height);
+
+    // trim 后内容从 (0,0) 开始，加上原文档中的原始偏移
+    var x = origX;
+    var y = origY;
+
+    // 构建文件名和路径
+    var ext = getLayerExtension(format);
+    var cleanName = layerName.replace(/\.[^.]+$/, "");
+    var subDir = exportPath + "/" + groupPath;
+    var folder = new Folder(subDir);
+    if (!folder.exists) folder.create();
+    var fullPath = subDir + cleanName + ext;
+
+    // 保存（使用 Action Manager）
+    var desc = new ActionDescriptor();
+    desc.putString(charIDToTypeID("In  "), fullPath);
+    var formatId = charIDToTypeID("Fmt ");
+    if (format === "PNGFormat") {
+      desc.putEnumerated(formatId, stringIDToTypeID("format"), stringIDToTypeID("PNGFormat"));
+      var pngDesc = new ActionDescriptor();
+      pngDesc.putInteger(stringIDToTypeID("PNGInterlaceType"), 0);
+      pngDesc.putInteger(stringIDToTypeID("PNGFilter"), 6);
+      desc.putObject(stringIDToTypeID("PNGFormat"), stringIDToTypeID("PNGFormat"), pngDesc);
+    } else if (format === "JPEG") {
+      desc.putEnumerated(formatId, charIDToTypeID("JPEG"), charIDToTypeID("JPEG"));
+    } else {
+      desc.putEnumerated(formatId, charIDToTypeID("BMPF"), charIDToTypeID("BMPF"));
+    }
+    desc.putBoolean(stringIDToTypeID("copy"), true);
+    executeAction(charIDToTypeID("save"), desc, DialogModes.NO);
+
+    return JSON.stringify({
+      name: cleanName + ext,
+      x: x, y: y, w: w, h: h,
+      filePath: groupPath + cleanName + ext
+    });
+  } catch (e) {
+    log("exportSingleLayer error", String(e));
+    return "__ERROR__:" + e;
+  } finally {
+    // 确保关闭新文档并切回原始文档
+    try {
+      if (newDoc) newDoc.close(false);
+    } catch (closeErr) {
+      log("exportSingleLayer close error", String(closeErr));
+    }
+    try {
+      originalDoc.active();
+    } catch (activeErr) {
+      log("exportSingleLayer active error", String(activeErr));
+    }
+    // 恢复可见性
+    if (wasHidden) {
+      try {
+        selectLayerByID(layerId);
+        app.activeDocument.activeLayer.visible = false;
+      } catch (visErr) {
+        log("exportSingleLayer restore visibility error", String(visErr));
+      }
+    }
+  }
+}
+
+/**
+ * 导出图层信息 XML
+ * @param exportPath 导出路径
+ * @param layersJson 图层数据 JSON 字符串
+ * @returns 状态码
+ */
+function exportLayerInfoXML(exportPath: string, layersJson: string): string {
+  log("exportLayerInfoXML called");
+  try {
+    var layers = JSON.parse(layersJson);
+    var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<Layers>\n';
+    for (var i = 0; i < layers.length; i++) {
+      var l = layers[i];
+      xml += '  <Image x="' + l.x + '" y="' + l.y + '" w="' + l.w + '" h="' + l.h + '" name="' + l.name + '" />\n';
+    }
+    xml += '</Layers>';
+    Utils.saveFile(xml, exportPath + "/manifest.xml");
+    return "__OK__";
+  } catch (e) {
+    log("exportLayerInfoXML error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
  * 暴露到全局（ExtendScript 方式）
  */
 // @ts-ignore
@@ -343,7 +709,17 @@ $.HostScript = {
   getDocumentInfo: getDocumentInfo,
   getSelectedLayerName: getSelectedLayerName,
   getSelectedLayersInfo: getSelectedLayersInfo,
-  copyTextToClipboard: copyTextToClipboard
+  copyTextToClipboard: copyTextToClipboard,
+  getDocumentPath: getDocumentPath,
+  ensureDirectory: ensureDirectory,
+  selectFolderDialog: selectFolderDialog,
+  saveHistoryState: saveHistoryState,
+  restoreHistoryState: restoreHistoryState,
+  collectLayersForExport: collectLayersForExport,
+  collectAllLayersForExport: collectAllLayersForExport,
+  collectGroupLayersForExport: collectGroupLayersForExport,
+  exportSingleLayer: exportSingleLayer,
+  exportLayerInfoXML: exportLayerInfoXML
 };
 
 log('HostScript initialized');
