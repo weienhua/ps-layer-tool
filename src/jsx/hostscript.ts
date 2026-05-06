@@ -371,7 +371,7 @@ function getDocumentPath(): string {
     if (!doc) return "__NO_DOCUMENT__";
     var path = doc.path();
     if (!path) return JSON.stringify({ path: "" });
-    return JSON.stringify({ path: (path as any).fsName });
+    return JSON.stringify({ path: (path as any).path });
   } catch (e) {
     log("getDocumentPath error", String(e));
     return "__ERROR__:" + e;
@@ -452,10 +452,24 @@ function restoreHistoryState(): string {
  * @param format 导出格式
  * @returns 文件扩展名
  */
+/**
+ * 获取导出文件扩展名
+ * @param format PS 导出格式标识
+ * @returns 文件扩展名
+ */
 function getLayerExtension(format: string): string {
-  if (format === "JPEG") return ".jpg";
-  if (format === "bMPFormat") return ".bmp";
-  return ".png";
+  // log('getLayerExtension:format 值', String(format));
+  var fmt = String(format);
+  // log('getLayerExtension:fmt 值', String(fmt));
+  var ext = ".png";
+  if (fmt === "JPEG") {
+    ext = ".jpg";
+  } else if (fmt === "bMPFormat") {
+    ext = ".bmp";
+  }
+  // log('getLayerExtension:ext', ext);
+  var result = ext;
+  return result;
 }
 
 /**
@@ -573,7 +587,6 @@ function collectGroupLayersForExport(includeHidden: boolean): string {
  * @returns JSON 字符串包含裁剪后的位置和尺寸
  */
 function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean): string {
-  // log("exportSingleLayer called", { layerId: layerId, format: format, groupPath: groupPath });
   var originalDoc = Document.activeDocument();
   if (!originalDoc) return "__NO_DOCUMENT__";
   var newDoc: any = null;
@@ -599,18 +612,16 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
 
     // 创建新文档（非破坏性）
     newDoc = Document.fromSelectedLayers();
-    // log('exportSingleLayer called:打开新文档');
     
+    // 裁剪透明像素
+    newDoc.trim();
+
     // JPG 格式：填充白色背景（使用 Action Manager 确保兼容性）
     if (format === "JPEG") {
       var flatDesc = new ActionDescriptor();
       executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
       // log('exportSingleLayer called:填充白色成功');
     }
-    
-    // 裁剪透明像素
-    newDoc.trim();
-    // log('exportSingleLayer called:裁剪透明成功');
     
     // 获取裁剪后尺寸
     var w = Math.round(newDoc.size().width);
@@ -628,37 +639,26 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
     if (!folder.exists) folder.create();
     var fullPath = subDir + cleanName + ext;
     
-    // log('exportSingleLayer called:获取路径成功', String(fullPath));
-    // 保存（使用 Action Manager）
-    var desc = new ActionDescriptor();
-    desc.putString(charIDToTypeID("In  "), fullPath);
-    var formatId = charIDToTypeID("Fmt ");
-    // log('exportSingleLayer called:保存1');
-    if (format === "PNGFormat") {
-      // log('exportSingleLayer called:保存1 1');
-      desc.putEnumerated(formatId, stringIDToTypeID("format"), stringIDToTypeID("PNGFormat"));
-      // log('exportSingleLayer called:保存1 2');
-      var pngDesc = new ActionDescriptor();
-      // log('exportSingleLayer called:保存1 3');
-      pngDesc.putInteger(stringIDToTypeID("PNGInterlaceType"), 0);
-      // log('exportSingleLayer called:保存1 4');
-      pngDesc.putInteger(stringIDToTypeID("PNGFilter"), 6);
-      // log('exportSingleLayer called:保存1 5');
-      desc.putObject(stringIDToTypeID("PNGFormat"), stringIDToTypeID("PNGFormat"), pngDesc);
-      // log('exportSingleLayer called:保存1 6');
-    } else if (format === "JPEG") {
-      // log('exportSingleLayer called:保存2');
-      desc.putEnumerated(formatId, charIDToTypeID("JPEG"), charIDToTypeID("JPEG"));
-      // log('exportSingleLayer called:保存2 1');
+    // 保存图片
+    if (format === "bMPFormat") {
+      // BMP 不支持 exportToWeb，使用 saveAs
+      newDoc.saveAs(fullPath, format as any, true);
     } else {
-      // log('exportSingleLayer called:保存3');
-      desc.putEnumerated(formatId, charIDToTypeID("BMPF"), charIDToTypeID("BMPF"));
-      // log('exportSingleLayer called:保存3 1');
+      var options = new ExportOptionsSaveForWeb();
+      if (format === "PNGFormat") {
+        options.format = SaveDocumentType.PNG;
+        options.PNG8 = false;
+        options.quality = 100;
+        options.transparency = true;
+      } else {
+        options.format = SaveDocumentType.JPEG;
+        options.quality = 100;
+        options.transparency = false;
+      }
+      // log('exportSingleLayer called:', String(cleanName + ext));
+      // log('exportSingleLayer called:', String(options.format));
+      newDoc.exportToWeb(subDir, cleanName + ext, options);
     }
-    // log('exportSingleLayer called:保存4');
-    desc.putBoolean(stringIDToTypeID("copy"), true);
-    // log('exportSingleLayer called:保存5');
-    executeAction(charIDToTypeID("save"), desc, DialogModes.NO);
     // log('exportSingleLayer called:保存成功');
 
     return JSON.stringify({
