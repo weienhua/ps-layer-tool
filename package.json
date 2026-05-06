@@ -8,11 +8,13 @@
     "build:jsx:debug": "webpack --config webpack.config.jsx.js --mode=development",
     "build:panel": "webpack --mode=production",
     "build:panel:debug": "webpack --mode=development",
-    "dev": "webpack --mode=development --watch",
-    "dev:jsx": "webpack --config webpack.config.jsx.js --mode=development --watch",
+    "dev": "concurrently -k -n panel,jsx \"npm run dev:panel\" \"npm run dev:jsx\"",
+    "dev:panel": "webpack --mode=development --watch",
+    "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "@types/node": "^20.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "ps-extendscript-types": "^1.0.2",

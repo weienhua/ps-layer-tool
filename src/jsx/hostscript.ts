@@ -37,11 +37,11 @@ function log(msg: string, data?: any): void {
  * @returns JSON 字符串或状态码
 */
 function getDocumentInfo(): string {
-  log('getDocumentInfo called');
+  // log('getDocumentInfo called');
   try {
     var doc = Document.activeDocument();
     if (!doc) {
-      log('getDocumentInfo: no document open');
+      // log('getDocumentInfo: no document open');
       return "__NO_DOCUMENT__";
     }
     
@@ -64,7 +64,7 @@ function getDocumentInfo(): string {
  * @returns JSON 字符串或状态码
 */
 function getSelectedLayerName(): string {
-  log('getSelectedLayerName called');
+  // log('getSelectedLayerName called');
   try {
     var selected = Layer.getSelectedLayer();
     if (selected) {
@@ -268,7 +268,7 @@ function getLayerPath(layerId: number): string {
 }
 
 function getSelectedLayersInfo(): string {
-  log("getSelectedLayersInfo called");
+  // log("getSelectedLayersInfo called");
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var s2t = stringIDToTypeID;
@@ -347,7 +347,7 @@ function getSelectedLayersInfo(): string {
  * @returns 状态码
  */
 function copyTextToClipboard(text: string): string {
-  log("copyTextToClipboard called");
+  // log("copyTextToClipboard called");
   try {
     var desc = new ActionDescriptor();
     desc.putString(stringIDToTypeID("textData"), text);
@@ -364,7 +364,7 @@ function copyTextToClipboard(text: string): string {
  * @returns JSON 字符串或状态码
  */
 function getDocumentPath(): string {
-  log("getDocumentPath called");
+  // log("getDocumentPath called");
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var doc = Document.activeDocument();
@@ -384,7 +384,7 @@ function getDocumentPath(): string {
  * @returns 状态码
  */
 function ensureDirectory(dirPath: string): string {
-  log("ensureDirectory called", dirPath);
+  // log("ensureDirectory called", dirPath);
   try {
     var folder = new Folder(dirPath);
     if (!folder.exists) {
@@ -402,7 +402,7 @@ function ensureDirectory(dirPath: string): string {
  * @returns JSON 字符串或取消状态
  */
 function selectFolderDialog(): string {
-  log("selectFolderDialog called");
+  // log("selectFolderDialog called");
   try {
     var folder = Folder.selectDialog("选择导出文件夹");
     if (!folder) return "__CANCEL__";
@@ -418,7 +418,7 @@ function selectFolderDialog(): string {
  * @returns JSON 字符串包含快照索引
  */
 function saveHistoryState(): string {
-  log("saveHistoryState called");
+  // log("saveHistoryState called");
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var history = new History();
@@ -436,7 +436,7 @@ function saveHistoryState(): string {
  * @returns 状态码
  */
 function restoreHistoryState(): string {
-  log("restoreHistoryState called");
+  // log("restoreHistoryState called");
   try {
     var history = new History();
     history.restoreState();
@@ -464,7 +464,7 @@ function getLayerExtension(format: string): string {
  * @returns JSON 字符串
  */
 function collectLayersForExport(includeHidden: boolean): string {
-  log("collectLayersForExport called", { includeHidden: includeHidden });
+  // log("collectLayersForExport called", { includeHidden: includeHidden });
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var selectedLayers = Layer.getSelectedLayers();
@@ -493,7 +493,7 @@ function collectLayersForExport(includeHidden: boolean): string {
  * @returns JSON 字符串
  */
 function collectAllLayersForExport(includeHidden: boolean): string {
-  log("collectAllLayersForExport called", { includeHidden: includeHidden });
+  // log("collectAllLayersForExport called", { includeHidden: includeHidden });
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var result: any[] = [];
@@ -545,7 +545,7 @@ function collectGroupChildrenRecursive(groupId: number, includeHidden: boolean, 
  * @returns JSON 字符串
  */
 function collectGroupLayersForExport(includeHidden: boolean): string {
-  log("collectGroupLayersForExport called", { includeHidden: includeHidden });
+  // log("collectGroupLayersForExport called", { includeHidden: includeHidden });
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var selectedLayers = Layer.getSelectedLayers();
@@ -573,7 +573,7 @@ function collectGroupLayersForExport(includeHidden: boolean): string {
  * @returns JSON 字符串包含裁剪后的位置和尺寸
  */
 function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean): string {
-  log("exportSingleLayer called", { layerId: layerId, format: format, groupPath: groupPath });
+  // log("exportSingleLayer called", { layerId: layerId, format: format, groupPath: groupPath });
   var originalDoc = Document.activeDocument();
   if (!originalDoc) return "__NO_DOCUMENT__";
   var newDoc: any = null;
@@ -599,24 +599,27 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
 
     // 创建新文档（非破坏性）
     newDoc = Document.fromSelectedLayers();
-
+    // log('exportSingleLayer called:打开新文档');
+    
     // JPG 格式：填充白色背景（使用 Action Manager 确保兼容性）
     if (format === "JPEG") {
       var flatDesc = new ActionDescriptor();
       executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
+      // log('exportSingleLayer called:填充白色成功');
     }
-
+    
     // 裁剪透明像素
     newDoc.trim();
-
+    // log('exportSingleLayer called:裁剪透明成功');
+    
     // 获取裁剪后尺寸
     var w = Math.round(newDoc.size().width);
     var h = Math.round(newDoc.size().height);
-
+    
     // trim 后内容从 (0,0) 开始，加上原文档中的原始偏移
     var x = origX;
     var y = origY;
-
+    
     // 构建文件名和路径
     var ext = getLayerExtension(format);
     var cleanName = layerName.replace(/\.[^.]+$/, "");
@@ -624,24 +627,39 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
     var folder = new Folder(subDir);
     if (!folder.exists) folder.create();
     var fullPath = subDir + cleanName + ext;
-
+    
+    // log('exportSingleLayer called:获取路径成功', String(fullPath));
     // 保存（使用 Action Manager）
     var desc = new ActionDescriptor();
     desc.putString(charIDToTypeID("In  "), fullPath);
     var formatId = charIDToTypeID("Fmt ");
+    // log('exportSingleLayer called:保存1');
     if (format === "PNGFormat") {
+      // log('exportSingleLayer called:保存1 1');
       desc.putEnumerated(formatId, stringIDToTypeID("format"), stringIDToTypeID("PNGFormat"));
+      // log('exportSingleLayer called:保存1 2');
       var pngDesc = new ActionDescriptor();
+      // log('exportSingleLayer called:保存1 3');
       pngDesc.putInteger(stringIDToTypeID("PNGInterlaceType"), 0);
+      // log('exportSingleLayer called:保存1 4');
       pngDesc.putInteger(stringIDToTypeID("PNGFilter"), 6);
+      // log('exportSingleLayer called:保存1 5');
       desc.putObject(stringIDToTypeID("PNGFormat"), stringIDToTypeID("PNGFormat"), pngDesc);
+      // log('exportSingleLayer called:保存1 6');
     } else if (format === "JPEG") {
+      // log('exportSingleLayer called:保存2');
       desc.putEnumerated(formatId, charIDToTypeID("JPEG"), charIDToTypeID("JPEG"));
+      // log('exportSingleLayer called:保存2 1');
     } else {
+      // log('exportSingleLayer called:保存3');
       desc.putEnumerated(formatId, charIDToTypeID("BMPF"), charIDToTypeID("BMPF"));
+      // log('exportSingleLayer called:保存3 1');
     }
+    // log('exportSingleLayer called:保存4');
     desc.putBoolean(stringIDToTypeID("copy"), true);
+    // log('exportSingleLayer called:保存5');
     executeAction(charIDToTypeID("save"), desc, DialogModes.NO);
+    // log('exportSingleLayer called:保存成功');
 
     return JSON.stringify({
       name: cleanName + ext,
@@ -682,7 +700,7 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
  * @returns 状态码
  */
 function exportLayerInfoXML(exportPath: string, layersJson: string): string {
-  log("exportLayerInfoXML called");
+  // log("exportLayerInfoXML called");
   try {
     var layers = JSON.parse(layersJson);
     var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<Layers>\n';
@@ -722,4 +740,4 @@ $.HostScript = {
   exportLayerInfoXML: exportLayerInfoXML
 };
 
-log('HostScript initialized');
+// log('HostScript initialized');
