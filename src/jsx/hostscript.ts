@@ -148,10 +148,25 @@ function getNormalLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
         }
         if (textStyle.hasKey(s2t("color"))) {
           var color = textStyle.getObjectValue(s2t("color"));
-          var r = roundValue(color.getDouble(s2t("red")));
-          var g = roundValue(color.getDouble(s2t("green")));
-          var b = roundValue(color.getDouble(s2t("blue")));
-          fontColor = rgbToHex(r, g, b);
+          var r: number, g: number, b: number;
+          // 优先尝试整数格式 (red, grain, blue)
+          if (color.hasKey(s2t("red"))) {
+            r = roundValue(color.getDouble(s2t("red")));
+            g = roundValue(color.getDouble(s2t("grain")));
+            b = roundValue(color.getDouble(s2t("blue")));
+            fontColor = rgbToHex(r, g, b);
+          }
+          // 回退到浮点格式 (redFloat, greenFloat, blueFloat)
+          else if (color.hasKey(s2t("redFloat"))) {
+            r = roundValue(color.getDouble(s2t("redFloat")) * 255);
+            g = roundValue(color.getDouble(s2t("greenFloat")) * 255);
+            b = roundValue(color.getDouble(s2t("blueFloat")) * 255);
+            fontColor = rgbToHex(r, g, b);
+          }
+          // 无法识别的颜色格式，返回空
+          else {
+            fontColor = "";
+          }
         }
       }
     }
@@ -706,7 +721,7 @@ function exportLayerInfoXML(exportPath: string, layersJson: string): string {
     var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<Layers>\n';
     for (var i = 0; i < layers.length; i++) {
       var l = layers[i];
-      xml += '  <Image x="' + l.x + '" y="' + l.y + '" w="' + l.w + '" h="' + l.h + '" name="' + l.name + '" />\n';
+      xml += '  <Image x="' + l.x + '" y="' + l.y + '" w="' + l.w + '" h="' + l.h + '" name="' + l.filePath + '" />\n';
     }
     xml += '</Layers>';
     Utils.saveFile(xml, exportPath + "/manifest.xml");

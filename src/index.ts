@@ -78,6 +78,7 @@ class LayerToolUI {
   private exportFormat = document.getElementById("exportFormat") as HTMLSelectElement;
   private cbExportHidden = document.getElementById("cbExportHidden") as HTMLInputElement;
   private cbExportXML = document.getElementById("cbExportXML") as HTMLInputElement;
+  private cbFolderHierarchy = document.getElementById("cbFolderHierarchy") as HTMLInputElement;
   private btnExportSelected = document.getElementById("btnExportSelected") as HTMLButtonElement;
   private btnExportGroup = document.getElementById("btnExportGroup") as HTMLButtonElement;
   private btnExportAll = document.getElementById("btnExportAll") as HTMLButtonElement;
@@ -902,8 +903,20 @@ class LayerToolUI {
       exportPath: this.exportPath.value.trim(),
       format: this.exportFormat.value as "PNGFormat" | "JPEG" | "bMPFormat",
       includeHidden: this.cbExportHidden.checked,
-      exportXML: this.cbExportXML.checked
+      exportXML: this.cbExportXML.checked,
+      folderHierarchy: this.cbFolderHierarchy.checked
     };
+  }
+
+  /**
+   * 从完整组路径中提取顶层组名（含尾部斜杠）
+   * @param groupPath 如 "GroupA/SubGroup/"
+   * @returns 如 "GroupA/"
+   */
+  private getTopGroupName(groupPath: string): string {
+    if (!groupPath) return "";
+    const idx = groupPath.indexOf("/");
+    return idx >= 0 ? groupPath.substring(0, idx + 1) : groupPath;
   }
 
   /**
@@ -950,8 +963,9 @@ class LayerToolUI {
     const results: any[] = [];
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
+      const groupPath = params.folderHierarchy ? layer.groupPath : "";
       const exportResult = await psBridge.exportSingleLayer(
-        layer.id, params.exportPath, params.format, layer.groupPath, params.includeHidden
+        layer.id, params.exportPath, params.format, groupPath, params.includeHidden
       );
       if (exportResult.success && exportResult.data) {
         results.push(exportResult.data);
@@ -1014,8 +1028,9 @@ class LayerToolUI {
     const results: any[] = [];
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
+      const groupPath = params.folderHierarchy ? layer.groupPath : this.getTopGroupName(layer.groupPath);
       const exportResult = await psBridge.exportSingleLayer(
-        layer.id, params.exportPath, params.format, layer.groupPath, params.includeHidden
+        layer.id, params.exportPath, params.format, groupPath, params.includeHidden
       );
       if (exportResult.success && exportResult.data) {
         results.push(exportResult.data);
