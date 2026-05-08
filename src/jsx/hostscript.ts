@@ -267,6 +267,7 @@ function getParentLayerId(layerId: number): number {
 function getLayerPathByLayer(layer: any): string {
   var names: string[] = [];
   var curId: number = layer.id;
+  var originalId: number = curId;
   var cur: any = new Layer(curId);
   cur.select();
   while (cur) {
@@ -277,6 +278,7 @@ function getLayerPathByLayer(layer: any): string {
     cur = new Layer(curId);
     cur.select();
   }
+  new Layer(originalId).select();
   var groups = names.slice(0, -1);
   if (groups.length === 0) return "";
   return groups.join("/") + "/";
