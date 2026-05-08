@@ -96,6 +96,7 @@ export interface LayerForExport {
   id: number;
   name: string;
   groupPath: string;
+  selectedGroup?: string;
   isGroup: boolean;
 }
 
@@ -104,6 +105,7 @@ export interface LayerForExport {
  */
 export interface CollectLayersResult {
   layers: LayerForExport[];
+  selectedGroupPaths?: string[];
 }
 
 /**

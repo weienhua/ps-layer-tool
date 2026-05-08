@@ -245,22 +245,40 @@ function selectLayerByID(id: number): void {
 }
 
 /**
+ * 通过 ActionDescriptor 获取父图层 ID
+ * @param layerId 图层 ID
+ * @returns 父图层 ID，根图层返回 -1
+ */
+function getParentLayerId(layerId: number): number {
+  var ref = new ActionReference();
+  ref.putIdentifier(app.charIDToTypeID("Lyr "), layerId);
+  var desc = app.executeActionGet(ref);
+  if (desc.hasKey(app.stringIDToTypeID("parentLayerID"))) {
+    return desc.getInteger(app.stringIDToTypeID("parentLayerID"));
+  }
+  return -1;
+}
+
+/**
  * 根据图层对象获取图层路径
- * @param layer 图层对象
+ * @param layer 图层对象（ps-api Layer，仅需 id 属性）
  * @returns 图层路径字符串
  */
 function getLayerPathByLayer(layer: any): string {
   var names: string[] = [];
-  var cur: any = layer;
-  while (cur && cur.typename !== "Document") {
-    names.unshift(cur.name);
-    cur = cur.parent;
+  var curId: number = layer.id;
+  var cur: any = new Layer(curId);
+  cur.select();
+  while (cur) {
+    names.unshift(cur.name());
+    var pid = getParentLayerId(curId);
+    if (pid < 0) break;
+    curId = pid;
+    cur = new Layer(curId);
+    cur.select();
   }
-  // Remove the last element (current layer's name), keep only groups
   var groups = names.slice(0, -1);
-  if (groups.length === 0) {
-    return "";
-  }
+  if (groups.length === 0) return "";
   return groups.join("/") + "/";
 }
 
@@ -498,18 +516,22 @@ function collectLayersForExport(includeHidden: boolean): string {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var selectedLayers = Layer.getSelectedLayers();
     var result: any[] = [];
+    var selectedGroupPaths: string[] = [];
     for (var i = 0; i < selectedLayers.length; i++) {
       var layer = selectedLayers[i];
       if (!includeHidden && !layer.visible()) continue;
-      if (layer.isGroupLayer()) continue;
-      result.push({
-        id: layer.id,
-        name: layer.name(),
-        groupPath: getLayerPathByLayer(layer),
-        isGroup: false
-      });
+      if (layer.isGroupLayer()) {
+        selectedGroupPaths.push(getLayerPathByLayer(layer) + layer.name() + "/");
+      } else {
+        result.push({
+          id: layer.id,
+          name: layer.name(),
+          groupPath: getLayerPathByLayer(layer),
+          isGroup: false
+        });
+      }
     }
-    return JSON.stringify({ layers: result });
+    return JSON.stringify({ layers: result, selectedGroupPaths: selectedGroupPaths });
   } catch (e) {
     log("collectLayersForExport error", String(e));
     return "__ERROR__:" + e;
@@ -528,11 +550,12 @@ function collectAllLayersForExport(includeHidden: boolean): string {
     var result: any[] = [];
     Layer.loopLayers(function(layer: any) {
       if (!includeHidden && !layer.visible()) return;
+      if (layer.isGroupLayer()) return;
       result.push({
         id: layer.id,
         name: layer.name(),
         groupPath: getLayerPathByLayer(layer),
-        isGroup: layer.isGroupLayer()
+        isGroup: false
       });
     });
     return JSON.stringify({ layers: result });
@@ -547,8 +570,9 @@ function collectAllLayersForExport(includeHidden: boolean): string {
  * @param groupId 组图层 ID
  * @param includeHidden 是否包含不可见图层
  * @param result 收集结果数组（累加）
+ * @param selectedGroupName 选中的顶层组名
  */
-function collectGroupChildrenRecursive(groupId: number, includeHidden: boolean, result: any[]): void {
+function collectGroupChildrenRecursive(groupId: number, includeHidden: boolean, result: any[], selectedGroupName: string): void {
   var group = new Layer(groupId);
   if (!group.isGroupLayer()) return;
   var subIds = group.getSubLayerIds();
@@ -556,12 +580,13 @@ function collectGroupChildrenRecursive(groupId: number, includeHidden: boolean, 
     var child = new Layer(subIds[i]);
     if (!includeHidden && !child.visible()) continue;
     if (child.isGroupLayer()) {
-      collectGroupChildrenRecursive(child.id, includeHidden, result);
+      collectGroupChildrenRecursive(child.id, includeHidden, result, selectedGroupName);
     } else {
       result.push({
         id: child.id,
         name: child.name(),
         groupPath: getLayerPathByLayer(child),
+        selectedGroup: selectedGroupName,
         isGroup: false
       });
     }
@@ -579,13 +604,15 @@ function collectGroupLayersForExport(includeHidden: boolean): string {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
     var selectedLayers = Layer.getSelectedLayers();
     var result: any[] = [];
+    var selectedGroupPaths: string[] = [];
     for (var i = 0; i < selectedLayers.length; i++) {
       var layer = selectedLayers[i];
       if (layer.isGroupLayer()) {
-        collectGroupChildrenRecursive(layer.id, includeHidden, result);
+        selectedGroupPaths.push(getLayerPathByLayer(layer) + layer.name() + "/");
+        collectGroupChildrenRecursive(layer.id, includeHidden, result, layer.name());
       }
     }
-    return JSON.stringify({ layers: result });
+    return JSON.stringify({ layers: result, selectedGroupPaths: selectedGroupPaths });
   } catch (e) {
     log("collectGroupLayersForExport error", String(e));
     return "__ERROR__:" + e;
@@ -611,6 +638,11 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
     // 选中目标图层
     selectLayerByID(layerId);
     var targetLayer = app.activeDocument.activeLayer;
+
+    // 跳过图层组（无法直接导出）
+    if (targetLayer.typename === "LayerSet") {
+      return JSON.stringify({ skipped: true, reason: "group" });
+    }
 
     // 检查可见性
     if (!targetLayer.visible) {

@@ -913,10 +913,49 @@ class LayerToolUI {
    * @param groupPath 如 "GroupA/SubGroup/"
    * @returns 如 "GroupA/"
    */
-  private getTopGroupName(groupPath: string): string {
-    if (!groupPath) return "";
-    const idx = groupPath.indexOf("/");
-    return idx >= 0 ? groupPath.substring(0, idx + 1) : groupPath;
+  private getRelativeGroupPath(groupPath: string, selectedGroupName: string): string {
+    if (!groupPath || !selectedGroupName) return "";
+    var parts = groupPath.replace(/\/$/, "").split("/");
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] === selectedGroupName) {
+        return parts.slice(i).join("/") + "/";
+      }
+    }
+    return selectedGroupName + "/";
+  }
+
+  /** 从选中组路径列表中提取根组（不被其他选中组包含的组） */
+  private getRootGroupPaths(selectedGroupPaths: string[]): string[] {
+    if (selectedGroupPaths.length === 0) return [];
+    var sorted = selectedGroupPaths.slice().sort(function(a, b) {
+      return a.length - b.length;
+    });
+    var roots: string[] = [];
+    for (var i = 0; i < sorted.length; i++) {
+      var dominated = false;
+      for (var j = 0; j < roots.length; j++) {
+        if (sorted[i].indexOf(roots[j]) === 0) {
+          dominated = true;
+          break;
+        }
+      }
+      if (!dominated) roots.push(sorted[i]);
+    }
+    return roots;
+  }
+
+  /** 根据根组路径计算相对路径 */
+  private computeRelativePath(groupPath: string, rootGroupPaths: string[]): string {
+    if (rootGroupPaths.length === 0) return "";
+    for (var i = 0; i < rootGroupPaths.length; i++) {
+      if (groupPath.indexOf(rootGroupPaths[i]) === 0) {
+        var rootPath = rootGroupPaths[i];
+        var lastSlash = rootPath.lastIndexOf("/", rootPath.length - 2);
+        var parentLen = lastSlash >= 0 ? lastSlash + 1 : 0;
+        return groupPath.substring(parentLen);
+      }
+    }
+    return "";
   }
 
   /**
@@ -958,12 +997,18 @@ class LayerToolUI {
       return;
     }
 
+    // 计算根组路径（未勾选文件夹层级时使用）
+    const selectedGroupPaths = collectResult.data.selectedGroupPaths || [];
+    const rootGroupPaths = this.getRootGroupPaths(selectedGroupPaths);
+
     // 逐层导出
     this.showExportProgress(0, layers.length);
     const results: any[] = [];
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
-      const groupPath = params.folderHierarchy ? layer.groupPath : "";
+      const groupPath = params.folderHierarchy
+        ? layer.groupPath
+        : this.computeRelativePath(layer.groupPath, rootGroupPaths);
       const exportResult = await psBridge.exportSingleLayer(
         layer.id, params.exportPath, params.format, groupPath, params.includeHidden
       );
@@ -1023,12 +1068,18 @@ class LayerToolUI {
       return;
     }
 
+    // 计算根组路径（未勾选文件夹层级时使用）
+    const selectedGroupPaths = collectResult.data.selectedGroupPaths || [];
+    const rootGroupPaths = this.getRootGroupPaths(selectedGroupPaths);
+
     // 逐层导出
     this.showExportProgress(0, layers.length);
     const results: any[] = [];
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
-      const groupPath = params.folderHierarchy ? layer.groupPath : this.getTopGroupName(layer.groupPath);
+      const groupPath = params.folderHierarchy
+        ? layer.groupPath
+        : this.computeRelativePath(layer.groupPath, rootGroupPaths);
       const exportResult = await psBridge.exportSingleLayer(
         layer.id, params.exportPath, params.format, groupPath, params.includeHidden
       );
@@ -1078,8 +1129,7 @@ class LayerToolUI {
       return;
     }
 
-    // 过滤掉组，只导出实际图层
-    const layers = collectResult.data.layers.filter(l => !l.isGroup);
+    const layers = collectResult.data.layers;
     if (layers.length === 0) {
       this.showToast("文档中没有可导出的图层", true);
       await psBridge.restoreHistoryState();
@@ -1129,11 +1179,12 @@ class LayerToolUI {
    * 渲染导出结果列表
    */
   private renderExportResult(results: any[]): void {
-    if (results.length === 0) {
+    const exported = results.filter(r => !r.skipped);
+    if (exported.length === 0) {
       this.exportResultList.innerHTML = '<div class="empty-state">导出失败</div>';
       return;
     }
-    this.exportResultList.innerHTML = results.map(r =>
+    this.exportResultList.innerHTML = exported.map(r =>
       `<div class="export-result-item">${this.escapeHtml(r.filePath)} (${r.w}×${r.h})</div>`
     ).join("");
   }
