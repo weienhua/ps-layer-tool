@@ -4,6 +4,7 @@
 
 ## 功能特性
 
+### 图层信息提取
 - **图层信息提取**：获取选中图层的坐标、尺寸、中心点、旋转角度、文字内容、字体大小、颜色等
 - **预设模板系统**：7 条内置输出模板（坐标、XML、动画等），支持用户自定义和保存预设
 - **格式化输出**：基于模板变量（`{x}`, `{y}`, `{width}`, `{name}` 等）将图层信息格式化为文本
@@ -12,8 +13,18 @@
 - **动画表达式**：支持 `#loop`、`sin`、`cos` 等数学函数的动态表达式输入
 - **预设管理**：localStorage 持久化存储，支持拖拽排序和删除
 - **一键复制**：格式化结果一键复制到系统剪贴板
+
+### 图层导出
+- **多种导出模式**：导出选中图层 / 选中图层组 / 全部图层
+- **多格式支持**：PNG、JPG、BMP
+- **文件夹层级**：可选保留 PS 图层组目录结构
+- **XML 导出**：可选导出图层信息 XML（manifest.xml）
+- **非破坏性导出**：自动保存/恢复历史状态，不影响文档
+- **进度显示**：实时导出进度和结果列表
+
+### 其他
 - **Toast 提示**：操作反馈动画提示
-- **调试面板**：内置可收起的通信日志查看器
+- **调试面板**：内置可收起的通信日志查看器（含耗时显示）
 
 ## 技术栈
 
@@ -129,13 +140,14 @@ defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 ### 构建命令
 
 ```bash
-npm run build              # 完整构建
-npm run build:jsx          # 仅编译宿主脚本
-npm run build:jsx:debug    # 宿主脚本开发模式
+npm run build              # 完整构建（宿主脚本 + 面板）
+npm run build:jsx          # 仅构建宿主脚本
+npm run build:jsx:debug    # 宿主脚本开发模式（带 source-map）
 npm run build:panel        # 仅构建面板
-npm run build:panel:debug  # 面板开发模式
-npm run dev                # 面板开发模式 (watch)
-npm run dev:jsx            # 宿主脚本开发模式 (watch)
+npm run build:panel:debug  # 面板开发模式（带 source-map）
+npm run dev                # 同时启动面板 + 宿主 watch
+npm run dev:panel          # 仅面板 watch
+npm run dev:jsx            # 仅宿主 watch
 npm run clean              # 清理 dist
 ```
 
@@ -144,6 +156,7 @@ npm run clean              # 清理 dist
 | 变量 | 说明 |
 |------|------|
 | `{name}` | 图层名（去扩展名） |
+| `{type}` | 图层类型（normal / smartObject / text） |
 | `{x}`, `{y}` | 锚点坐标 |
 | `{width}`, `{height}` | 图层宽高 |
 | `{centerX}`, `{centerY}` | 图层中心点坐标 |
@@ -197,6 +210,16 @@ npm run clean              # 清理 dist
 | `getSelectedLayerName()` | 获取选中图层名 | `{ name }` |
 | `getSelectedLayersInfo()` | 获取选中图层详细信息 | `{ document, layers[], skipped[] }` |
 | `copyTextToClipboard(text)` | 复制文本到剪贴板 | `__OK__` |
+| `getDocumentPath()` | 获取当前文档路径 | `{ path }` |
+| `ensureDirectory(dirPath)` | 确保目录存在 | `__OK__` |
+| `selectFolderDialog()` | 打开文件夹选择对话框 | `{ path }` 或 `__CANCEL__` |
+| `saveHistoryState()` | 保存历史状态快照 | `{ name, index }` |
+| `restoreHistoryState()` | 恢复历史状态 | `__OK__` |
+| `collectLayersForExport(includeHidden)` | 收集选中图层导出信息 | `{ layers[], selectedGroupPaths[] }` |
+| `collectAllLayersForExport(includeHidden)` | 收集全部图层导出信息 | `{ layers[] }` |
+| `collectGroupLayersForExport(includeHidden)` | 收集组内子图层 | `{ layers[], selectedGroupPaths[] }` |
+| `exportSingleLayer(id, path, format, groupPath, includeHidden)` | 导出单个图层 | `{ name, x, y, w, h, filePath }` |
+| `exportLayerInfoXML(path, json)` | 导出图层信息 XML | `__OK__` |
 
 ### PSBridge 方法
 
@@ -206,6 +229,16 @@ npm run clean              # 清理 dist
 | `getSelectedLayerName()` | `$.HostScript.getSelectedLayerName()` |
 | `getSelectedLayersInfo()` | `$.HostScript.getSelectedLayersInfo()` |
 | `copyText(text)` | `$.HostScript.copyTextToClipboard('...')` |
+| `getDocumentPath()` | `$.HostScript.getDocumentPath()` |
+| `ensureDirectory(dirPath)` | `$.HostScript.ensureDirectory('...')` |
+| `selectFolderDialog()` | `$.HostScript.selectFolderDialog()` |
+| `saveHistoryState()` | `$.HostScript.saveHistoryState()` |
+| `restoreHistoryState()` | `$.HostScript.restoreHistoryState()` |
+| `collectLayersForExport(includeHidden)` | `$.HostScript.collectLayersForExport(...)` |
+| `collectAllLayersForExport(includeHidden)` | `$.HostScript.collectAllLayersForExport(...)` |
+| `collectGroupLayersForExport(includeHidden)` | `$.HostScript.collectGroupLayersForExport(...)` |
+| `exportSingleLayer(id, path, format, groupPath, includeHidden)` | `$.HostScript.exportSingleLayer(...)` |
+| `exportLayerInfoXML(path, json)` | `$.HostScript.exportLayerInfoXML(...)` |
 
 ### LayerInfo 结构
 

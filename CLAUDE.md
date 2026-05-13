@@ -53,8 +53,9 @@ npm run build:jsx          # 仅构建宿主脚本（webpack --config webpack.co
 npm run build:jsx:debug    # 宿主脚本开发模式（带 source-map）
 npm run build:panel        # 仅构建面板（webpack --mode=production）
 npm run build:panel:debug  # 面板开发模式（带 source-map）
-npm run dev                # 面板 webpack watch（开发模式）
-npm run dev:jsx            # 宿主 webpack watch（开发模式）
+npm run dev                # 同时启动面板 + 宿主 watch（concurrently）
+npm run dev:panel          # 仅面板 webpack watch（开发模式）
+npm run dev:jsx            # 仅宿主 webpack watch（开发模式）
 npm run clean              # rimraf dist
 ```
 
@@ -103,7 +104,17 @@ $.HostScript = {
   getDocumentInfo,
   getSelectedLayerName,
   getSelectedLayersInfo,
-  copyTextToClipboard
+  copyTextToClipboard,
+  getDocumentPath,
+  ensureDirectory,
+  selectFolderDialog,
+  saveHistoryState,
+  restoreHistoryState,
+  collectLayersForExport,
+  collectAllLayersForExport,
+  collectGroupLayersForExport,
+  exportSingleLayer,
+  exportLayerInfoXML
 };
 ```
 
@@ -111,6 +122,7 @@ $.HostScript = {
 - 正常结果 → JSON 字符串
 - `"__OK__"` → 操作成功（无返回值）
 - `"__NO_DOCUMENT__"` → 无打开文档
+- `"__CANCEL__"` → 用户取消操作（如文件夹选择对话框）
 - `"__ERROR__:<msg>"` → 运行时异常
 
 **ES3 + shim 能力边界**（`target: ES3` + `extendscript-es5-shim`）：
@@ -121,7 +133,7 @@ $.HostScript = {
 
 当前项目已在宿主入口文件 `src/jsx/hostscript.ts` 中引入：
 - `import "extendscript-es5-shim";`
-- `import { Document, Layer } from "./ps-api/src/index";`
+- `import { Document, Layer, History, Utils } from "./ps-api/src/index";`
 
 **HostScript 已有函数：**
 
@@ -131,6 +143,16 @@ $.HostScript = {
 | `getSelectedLayerName()` | 获取当前选中图层名 |
 | `getSelectedLayersInfo()` | 获取所有选中图层的详细信息（坐标、尺寸、旋转、文字信息、路径） |
 | `copyTextToClipboard(text)` | 复制文本到系统剪贴板 |
+| `getDocumentPath()` | 获取当前文档的文件路径 |
+| `ensureDirectory(dirPath)` | 确保目录存在，不存在则创建 |
+| `selectFolderDialog()` | 打开原生文件夹选择对话框 |
+| `saveHistoryState()` | 保存当前历史状态快照 |
+| `restoreHistoryState()` | 恢复到之前保存的历史状态 |
+| `collectLayersForExport(includeHidden)` | 收集选中图层的导出信息（不含组） |
+| `collectAllLayersForExport(includeHidden)` | 收集文档全部图层的导出信息 |
+| `collectGroupLayersForExport(includeHidden)` | 收集选中图层组内的所有子图层 |
+| `exportSingleLayer(layerId, exportPath, format, groupPath, includeHidden)` | 导出单个图层为图片文件 |
+| `exportLayerInfoXML(exportPath, layersJson)` | 导出图层信息 XML（manifest.xml） |
 
 ## 面板通信约定（src/bridge.ts）
 
@@ -161,7 +183,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **形状**：`Shape`（含 `Rectangle`、`Ellipse`、`Line` 等子类型）
 - **辅助**：`Rect`、`Size`、`Utils`、`Guide`、`History`、`MetaData` 等
 
-当前项目仅使用 `Document` 和 `Layer` 的部分方法。
+当前项目使用 `Document`、`Layer`、`History`、`Utils` 的部分方法。
 
 ## 预设系统
 
@@ -184,6 +206,7 @@ x="{x}" y="{y}" w="{width}" h="{height}"
 | 变量 | 说明 |
 |------|------|
 | `{name}` | 图层名（去扩展名） |
+| `{type}` | 图层类型（normal / smartObject / text） |
 | `{x}`, `{y}` | 锚点坐标（由9点锚位和layer bounds计算） |
 | `{width}`, `{height}` | 图层宽高 |
 | `{centerX}`, `{centerY}` | 图层中心点坐标 |
@@ -206,31 +229,60 @@ x="{x}" y="{y}" w="{width}" h="{height}"
 
 ### 用户预设（localStorage）
 
-用户保存的预设存储在 `localStorage` 中（key: `layerToolPresets`），支持：
+用户保存的预设存储在 `localStorage` 中（key: `layerTool.presets.v1`），支持：
 - 保存/加载/删除预设
 - 拖拽排序（HTML5 Drag and Drop API）
 - 预设卡片带 3×3 锚点网格微预览
 
 ## 面板 UI 功能
 
-### 表单控件
+面板分为两个 Tab 页签：**图层信息** 和 **图层处理**。
+
+### Tab 1：图层信息
+
+#### 表单控件
 - **预设名**：文本输入，用于保存用户预设
 - **位置锚点**：3×3 网格可视化选择器 + 下拉选择器
 - **排序方式**：按 X 升序 / 按 Y 升序 / 按PS图层顺序
 - **缩放动画**：数学表达式输入（支持 `#loop` 变量和 `sin`/`cos` 函数）
 - **旋转动画**：数学表达式输入
 - **输出模板**：自定义下拉列表（7 条内置预设 + "自定义"选项）+ 文本域
+- **模板变量提示**：显示所有可用模板变量及说明
 
-### 交互按钮
-- **获取选中图层信息**：读取 PS 选中图层，按预设格式化并填入输出区域
+#### 交互按钮
+- **获取选中图层信息**：读取 PS 选中图层，按预设格式化并填入输出区域，自动复制到剪贴板
 - **保存预设**：将当前配置保存到 localStorage
-- **复制输出**：将输出区域内容复制到剪贴板（通过宿主脚本 `textToClipboard`）
+- **复制输出**：将输出区域内容复制到剪贴板（通过宿主脚本 `copyTextToClipboard`）
+
+#### 预设列表
+- 卡片式展示，带 3×3 锚点网格微预览和排序标签
+- 点击卡片应用预设并获取图层信息
+- 支持拖拽排序
+- 悬停显示模板预览
+
+### Tab 2：图层处理（导出）
+
+#### 导出设置
+- **导出路径**：文本输入 + 浏览按钮（调用 PS 原生文件夹选择对话框），默认为 PSD 所在目录/export
+- **导出格式**：PNG / JPG / BMP
+- **导出不可见图层**：复选框
+- **导出图层信息 XML**：复选框，导出 manifest.xml
+- **保留文件夹层级**：复选框，保持 PS 图层组目录结构
+
+#### 导出操作
+- **导出选中图层**：仅导出选中的非组图层
+- **导出选中图层组**：递归导出选中图层组内的所有子图层
+- **导出全部图层**：导出文档中所有可见图层
+
+#### 导出结果
+- 显示已导出文件列表（路径 + 尺寸）
+- 进度条显示导出进度
 
 ### 其他
 - **Toast 提示**：操作反馈提示框（2s 显示 + 0.3s 淡出动画）
 - **状态栏**：底部状态提示（就绪/成功/错误）
-- **文档信息**：顶部显示当前文档名，每 60 秒自动刷新
-- **调试面板**：可收起的调试面板，带开关和通信日志查看器（实时显示 send/receive/error）
+- **文档信息**：顶部显示当前文档名和尺寸，每 60 秒自动刷新
+- **调试面板**：可收起的调试面板，带开关和通信日志查看器（实时显示 send/receive/error 及耗时）
 
 ## 添加新功能的步骤
 
