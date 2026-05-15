@@ -86,6 +86,22 @@ class LayerToolUI {
   private progressText = document.getElementById("progressText") as HTMLSpanElement;
   private exportResultList = document.getElementById("exportResultList") as HTMLDivElement;
 
+  // XML 模板 Tab 元素
+  private xmlVarName = document.getElementById("xmlVarName") as HTMLInputElement;
+  private xmlDatatypeGroup = document.getElementById("xmlDatatypeGroup") as HTMLDivElement;
+  private xmlAnchorGridSelector = document.getElementById("xmlAnchorGridSelector") as HTMLDivElement;
+  private xmlAnchorSelect = document.getElementById("xmlAnchorSelect") as HTMLSelectElement;
+  private xmlPositionAnchorGrid = document.getElementById("xmlPositionAnchorGrid") as HTMLDivElement;
+  private xmlPositionAnchorSelect = document.getElementById("xmlPositionAnchorSelect") as HTMLSelectElement;
+  private xmlSortSelect = document.getElementById("xmlSortSelect") as HTMLSelectElement;
+  private btnGenerateXML = document.getElementById("btnGenerateXML") as HTMLButtonElement;
+  private btnCopyXML = document.getElementById("btnCopyXML") as HTMLButtonElement;
+  private xmlOutput = document.getElementById("xmlOutput") as HTMLTextAreaElement;
+  private xmlDatatype: string = "percentage";
+  private xmlAnchor: AnchorType = "topLeft";
+  private xmlPositionAnchor: AnchorType = "topLeft";
+  private xmlSortBy: SortType = "xAsc";
+
   /**
    * 构造函数 - 初始化面板
    */
@@ -204,7 +220,12 @@ class LayerToolUI {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
         btn.classList.add("active");
-        document.getElementById(tabId === "layerInfo" ? "tabLayerInfo" : "tabLayerExport")?.classList.add("active");
+        const tabMap: Record<string, string> = {
+          layerInfo: "tabLayerInfo",
+          layerExport: "tabLayerExport",
+          xmlTemplate: "tabXmlTemplate"
+        };
+        document.getElementById(tabMap[tabId])?.classList.add("active");
       });
     });
 
@@ -301,6 +322,50 @@ class LayerToolUI {
     this.btnExportAll.addEventListener("click", () => {
       void this.handleExportAll();
     });
+
+    // XML 模板 Tab 事件
+    this.xmlDatatypeGroup.querySelectorAll(".xml-datatype-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.xmlDatatypeGroup.querySelectorAll(".xml-datatype-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.xmlDatatype = (btn as HTMLElement).dataset.type || "percentage";
+        var defaults: Record<string, string> = { percentage: "#battery_level", temperature: "#weatherTemp", steps: "#steps_value" };
+        this.xmlVarName.value = defaults[this.xmlDatatype] || "";
+      });
+    });
+
+    this.xmlAnchorSelect.addEventListener("change", () => {
+      this.setXmlAnchor(this.xmlAnchorSelect.value as AnchorType);
+    });
+
+    this.xmlAnchorGridSelector.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      el.addEventListener("click", () => {
+        const anchor = (el as HTMLButtonElement).dataset.anchor as AnchorType;
+        if (!anchor) return;
+        this.setXmlAnchor(anchor);
+      });
+    });
+
+    // 位置锚点事件
+    this.xmlPositionAnchorSelect.addEventListener("change", () => {
+      this.setPositionAnchor(this.xmlPositionAnchorSelect.value as AnchorType);
+    });
+
+    this.xmlPositionAnchorGrid.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      el.addEventListener("click", () => {
+        const anchor = (el as HTMLButtonElement).dataset.anchor as AnchorType;
+        if (!anchor) return;
+        this.setPositionAnchor(anchor);
+      });
+    });
+
+    this.btnGenerateXML.addEventListener("click", () => {
+      void this.handleGenerateXML();
+    });
+
+    this.btnCopyXML.addEventListener("click", () => {
+      void this.handleCopyXML();
+    });
   }
 
   /**
@@ -371,6 +436,10 @@ class LayerToolUI {
     this.rotateAnimInput.value = "";
     this.setTemplateSelectValue("0");
     this.templateInput.value = this.templatePresets[0] || "";
+    this.setXmlAnchor("topLeft");
+    this.setPositionAnchor("topLeft");
+    this.xmlSortSelect.value = "xAsc";
+    this.xmlVarName.value = "#battery_level";
   }
 
   /**
@@ -775,6 +844,138 @@ class LayerToolUI {
         (el as HTMLButtonElement).setAttribute("aria-pressed", "false");
       }
     });
+  }
+
+  /**
+   * 设置 XML 模板锚点
+   */
+  private setXmlAnchor(anchor: AnchorType): void {
+    this.xmlAnchor = anchor;
+    this.xmlAnchorSelect.value = anchor;
+    this.xmlAnchorGridSelector.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      const cellAnchor = (el as HTMLButtonElement).dataset.anchor;
+      if (cellAnchor === anchor) {
+        el.classList.add("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "true");
+      } else {
+        el.classList.remove("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "false");
+      }
+    });
+  }
+
+  /**
+   * 设置位置锚点
+   */
+  private setPositionAnchor(anchor: AnchorType): void {
+    this.xmlPositionAnchor = anchor;
+    this.xmlPositionAnchorSelect.value = anchor;
+    this.xmlPositionAnchorGrid.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      const cellAnchor = (el as HTMLButtonElement).dataset.anchor;
+      if (cellAnchor === anchor) {
+        el.classList.add("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "true");
+      } else {
+        el.classList.remove("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "false");
+      }
+    });
+  }
+
+  /**
+   * 获取锚点对应的对齐系数
+   */
+  private getAnchorCoefficients(anchor: AnchorType): { alignH: number; alignV: number } {
+    const map: Record<AnchorType, { alignH: number; alignV: number }> = {
+      topLeft: { alignH: 1, alignV: 1 },
+      topCenter: { alignH: 0.5, alignV: 1 },
+      topRight: { alignH: 0, alignV: 1 },
+      middleLeft: { alignH: 1, alignV: 0.5 },
+      center: { alignH: 0.5, alignV: 0.5 },
+      middleRight: { alignH: 0, alignV: 0.5 },
+      bottomLeft: { alignH: 1, alignV: 0 },
+      bottomCenter: { alignH: 0.5, alignV: 0 },
+      bottomRight: { alignH: 0, alignV: 0 }
+    };
+    return map[anchor];
+  }
+
+  /**
+   * 生成 XML 模板
+   */
+  private async handleGenerateXML(): Promise<void> {
+    const varName = this.xmlVarName.value.trim();
+    if (!varName) {
+      this.showToast("请输入变量名", true);
+      return;
+    }
+
+    const result = await psBridge.getSelectedLayersInfo();
+    if (!result.success || !result.data) {
+      this.showToast("获取图层失败: " + (result.error || "未知错误"), true);
+      return;
+    }
+    if (result.data.layers.length === 0) {
+      this.showToast("请先选中图层", true);
+      return;
+    }
+
+    // 按选择的排序方式排序
+    const sortBy: SortType = this.xmlSortSelect.value as SortType || "xAsc";
+    const sorted = this.sortLayers(result.data.layers, sortBy);
+
+    // 按位置锚点计算 x/y 坐标
+    const posAnchor = this.xmlPositionAnchor;
+    const positioned = sorted.map((layer) => {
+      const anchorXY = this.getAnchorXY(layer, posAnchor);
+      return {
+        x: anchorXY.x,
+        y: anchorXY.y,
+        width: layer.width,
+        height: layer.height,
+        name: layer.name,
+        path: layer.path || "",
+        id: layer.id
+      };
+    });
+
+    const coeffs = this.getAnchorCoefficients(this.xmlAnchor);
+    const layersJson = JSON.stringify({ layers: positioned });
+    const xmlResult = await psBridge.generateXMLTemplate(
+      varName, this.xmlDatatype, coeffs.alignH, coeffs.alignV, layersJson
+    );
+
+    if (!xmlResult.success || !xmlResult.data) {
+      this.showToast("生成失败: " + (xmlResult.error || "未知错误"), true);
+      return;
+    }
+
+    this.xmlOutput.value = xmlResult.data;
+    const copied = await psBridge.copyText(xmlResult.data);
+    if (copied.success) {
+      this.showToast("已生成 XML 并复制到剪贴板");
+      this.setStatus("XML 生成成功，已复制");
+    } else {
+      this.showToast("已生成 XML，复制失败");
+      this.setStatus("XML 生成成功，复制失败");
+    }
+  }
+
+  /**
+   * 复制 XML 输出
+   */
+  private async handleCopyXML(): Promise<void> {
+    const text = this.xmlOutput.value;
+    if (!text) {
+      this.showToast("暂无可复制内容", true);
+      return;
+    }
+    const result = await psBridge.copyText(text);
+    if (result.success) {
+      this.showToast("复制成功");
+    } else {
+      this.showToast("复制失败", true);
+    }
   }
 
   /**

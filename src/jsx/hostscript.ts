@@ -767,6 +767,177 @@ function exportLayerInfoXML(exportPath: string, layersJson: string): string {
 }
 
 /**
+ * 生成 XML 模板代码
+ * @param variableName 变量名（如 "#battery_level"）
+ * @param dataType 数据类型："percentage" | "steps"
+ * @param alignH 水平对齐系数：1（左）| 0.5（中）| 0（右）
+ * @param alignV 垂直对齐系数：1（上）| 0.5（中）| 0（下）
+ * @param layersJson 图层数据 JSON 字符串
+ * @returns XML 字符串
+ */
+function generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string): string {
+  try {
+    var data = JSON.parse(layersJson);
+    var layers = data.layers;
+    if (!layers || layers.length === 0) return "__ERROR__:no layers";
+
+    var count = layers.length;
+    var vn = variableName;
+    if (vn.charAt(0) !== "#") vn = "#" + vn;
+
+    var ahNum = Number(alignH);
+    var avNum = Number(alignV);
+
+    var hLabel = "右";
+    if (ahNum === 1) { hLabel = "左"; }
+    else if (ahNum === 0.5) { hLabel = "中"; }
+
+    var vLabel = "下";
+    if (avNum === 1) { vLabel = "上"; }
+    else if (avNum === 0.5) { vLabel = "中"; }
+
+    var xml = "<!-- 变量: " + vn + ", 对齐: 水平" + hLabel + " 垂直" + vLabel + " -->\n";
+
+    var ah = String(ahNum);
+    var av = String(avNum);
+
+    if (dataType === "temperature") {
+      // 温度类型：至少需要 2 个图层（符号位 + 至少 1 个数字位）
+      if (count < 2) return "__ERROR__:温度类型至少需要2个图层（符号位+数字位）";
+      // 第1个图层为符号位，后续为数值位
+      var signLayer = layers[0];
+      var signSrc = (signLayer.path || "") + (signLayer.name || "") + ".png";
+
+      var numLayers: any[] = [];
+      for (var si = 1; si < count; si++) {
+        numLayers.push(layers[si]);
+      }
+      var numCount = numLayers.length;
+
+      var tempThresholds: number[] = [];
+      if (numCount >= 2) { tempThresholds = [10, 1]; }
+      else { tempThresholds = [1]; }
+
+      // offsetLt: 数字层之间的间距（用于 lt(abs) 条件）
+      var offsetLtH = 10;
+      var offsetLtV = 10;
+      if (numCount >= 2) {
+        offsetLtH = Math.round(Math.abs(numLayers[1].x - numLayers[0].x));
+        offsetLtV = Math.round(Math.abs(numLayers[1].y - numLayers[0].y));
+      } else if (numCount >= 1) {
+        offsetLtH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
+        offsetLtV = Math.round(Math.abs(numLayers[0].y - signLayer.y));
+      }
+      // offsetGe: 符号层到第一个数字层的间距（用于 ge 条件）
+      var offsetGeH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
+      var offsetGeV = Math.round(Math.abs(numLayers[0].y - signLayer.y));
+
+      var absVn = "abs(" + vn + ")";
+
+      // 符号位：lt 条件对齐系数取反，ge 条件正常
+      var signAhInv = String(1 - ahNum);
+      var signAvInv = String(1 - avNum);
+      var signXExpr = signLayer.x + "+" + offsetLtH + "*" + signAhInv + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
+      var signYExpr = signLayer.y + "+" + offsetLtV + "*" + signAvInv + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
+      xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '" src="' + signSrc + '" visibility="lt(' + vn + ',0)"/>\n';
+
+      // 数值位：所有层都有 lt(abs) 和 ge 偏移项
+      for (var ni = 0; ni < numCount; ni++) {
+        var nLayer = numLayers[ni];
+        var nBaseX = nLayer.x;
+        var nBaseY = nLayer.y;
+        var nSrc = (nLayer.path || "") + (nLayer.name || "") + ".png";
+
+        var nxExpr = String(nBaseX) + "-" + offsetLtH + "*" + ah + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
+        var nyExpr = String(nBaseY) + "-" + offsetLtV + "*" + av + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
+
+        xml += '<Image x="' + nxExpr + '" y="' + nyExpr + '" src="' + nSrc + '"';
+        if (ni < tempThresholds.length) {
+          var nSrcid = absVn + "/" + tempThresholds[ni] + "%10";
+          xml += ' srcid="' + nSrcid + '"';
+          if (tempThresholds[ni] > 1) {
+            xml += ' visibility="ge(' + absVn + ',' + tempThresholds[ni] + ')"';
+          }
+        }
+        xml += '/>\n';
+      }
+
+      return xml;
+    }
+
+    // 计算相邻图层间距作为偏移量
+    var offsetH = 10;
+    var offsetV = 0;
+    if (count >= 2) {
+      offsetH = Math.round(Math.abs(layers[1].x - layers[0].x));
+      offsetV = Math.round(Math.abs(layers[1].y - layers[0].y));
+    }
+    if (offsetH < 1) offsetH = 10;
+
+    if (dataType === "percentage") {
+      // 百分比：srcid 固定 [100, 10, 1]，offset 固定 [100, 10]，最多 3 层有 srcid
+      var pctSrcid = [100, 10, 1];
+      var pctOffset = [100, 10];
+
+      for (var pi = 0; pi < count; pi++) {
+        var pLayer = layers[pi];
+        var pxExpr = String(pLayer.x);
+        var pyExpr = String(pLayer.y);
+        for (var pj = 0; pj < pctOffset.length; pj++) {
+          pxExpr = pxExpr + "-" + offsetH + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
+          pyExpr = pyExpr + "-" + offsetV + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
+        }
+        var pSrcPath = (pLayer.path || "") + (pLayer.name || "") + ".png";
+        xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
+        if (pi < pctSrcid.length) {
+          xml += ' srcid="' + vn + '/' + pctSrcid[pi] + '%10"';
+          if (pi < pctSrcid.length - 1) {
+            xml += ' visibility="ge(' + vn + ',' + pctSrcid[pi] + ')"';
+          } else {
+            xml += ' visibility="ge(' + vn + ',0)"';
+          }
+        }
+        xml += '/>\n';
+      }
+    } else {
+      // 步数：srcid 从 10^(count-1) 到 1，offset 从 10^(count-1) 到 10（不含 1）
+      var stepsSrcid: number[] = [];
+      var stepsOffset: number[] = [];
+      for (var si = count - 1; si >= 0; si--) {
+        var sVal = 1;
+        for (var sp = 0; sp < si; sp++) { sVal = sVal * 10; }
+        stepsSrcid.push(sVal);
+      }
+      for (var si2 = count - 1; si2 >= 1; si2--) {
+        var sVal2 = 1;
+        for (var sp2 = 0; sp2 < si2; sp2++) { sVal2 = sVal2 * 10; }
+        stepsOffset.push(sVal2);
+      }
+
+      for (var sti = 0; sti < count; sti++) {
+        var stLayer = layers[sti];
+        var stxExpr = String(stLayer.x);
+        var styExpr = String(stLayer.y);
+        for (var stj = 0; stj < stepsOffset.length; stj++) {
+          stxExpr = stxExpr + "-" + offsetH + "*" + ah + "*lt(" + vn + "," + stepsOffset[stj] + ")";
+          styExpr = styExpr + "-" + offsetV + "*" + av + "*lt(" + vn + "," + stepsOffset[stj] + ")";
+        }
+        var stSrcPath = (stLayer.path || "") + (stLayer.name || "") + ".png";
+        var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
+        var stVis = stepsSrcid[sti];
+        if (sti === count - 1) { stVis = 0; }
+        xml += '<Image x="' + stxExpr + '" y="' + styExpr + '" src="' + stSrcPath + '" srcid="' + stSrcid + '" visibility="ge(' + vn + ',' + stVis + ')"/>\n';
+      }
+    }
+
+    return xml;
+  } catch (e) {
+    log("generateXMLTemplate error", String(e));
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
  * 暴露到全局（ExtendScript 方式）
  */
 // @ts-ignore
@@ -786,7 +957,8 @@ $.HostScript = {
   collectAllLayersForExport: collectAllLayersForExport,
   collectGroupLayersForExport: collectGroupLayersForExport,
   exportSingleLayer: exportSingleLayer,
-  exportLayerInfoXML: exportLayerInfoXML
+  exportLayerInfoXML: exportLayerInfoXML,
+  generateXMLTemplate: generateXMLTemplate
 };
 
 // log('HostScript initialized');

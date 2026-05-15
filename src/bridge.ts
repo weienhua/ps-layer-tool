@@ -376,6 +376,20 @@ export class PSBridge {
   async restoreHistoryState(): Promise<PSResult<void>> {
     return this.evalScript<void>("$.HostScript.restoreHistoryState()");
   }
+
+  /**
+   * 生成 XML 模板代码
+   * @param variableName 变量名
+   * @param dataType 数据类型
+   * @param alignH 水平对齐系数
+   * @param alignV 垂直对齐系数
+   * @param layersJson 图层数据 JSON
+   */
+  async generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string): Promise<PSResult<string>> {
+    const safeVar = this.escapeForSingleQuotedString(variableName);
+    const safeJson = this.escapeForSingleQuotedString(layersJson);
+    return this.evalScript<string>(`$.HostScript.generateXMLTemplate('${safeVar}', '${dataType}', ${alignH}, ${alignV}, '${safeJson}')`);
+  }
 }
 
 /**

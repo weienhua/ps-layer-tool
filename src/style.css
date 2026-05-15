@@ -935,3 +935,25 @@ input:checked + .slider:before {
   font-size: 9px;
   margin-left: 6px;
 }
+
+/* XML 模板 Tab 样式 */
+.xml-datatype-group {
+  display: flex;
+  gap: 6px;
+}
+
+.xml-datatype-btn {
+  flex: 1;
+}
+
+.xml-datatype-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+#xmlOutput {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}

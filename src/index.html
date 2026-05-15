@@ -22,6 +22,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="layerInfo">图层信息</button>
       <button class="tab-btn" data-tab="layerExport">图层处理</button>
+      <button class="tab-btn" data-tab="xmlTemplate">XML模板</button>
     </div>
 
     <!-- 图层信息 Tab -->
@@ -170,6 +171,100 @@
         </div>
       </div>
     </div><!-- /tabLayerExport -->
+
+    <!-- XML 模板 Tab -->
+    <div class="tab-content" id="tabXmlTemplate">
+      <!-- 变量名 -->
+      <div class="section card">
+        <div class="section-title">变量配置</div>
+        <div class="row">
+          <label>变量名</label>
+          <input type="text" id="xmlVarName" placeholder="例如：#battery_level">
+        </div>
+        <div class="row">
+          <label>数据类型</label>
+          <div class="xml-datatype-group" id="xmlDatatypeGroup">
+            <button class="btn xml-datatype-btn active" data-type="percentage">百分比</button>
+            <button class="btn xml-datatype-btn" data-type="temperature">温度</button>
+            <button class="btn xml-datatype-btn" data-type="steps">步数</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>位置锚点</label>
+          <div class="anchor-row">
+            <div class="anchor-grid-selector" id="xmlPositionAnchorGrid">
+              <button class="anchor-grid-cell" type="button" data-anchor="topLeft" aria-label="左上"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="topCenter" aria-label="上中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="topRight" aria-label="右上"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="middleLeft" aria-label="左中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="center" aria-label="中心"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="middleRight" aria-label="右中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomLeft" aria-label="左下"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomCenter" aria-label="下中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomRight" aria-label="右下"></button>
+            </div>
+            <select id="xmlPositionAnchorSelect">
+              <option value="topLeft">左上</option>
+              <option value="topCenter">上中</option>
+              <option value="topRight">右上</option>
+              <option value="middleLeft">左中</option>
+              <option value="center">中心</option>
+              <option value="middleRight">右中</option>
+              <option value="bottomLeft">左下</option>
+              <option value="bottomCenter">下中</option>
+              <option value="bottomRight">右下</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <label>排序方式</label>
+          <select id="xmlSortSelect">
+            <option value="xAsc">按 X 升序</option>
+            <option value="yAsc">按 Y 升序</option>
+            <option value="psOrderBottomToTop">按PS图层顺序</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>对齐方式</label>
+          <div class="anchor-row">
+            <div class="anchor-grid-selector" id="xmlAnchorGridSelector">
+              <button class="anchor-grid-cell is-active" type="button" data-anchor="topLeft" aria-label="左上" aria-pressed="true"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="topCenter" aria-label="上中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="topRight" aria-label="右上"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="middleLeft" aria-label="左中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="center" aria-label="中心"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="middleRight" aria-label="右中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomLeft" aria-label="左下"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomCenter" aria-label="下中"></button>
+              <button class="anchor-grid-cell" type="button" data-anchor="bottomRight" aria-label="右下"></button>
+            </div>
+            <select id="xmlAnchorSelect">
+              <option value="topLeft" selected>左上</option>
+              <option value="topCenter">上中</option>
+              <option value="topRight">右上</option>
+              <option value="middleLeft">左中</option>
+              <option value="center">中心</option>
+              <option value="middleRight">右中</option>
+              <option value="bottomLeft">左下</option>
+              <option value="bottomCenter">下中</option>
+              <option value="bottomRight">右下</option>
+            </select>
+          </div>
+        </div>
+        <div class="row actions action-group">
+          <button class="btn btn-primary" id="btnGenerateXML">生成 XML 并复制</button>
+        </div>
+      </div>
+
+      <!-- 输出结果 -->
+      <div class="section card">
+        <div class="section-title">输出结果</div>
+        <div class="row actions">
+          <button class="btn" id="btnCopyXML">复制输出</button>
+        </div>
+        <textarea id="xmlOutput" rows="10" readonly></textarea>
+      </div>
+    </div><!-- /tabXmlTemplate -->
 
     <div class="status-bar" id="statusBar">就绪</div>
 
