@@ -865,27 +865,27 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       return xml;
     }
 
-    // 计算相邻图层间距作为偏移量
-    var offsetH = 10;
-    var offsetV = 0;
-    if (count >= 2) {
-      offsetH = Math.round(Math.abs(layers[1].x - layers[0].x));
-      offsetV = Math.round(Math.abs(layers[1].y - layers[0].y));
-    }
-    if (offsetH < 1) offsetH = 10;
-
     if (dataType === "percentage") {
       // 百分比：srcid 固定 [100, 10, 1]，offset 固定 [100, 10]，最多 3 层有 srcid
       var pctSrcid = [100, 10, 1];
       var pctOffset = [100, 10];
+      // 每个 offset 对应一对相邻图层的间距
+      var pctOffsetsH: number[] = [];
+      var pctOffsetsV: number[] = [];
+      for (var oi = 0; oi < pctOffset.length; oi++) {
+        if (oi + 1 < count) {
+          pctOffsetsH.push(Math.round(Math.abs(layers[oi + 1].x - layers[oi].x)));
+          pctOffsetsV.push(Math.round(Math.abs(layers[oi + 1].y - layers[oi].y)));
+        }
+      }
 
       for (var pi = 0; pi < count; pi++) {
         var pLayer = layers[pi];
         var pxExpr = String(pLayer.x);
         var pyExpr = String(pLayer.y);
-        for (var pj = 0; pj < pctOffset.length; pj++) {
-          pxExpr = pxExpr + "-" + offsetH + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
-          pyExpr = pyExpr + "-" + offsetV + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
+        for (var pj = 0; pj < pctOffsetsH.length; pj++) {
+          pxExpr = pxExpr + "-" + pctOffsetsH[pj] + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
+          pyExpr = pyExpr + "-" + pctOffsetsV[pj] + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
         }
         var pSrcPath = (pLayer.path || "") + (pLayer.name || "") + ".png";
         xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
@@ -913,14 +913,23 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         for (var sp2 = 0; sp2 < si2; sp2++) { sVal2 = sVal2 * 10; }
         stepsOffset.push(sVal2);
       }
+      // 每个 offset 对应一对相邻图层的间距
+      var stepsOffsetsH: number[] = [];
+      var stepsOffsetsV: number[] = [];
+      for (var soi = 0; soi < stepsOffset.length; soi++) {
+        if (soi + 1 < count) {
+          stepsOffsetsH.push(Math.round(Math.abs(layers[soi + 1].x - layers[soi].x)));
+          stepsOffsetsV.push(Math.round(Math.abs(layers[soi + 1].y - layers[soi].y)));
+        }
+      }
 
       for (var sti = 0; sti < count; sti++) {
         var stLayer = layers[sti];
         var stxExpr = String(stLayer.x);
         var styExpr = String(stLayer.y);
-        for (var stj = 0; stj < stepsOffset.length; stj++) {
-          stxExpr = stxExpr + "-" + offsetH + "*" + ah + "*lt(" + vn + "," + stepsOffset[stj] + ")";
-          styExpr = styExpr + "-" + offsetV + "*" + av + "*lt(" + vn + "," + stepsOffset[stj] + ")";
+        for (var stj = 0; stj < stepsOffsetsH.length; stj++) {
+          stxExpr = stxExpr + "-" + stepsOffsetsH[stj] + "*" + ah + "*lt(" + vn + "," + stepsOffset[stj] + ")";
+          styExpr = styExpr + "-" + stepsOffsetsV[stj] + "*" + av + "*lt(" + vn + "," + stepsOffset[stj] + ")";
         }
         var stSrcPath = (stLayer.path || "") + (stLayer.name || "") + ".png";
         var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
