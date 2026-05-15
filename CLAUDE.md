@@ -114,7 +114,8 @@ $.HostScript = {
   collectAllLayersForExport,
   collectGroupLayersForExport,
   exportSingleLayer,
-  exportLayerInfoXML
+  exportLayerInfoXML,
+  generateXMLTemplate
 };
 ```
 
@@ -153,6 +154,7 @@ $.HostScript = {
 | `collectGroupLayersForExport(includeHidden)` | 收集选中图层组内的所有子图层 |
 | `exportSingleLayer(layerId, exportPath, format, groupPath, includeHidden)` | 导出单个图层为图片文件 |
 | `exportLayerInfoXML(exportPath, layersJson)` | 导出图层信息 XML（manifest.xml） |
+| `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码（百分比/温度/步数） |
 
 ## 面板通信约定（src/bridge.ts）
 
