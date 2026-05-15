@@ -14,6 +14,13 @@
 - **预设管理**：localStorage 持久化存储，支持拖拽排序和删除
 - **一键复制**：格式化结果一键复制到系统剪贴板
 
+### XML 模板生成
+- **三种数据类型**：百分比、温度、步数
+- **对齐方式**：9 宫格可视化锚点选择器 + 水平/垂直对齐下拉列表
+- **自动生成偏移公式**：根据图层实际位置计算相邻数位间距，生成 `lt()`/`ge()` 条件表达式
+- **温度特殊处理**：符号位自动反转对齐系数，支持正负温度显示
+- **一键复制**：生成的 XML 代码自动复制到剪贴板
+
 ### 图层导出
 - **多种导出模式**：导出选中图层 / 选中图层组 / 全部图层
 - **多格式支持**：PNG、JPG、BMP
@@ -220,6 +227,7 @@ npm run clean              # 清理 dist
 | `collectGroupLayersForExport(includeHidden)` | 收集组内子图层 | `{ layers[], selectedGroupPaths[] }` |
 | `exportSingleLayer(id, path, format, groupPath, includeHidden)` | 导出单个图层 | `{ name, x, y, w, h, filePath }` |
 | `exportLayerInfoXML(path, json)` | 导出图层信息 XML | `__OK__` |
+| `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码 | XML 字符串 |
 
 ### PSBridge 方法
 
@@ -239,6 +247,7 @@ npm run clean              # 清理 dist
 | `collectGroupLayersForExport(includeHidden)` | `$.HostScript.collectGroupLayersForExport(...)` |
 | `exportSingleLayer(id, path, format, groupPath, includeHidden)` | `$.HostScript.exportSingleLayer(...)` |
 | `exportLayerInfoXML(path, json)` | `$.HostScript.exportLayerInfoXML(...)` |
+| `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | `$.HostScript.generateXMLTemplate(...)` |
 
 ### LayerInfo 结构
 

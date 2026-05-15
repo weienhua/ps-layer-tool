@@ -48,7 +48,8 @@ $.HostScript = {
   collectAllLayersForExport,
   collectGroupLayersForExport,
   exportSingleLayer,
-  exportLayerInfoXML
+  exportLayerInfoXML,
+  generateXMLTemplate
 };
 ```
 
@@ -68,9 +69,11 @@ $.HostScript = {
 
 ## 面板 UI
 
-面板分两个 Tab：**图层信息**（预设配置 + 图层信息提取）和 **图层处理**（图层导出）。
+面板分三个 Tab：**图层信息**（预设配置 + 图层信息提取）、**图层处理**（图层导出）、**XML 模板**（锁屏主题 XML 代码生成）。
 
 导出功能支持：选中图层/选中图层组/全部图层，PNG/JPG/BMP 格式，可选保留文件夹层级和导出 XML。
+
+XML 模板功能支持三种数据类型（百分比/温度/步数），根据图层位置自动计算偏移量生成 `lt()`/`ge()` 条件表达式。温度类型自动处理符号位对齐反转。
 
 ## 添加新功能步骤
 
