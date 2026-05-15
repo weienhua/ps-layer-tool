@@ -785,6 +785,14 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
     var vn = variableName;
     if (vn.charAt(0) !== "#") vn = "#" + vn;
 
+    /** 清理数字图层名：去掉 _0 后缀 */
+    var cleanDigitName = function(name: string): string {
+      if (name.length > 2 && name.slice(-2) === "_0") {
+        return name.slice(0, -2);
+      }
+      return name;
+    };
+
     var ahNum = Number(alignH);
     var avNum = Number(alignV);
 
@@ -846,7 +854,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var nLayer = numLayers[ni];
         var nBaseX = nLayer.x;
         var nBaseY = nLayer.y;
-        var nSrc = (nLayer.path || "") + (nLayer.name || "") + ".png";
+        var nSrc = (nLayer.path || "") + cleanDigitName(nLayer.name || "") + ".png";
 
         var nxExpr = String(nBaseX) + "-" + offsetLtH + "*" + ah + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
         var nyExpr = String(nBaseY) + "-" + offsetLtV + "*" + av + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
@@ -887,7 +895,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
           pxExpr = pxExpr + "-" + pctOffsetsH[pj] + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
           pyExpr = pyExpr + "-" + pctOffsetsV[pj] + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
         }
-        var pSrcPath = (pLayer.path || "") + (pLayer.name || "") + ".png";
+        var pCleanName = pLayer.name || "";
+        if (pi < pctSrcid.length) { pCleanName = cleanDigitName(pCleanName); }
+        var pSrcPath = (pLayer.path || "") + pCleanName + ".png";
         xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
         if (pi < pctSrcid.length) {
           xml += ' srcid="' + vn + '/' + pctSrcid[pi] + '%10"';
@@ -931,7 +941,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
           stxExpr = stxExpr + "-" + stepsOffsetsH[stj] + "*" + ah + "*lt(" + vn + "," + stepsOffset[stj] + ")";
           styExpr = styExpr + "-" + stepsOffsetsV[stj] + "*" + av + "*lt(" + vn + "," + stepsOffset[stj] + ")";
         }
-        var stSrcPath = (stLayer.path || "") + (stLayer.name || "") + ".png";
+        var stSrcPath = (stLayer.path || "") + cleanDigitName(stLayer.name || "") + ".png";
         var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
         var stVis = stepsSrcid[sti];
         if (sti === count - 1) { stVis = 0; }
