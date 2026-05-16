@@ -174,6 +174,7 @@ npm run clean              # 清理 dist
 | 变量 | 说明 |
 |------|------|
 | `{name}` | 图层名（去扩展名） |
+| `{acname}` | 图层名（去`_数字`后缀，如 `time_0` → `time`） |
 | `{type}` | 图层类型（normal / smartObject / text） |
 | `{x}`, `{y}` | 锚点坐标 |
 | `{width}`, `{height}` | 图层宽高 |
@@ -193,6 +194,7 @@ npm run clean              # 清理 dist
 | 变量 | 说明 |
 |------|------|
 | `{name[i]}` | 图层名 |
+| `{acname[i]}` | 图层名（去`_数字`后缀） |
 | `{type[i]}` | 图层类型 |
 | `{x[i]}`, `{y[i]}` | 锚点坐标 |
 | `{width[i]}`, `{height[i]}` | 图层宽高 |

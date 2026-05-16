@@ -817,6 +817,7 @@ class LayerToolUI {
   private renderTemplateHint(): void {
     const vars = [
       { key: "name", desc: "图层名称" },
+      { key: "acname", desc: "图层名称(去_数字后缀)" },
       { key: "type", desc: "图层类型" },
       { key: "x", desc: "锚点X坐标" },
       { key: "y", desc: "锚点Y坐标" },
@@ -1216,6 +1217,7 @@ class LayerToolUI {
     const anchor = this.getAnchorXY(layer, preset.anchor);
     const scope: Record<string, string> = {
       name: layer.name,
+      acname: layer.acname,
       type: layer.layerType,
       x: String(anchor.x),
       y: String(anchor.y),
@@ -1789,6 +1791,7 @@ class LayerToolUI {
   private renderTemplateOutputHint(): void {
     const vars = [
       { key: "name[i]", desc: "图层名称" },
+      { key: "acname[i]", desc: "图层名称(去_数字后缀)" },
       { key: "type[i]", desc: "图层类型" },
       { key: "x[i]", desc: "锚点X坐标" },
       { key: "y[i]", desc: "锚点Y坐标" },
@@ -1999,6 +2002,7 @@ class LayerToolUI {
       const gapY = i === 0 ? 0 : anchorXY.y - this.getAnchorXY(sorted[i - 1], anchor).y;
       layerScopes.push({
         name: layer.name,
+        acname: layer.acname,
         type: layer.layerType,
         x: String(anchorXY.x),
         y: String(anchorXY.y),

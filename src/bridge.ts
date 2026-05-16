@@ -60,6 +60,7 @@ export interface TextLayerInfo {
 export interface SelectedLayerInfo {
   id: number;
   name: string;
+  acname: string;
   layerType: LayerType;
   order: number;
   x: number;

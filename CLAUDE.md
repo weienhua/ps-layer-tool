@@ -204,6 +204,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 | 变量 | 说明 |
 |------|------|
 | `{name}` | 图层名（去扩展名） |
+| `{acname}` | 图层名（去`_数字`后缀，如 `time_0` → `time`） |
 | `{type}` | 图层类型（normal / smartObject / text） |
 | `{x}`, `{y}` | 锚点坐标（由9点锚位和layer bounds计算） |
 | `{width}`, `{height}` | 图层宽高 |
@@ -271,7 +272,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 使用数组索引语法引用每个图层：`{name[0]}`, `{x[1]}`, `{path[2]}` 等。
 
 #### 可用变量（含数组索引）
-`{name[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
+`{name[i]}`, `{acname[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
 
 其中 `{gapX[i]}` / `{gapY[i]}` 为与前一图层的锚点坐标间距（首个图层为 0）。
 

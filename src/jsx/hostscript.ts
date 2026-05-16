@@ -344,9 +344,11 @@ function getSelectedLayersInfo(): string {
       if (baseInfo.text) {
         textInfo = baseInfo.text;
       }
+      var acname = layerName.replace(/_\d+$/, "");
       layers.push({
         id: layerId,
         name: layerName,
+        acname: acname,
         layerType: layerType,
         order: i,
         x: baseInfo.x,
@@ -785,12 +787,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
     var vn = variableName;
     if (vn.charAt(0) !== "#") vn = "#" + vn;
 
-    /** 清理数字图层名：去掉 _0 后缀 */
+    /** 清理数字图层名：去掉 _数字 后缀 */
     var cleanDigitName = function(name: string): string {
-      if (name.length > 2 && name.slice(-2) === "_0") {
-        return name.slice(0, -2);
-      }
-      return name;
+      return name.replace(/_\d+$/, "");
     };
 
     var ahNum = Number(alignH);
