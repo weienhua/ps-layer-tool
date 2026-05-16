@@ -20,7 +20,8 @@ npm run clean              # rimraf dist
 - 宿主侧: `src/jsx/hostscript.ts` → webpack(ts-loader, target: ES3) → `dist/jsx/hostscript.js`
 - 宿主工具库: `src/jsx/ps-api/`（photoshop-script-api，vendored），使用 `Document`、`Layer`、`History`、`Utils`
 - 类型: `src/types/cep-panel.d.ts`（面板）/ `ps-extendscript-types`（宿主）
-- 内置预设: `src/lib/presets.txt`（7 条模板）
+- 内置预设: `src/lib/presets.md`（7 条模板，图层信息 Tab）
+- 模板输出预设: `src/lib/template.md`（数组索引语法模板，模板输出 Tab）
 - 样式: `src/style.css`（暗色主题）
 
 ## 宿主脚本约定 (关键)
@@ -61,15 +62,21 @@ $.HostScript = {
 
 ## 预设系统
 
-模板变量: `{name}`, `{type}`, `{x}`, `{y}`, `{width}`, `{height}`, `{centerX}`, `{centerY}`, `{rotation}`, `{path}`, `{text}`, `{fontSize}`, `{fontColor}`, `{scaleAnim}`, `{rotateAnim}`
+**图层信息 Tab 模板变量**: `{name}`, `{type}`, `{x}`, `{y}`, `{width}`, `{height}`, `{centerX}`, `{centerY}`, `{rotation}`, `{path}`, `{text}`, `{fontSize}`, `{fontColor}`, `{scaleAnim}`, `{rotateAnim}`
+
+**模板输出 Tab 模板变量**（数组索引语法 `{name[i]}`）: `{name[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
 
 动画表达式支持: `#loop` 变量、`sin`/`cos`/`abs`/`round` 函数、基本算术运算。
 
-用户预设存储在 `localStorage`（key: `layerTool.presets.v1`），支持拖拽排序。
+用户预设存储在 `localStorage`:
+- 图层信息: `layerTool.presets.v1`
+- 模板输出: `layerTool.templateOutputPresets.v1`
+
+均支持拖拽排序。
 
 ## 面板 UI
 
-面板分三个 Tab：**图层信息**（预设配置 + 图层信息提取）、**图层处理**（图层导出）、**XML 模板**（锁屏主题 XML 代码生成）。
+面板分四个 Tab：**图层信息**（预设配置 + 图层信息提取）、**模板输出**（数组索引语法模板 + 图层信息格式化）、**图层处理**（图层导出）、**XML 模板**（锁屏主题 XML 代码生成）。
 
 导出功能支持：选中图层/选中图层组/全部图层，PNG/JPG/BMP 格式，可选保留文件夹层级和导出 XML。
 
