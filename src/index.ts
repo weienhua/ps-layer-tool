@@ -137,10 +137,14 @@ class LayerToolUI {
    * 构造函数 - 初始化面板
    */
   constructor() {
-    this.loadTemplatePresets().then(() => {
+    Promise.all([
+      this.loadTemplatePresets(),
+      this.loadTemplateOutputOptions()
+    ]).then(() => {
       this.initDefaultForm();
       this.loadPresets();
       this.bindEvents();
+      this.bindPresetListDelegation();
       this.initDebugPanel();
       this.startDocRefresh();
       this.initExportPath();
@@ -151,42 +155,93 @@ class LayerToolUI {
       this.renderTemplateOutputPresetList();
       this.renderTemplateOutputHint();
       this.bindHintCopy(this.tplOutTemplateHint);
-      this.loadTemplateOutputOptions();
       this.setTplOutAnchor("topLeft");
     });
   }
 
   /**
-   * 从 presets.txt 加载模板预设列表
+   * 从 presets.md 加载模板预设列表（带 localStorage 缓存）
    */
   private async loadTemplatePresets(): Promise<void> {
     try {
-      const cs = new (window as any).CSInterface();
-      const extPath = cs.getSystemPath("extension");
-      const filePath = extPath + "/dist/lib/presets.md";
-      const result = (window as any).cep.fs.readFile(filePath);
+      var cs = new (window as any).CSInterface();
+      var extPath = cs.getSystemPath("extension");
+      var filePath = extPath + "/dist/lib/presets.md";
+      var result = (window as any).cep.fs.readFile(filePath);
       if (result.err !== 0) {
         console.error("读取 presets.md 失败，错误码：" + result.err);
         this.templatePresets = [];
+        this.renderTemplatePresets();
         return;
       }
       var raw = result.data as string;
-      var blocks = raw.split("```");
-      var presets: string[] = [];
-      for (var bi = 1; bi < blocks.length; bi += 2) {
-        var blockContent = blocks[bi].replace(/^\r?\n/, "").replace(/\r?\n$/, "");
-        if (blockContent.split("\n")[0].trim().startsWith("example")) continue;
-        var lines = blocks[bi].split("\n")
-          .map(function(line: string) { return line.replace(/\r$/, ""); })
-          .filter(function(line: string) { return line.trim() !== ""; });
-        presets = presets.concat(lines);
+      var hash = this.simpleHash(raw);
+      var cacheKey = "layerTool.presets.cache.v1";
+      var cached = this.readCache(cacheKey);
+      if (cached && cached.hash === hash) {
+        this.templatePresets = cached.data as string[];
+      } else {
+        var presets = this.parsePresetsMd(raw);
+        this.templatePresets = presets;
+        this.writeCache(cacheKey, hash, presets);
       }
-      this.templatePresets = presets;
     } catch (e) {
       console.error("加载模板预设失败:", e);
       this.templatePresets = [];
     }
     this.renderTemplatePresets();
+  }
+
+  /**
+   * 解析 presets.md 内容，提取模板列表
+   */
+  private parsePresetsMd(raw: string): string[] {
+    var blocks = raw.split("```");
+    var presets: string[] = [];
+    for (var bi = 1; bi < blocks.length; bi += 2) {
+      var blockContent = blocks[bi].replace(/^\r?\n/, "").replace(/\r?\n$/, "");
+      if (blockContent.split("\n")[0].trim().startsWith("example")) continue;
+      var lines = blocks[bi].split("\n")
+        .map(function(line: string) { return line.replace(/\r$/, ""); })
+        .filter(function(line: string) { return line.trim() !== ""; });
+      presets = presets.concat(lines);
+    }
+    return presets;
+  }
+
+  /**
+   * 简单字符串 hash
+   */
+  private simpleHash(str: string): number {
+    var h = 0;
+    for (var i = 0; i < str.length; i++) {
+      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    }
+    return h;
+  }
+
+  /**
+   * 读取 localStorage 缓存
+   */
+  private readCache(key: string): { hash: number; data: any } | null {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 写入 localStorage 缓存
+   */
+  private writeCache(key: string, hash: number, data: any): void {
+    try {
+      localStorage.setItem(key, JSON.stringify({ hash: hash, data: data }));
+    } catch {
+      // 缓存写入失败不影响功能
+    }
   }
 
   /**
@@ -482,6 +537,99 @@ class LayerToolUI {
 
     document.addEventListener("click", () => {
       this.tplOutTemplateSelect.classList.remove("open");
+    });
+  }
+
+  /**
+   * 绑定预设列表的容器级事件委托（只调用一次）
+   */
+  private bindPresetListDelegation(): void {
+    this.bindPresetDelegation(this.presetList, {
+      onClick: (id) => {
+        var preset = this.presets.find(function(p) { return p.id === id; });
+        if (!preset) return;
+        this.applyPresetToForm(preset);
+        void this.fetchLayersWithConfig(preset);
+      },
+      onDelete: (id) => { this.deletePreset(id); },
+      onReorder: (fromId, toId) => { this.reorderPresets(fromId, toId); }
+    });
+
+    this.bindPresetDelegation(this.tplOutPresetList, {
+      onClick: (id) => {
+        var preset = this.tplOutPresets.find(function(p) { return p.id === id; });
+        if (!preset) return;
+        this.applyTemplateOutputPresetToForm(preset);
+        void this.processTemplateOutput();
+      },
+      onDelete: (id) => { this.deleteTemplateOutputPreset(id); },
+      onReorder: (fromId, toId) => { this.reorderTemplateOutputPresets(fromId, toId); }
+    });
+  }
+
+  /**
+   * 为预设列表容器绑定通用事件委托
+   */
+  private bindPresetDelegation(container: HTMLDivElement, handlers: {
+    onClick: (id: string) => void;
+    onDelete: (id: string) => void;
+    onReorder: (fromId: string, toId: string) => void;
+  }): void {
+    var draggedId: string | null = null;
+
+    container.addEventListener("click", (e) => {
+      var target = e.target as HTMLElement;
+      var deleteBtn = target.closest("button[data-action='delete']") as HTMLButtonElement;
+      if (deleteBtn) {
+        e.stopPropagation();
+        var id = deleteBtn.dataset.id;
+        if (id) handlers.onDelete(id);
+        return;
+      }
+      var item = target.closest(".preset-item") as HTMLElement;
+      if (item) {
+        var itemId = item.dataset.id;
+        if (itemId) handlers.onClick(itemId);
+      }
+    });
+
+    container.addEventListener("dragstart", (e) => {
+      var item = (e.target as HTMLElement).closest(".preset-item") as HTMLElement;
+      if (!item) return;
+      draggedId = item.dataset.id || null;
+      item.classList.add("dragging");
+    });
+
+    container.addEventListener("dragend", (e) => {
+      var item = (e.target as HTMLElement).closest(".preset-item") as HTMLElement;
+      if (item) item.classList.remove("dragging");
+      draggedId = null;
+    });
+
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (!draggedId) return;
+      var item = (e.target as HTMLElement).closest(".preset-item") as HTMLElement;
+      if (item && item.dataset.id !== draggedId) {
+        item.classList.add("drag-over");
+      }
+    });
+
+    container.addEventListener("dragleave", (e) => {
+      var item = (e.target as HTMLElement).closest(".preset-item") as HTMLElement;
+      if (item) item.classList.remove("drag-over");
+    });
+
+    container.addEventListener("drop", (e) => {
+      e.preventDefault();
+      var item = (e.target as HTMLElement).closest(".preset-item") as HTMLElement;
+      if (!item) return;
+      item.classList.remove("drag-over");
+      if (!draggedId) return;
+      var targetId = item.dataset.id;
+      if (targetId && targetId !== draggedId) {
+        handlers.onReorder(draggedId, targetId);
+      }
     });
   }
 
@@ -815,7 +963,7 @@ class LayerToolUI {
   }
 
   /**
-   * 渲染预设列表
+   * 渲染预设列表（仅生成 HTML，事件由 bindPresetListDelegation 委托）
    */
   private renderPresetList(): void {
     if (this.presets.length === 0) {
@@ -837,61 +985,6 @@ class LayerToolUI {
         </div>
       `;
     }).join("");
-
-    let draggedId: string | null = null;
-
-    this.presetList.querySelectorAll(".preset-item").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.matches(".preset-delete")) return;
-        const id = (el as HTMLElement).dataset.id!;
-        const preset = this.presets.find((p) => p.id === id);
-        if (!preset) return;
-        this.applyPresetToForm(preset);
-        void this.fetchLayersWithConfig(preset);
-      });
-
-      el.addEventListener("dragstart", (e) => {
-        draggedId = (el as HTMLElement).dataset.id!;
-        el.classList.add("dragging");
-        e.stopPropagation();
-      });
-
-      el.addEventListener("dragend", () => {
-        el.classList.remove("dragging");
-        draggedId = null;
-      });
-
-      el.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        if (!draggedId) return;
-        const targetId = (el as HTMLElement).dataset.id!;
-        if (targetId !== draggedId) {
-          el.classList.add("drag-over");
-        }
-      });
-
-      el.addEventListener("dragleave", () => {
-        el.classList.remove("drag-over");
-      });
-
-      el.addEventListener("drop", (e) => {
-        e.preventDefault();
-        el.classList.remove("drag-over");
-        if (!draggedId) return;
-        const targetId = (el as HTMLElement).dataset.id!;
-        if (targetId === draggedId) return;
-        this.reorderPresets(draggedId, targetId);
-      });
-    });
-
-    this.presetList.querySelectorAll("button[data-action='delete']").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = (el as HTMLButtonElement).dataset.id!;
-        this.deletePreset(id);
-      });
-    });
   }
 
   /**
@@ -1650,7 +1743,7 @@ class LayerToolUI {
   }
 
   /**
-   * 渲染模板输出预设列表
+   * 渲染模板输出预设列表（仅生成 HTML，事件由 bindPresetListDelegation 委托）
    */
   private renderTemplateOutputPresetList(): void {
     if (this.tplOutPresets.length === 0) {
@@ -1672,61 +1765,6 @@ class LayerToolUI {
         </div>
       `;
     }).join("");
-
-    let draggedId: string | null = null;
-
-    this.tplOutPresetList.querySelectorAll(".preset-item").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.matches(".preset-delete")) return;
-        const id = (el as HTMLElement).dataset.id!;
-        const preset = this.tplOutPresets.find((p) => p.id === id);
-        if (!preset) return;
-        this.applyTemplateOutputPresetToForm(preset);
-        void this.processTemplateOutput();
-      });
-
-      el.addEventListener("dragstart", (e) => {
-        draggedId = (el as HTMLElement).dataset.id!;
-        el.classList.add("dragging");
-        e.stopPropagation();
-      });
-
-      el.addEventListener("dragend", () => {
-        el.classList.remove("dragging");
-        draggedId = null;
-      });
-
-      el.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        if (!draggedId) return;
-        const targetId = (el as HTMLElement).dataset.id!;
-        if (targetId !== draggedId) {
-          el.classList.add("drag-over");
-        }
-      });
-
-      el.addEventListener("dragleave", () => {
-        el.classList.remove("drag-over");
-      });
-
-      el.addEventListener("drop", (e) => {
-        e.preventDefault();
-        el.classList.remove("drag-over");
-        if (!draggedId) return;
-        const targetId = (el as HTMLElement).dataset.id!;
-        if (targetId === draggedId) return;
-        this.reorderTemplateOutputPresets(draggedId, targetId);
-      });
-    });
-
-    this.tplOutPresetList.querySelectorAll("button[data-action='delete']").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = (el as HTMLButtonElement).dataset.id!;
-        this.deleteTemplateOutputPreset(id);
-      });
-    });
   }
 
   /**
@@ -1787,43 +1825,56 @@ class LayerToolUI {
         return;
       }
       var raw = result.data as string;
-      var options: Array<{name: string, template: string}> = [];
-      var nameRegex = /^name:`([^`]*)`$/;
-      var lines = raw.split("\n");
-      var i = 0;
-      while (i < lines.length) {
-        var line = lines[i].replace(/\r$/, "");
-        var nameMatch = nameRegex.exec(line);
-        if (nameMatch) {
-          var name = nameMatch[1];
-          // 查找随后的代码块
-          var templateParts: string[] = [];
-          i++;
-          // 跳过空行，找到 ``` 开始
-          while (i < lines.length && lines[i].replace(/\r$/, "").trim() === "") { i++; }
-          if (i < lines.length && lines[i].replace(/\r$/, "").trim() === "```") {
-            i++;
-            // 收集代码块内容
-            while (i < lines.length && lines[i].replace(/\r$/, "").trim() !== "```") {
-              templateParts.push(lines[i].replace(/\r$/, ""));
-              i++;
-            }
-            i++; // 跳过结束 ```
-            var template = templateParts.join("\n").trim();
-            if (template) {
-              options.push({ name: name, template: template });
-            }
-          }
-        } else {
-          i++;
-        }
+      var hash = this.simpleHash(raw);
+      var cacheKey = "layerTool.templateOptions.cache.v1";
+      var cached = this.readCache(cacheKey);
+      if (cached && cached.hash === hash) {
+        this.tplOutTemplateOptions = cached.data as Array<{name: string, template: string}>;
+      } else {
+        var options = this.parseTemplateMd(raw);
+        this.tplOutTemplateOptions = options;
+        this.writeCache(cacheKey, hash, options);
       }
-      this.tplOutTemplateOptions = options;
     } catch (e) {
       console.error("加载模板选项失败:", e);
       this.tplOutTemplateOptions = [];
     }
     this.renderTemplateOutputOptions();
+  }
+
+  /**
+   * 解析 template.md 内容，提取模板选项列表
+   */
+  private parseTemplateMd(raw: string): Array<{name: string, template: string}> {
+    var options: Array<{name: string, template: string}> = [];
+    var nameRegex = /^name:`([^`]*)`$/;
+    var lines = raw.split("\n");
+    var i = 0;
+    while (i < lines.length) {
+      var line = lines[i].replace(/\r$/, "");
+      var nameMatch = nameRegex.exec(line);
+      if (nameMatch) {
+        var name = nameMatch[1];
+        var templateParts: string[] = [];
+        i++;
+        while (i < lines.length && lines[i].replace(/\r$/, "").trim() === "") { i++; }
+        if (i < lines.length && lines[i].replace(/\r$/, "").trim() === "```") {
+          i++;
+          while (i < lines.length && lines[i].replace(/\r$/, "").trim() !== "```") {
+            templateParts.push(lines[i].replace(/\r$/, ""));
+            i++;
+          }
+          i++;
+          var template = templateParts.join("\n").trim();
+          if (template) {
+            options.push({ name: name, template: template });
+          }
+        }
+      } else {
+        i++;
+      }
+    }
+    return options;
   }
 
   /**
