@@ -734,6 +734,11 @@ textarea {
   background: var(--bg-card);
   border-radius: 4px;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.template-hint .hint-item:hover {
+  background: var(--border);
 }
 
 .template-hint .hint-var,

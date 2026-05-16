@@ -21,6 +21,7 @@
     <!-- Tab 导航栏 -->
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="layerInfo">图层信息</button>
+      <button class="tab-btn" data-tab="templateOutput">模板输出</button>
       <button class="tab-btn" data-tab="layerExport">图层处理</button>
       <button class="tab-btn" data-tab="xmlTemplate">XML模板</button>
     </div>
@@ -109,6 +110,83 @@
     </div>
 
     </div><!-- /tabLayerInfo -->
+
+    <!-- 模板输出 Tab -->
+    <div class="tab-content" id="tabTemplateOutput">
+
+    <div class="section card preset-form">
+      <div class="section-title">预设配置</div>
+      <div class="row">
+        <label>预设名</label>
+        <input type="text" id="tplOutPresetName" placeholder="例如：模板输出预设">
+      </div>
+      <div class="row">
+        <label>位置锚点</label>
+        <div class="anchor-row">
+          <div class="anchor-grid-selector" id="tplOutAnchorGridSelector">
+            <button class="anchor-grid-cell" type="button" data-anchor="topLeft" aria-label="左上锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="topCenter" aria-label="上中锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="topRight" aria-label="右上锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="middleLeft" aria-label="左中锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="center" aria-label="中心锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="middleRight" aria-label="右中锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="bottomLeft" aria-label="左下锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="bottomCenter" aria-label="下中锚点"></button>
+            <button class="anchor-grid-cell" type="button" data-anchor="bottomRight" aria-label="右下锚点"></button>
+          </div>
+          <select id="tplOutAnchorSelect">
+            <option value="topLeft">左上</option>
+            <option value="topCenter">上中</option>
+            <option value="topRight">右上</option>
+            <option value="middleLeft">左中</option>
+            <option value="center">中心</option>
+            <option value="middleRight">右中</option>
+            <option value="bottomLeft">左下</option>
+            <option value="bottomCenter">下中</option>
+            <option value="bottomRight">右下</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <label>排序方式</label>
+        <select id="tplOutSortSelect">
+          <option value="xAsc">按 X 升序</option>
+          <option value="yAsc">按 Y 升序</option>
+          <option value="psOrderBottomToTop">按PS图层顺序</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>输出模板</label>
+        <div class="custom-select" id="tplOutTemplateSelectWrapper">
+          <div class="custom-select-trigger" id="tplOutTemplateSelectTrigger" tabindex="0">
+            <span class="select-value">加载中...</span>
+            <span class="select-arrow">▼</span>
+          </div>
+          <div class="custom-select-dropdown" id="tplOutTemplateSelectDropdown"></div>
+        </div>
+        <textarea id="tplOutTemplateInput" rows="4" placeholder='例如：&#10;<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />&#10;<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />'></textarea>
+        <div class="template-hint" id="tplOutTemplateHint"></div>
+      </div>
+      <div class="row actions action-group">
+        <button class="btn btn-primary" id="tplOutBtnFetchLayers">获取选中图层信息</button>
+        <button class="btn" id="tplOutBtnSavePreset">保存预设</button>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="section-title">预设列表</div>
+      <div id="tplOutPresetList" class="preset-list"></div>
+    </div>
+
+    <div class="section card">
+      <div class="section-title">输出结果</div>
+      <div class="row actions">
+        <button class="btn" id="tplOutBtnCopyOutput">复制输出</button>
+      </div>
+      <textarea id="tplOutOutputText" rows="8" readonly></textarea>
+    </div>
+
+    </div><!-- /tabTemplateOutput -->
 
     <!-- 图层处理 Tab -->
     <div class="tab-content" id="tabLayerExport">

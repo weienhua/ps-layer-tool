@@ -30,6 +30,17 @@ interface PresetConfig {
 }
 
 /**
+ * 模板输出预设配置接口
+ */
+interface TemplateOutputPresetConfig {
+  id: string;
+  name: string;
+  anchor: AnchorType;
+  sortBy: SortType;
+  template: string;
+}
+
+/**
  * LayerToolUI - 图层工具面板主类
  * 管理面板 UI 交互、预设配置、图层信息获取等功能
  */
@@ -102,6 +113,26 @@ class LayerToolUI {
   private xmlPositionAnchor: AnchorType = "topLeft";
   private xmlSortBy: SortType = "xAsc";
 
+  // 模板输出 Tab 元素
+  private tplOutPresetName = document.getElementById("tplOutPresetName") as HTMLInputElement;
+  private tplOutAnchorSelect = document.getElementById("tplOutAnchorSelect") as HTMLSelectElement;
+  private tplOutAnchorGridSelector = document.getElementById("tplOutAnchorGridSelector") as HTMLDivElement;
+  private tplOutSortSelect = document.getElementById("tplOutSortSelect") as HTMLSelectElement;
+  private tplOutTemplateInput = document.getElementById("tplOutTemplateInput") as HTMLTextAreaElement;
+  private tplOutTemplateHint = document.getElementById("tplOutTemplateHint") as HTMLDivElement;
+  private tplOutTemplateSelect = document.getElementById("tplOutTemplateSelectWrapper") as HTMLDivElement;
+  private tplOutTemplateSelectTrigger = document.getElementById("tplOutTemplateSelectTrigger") as HTMLDivElement;
+  private tplOutTemplateSelectDropdown = document.getElementById("tplOutTemplateSelectDropdown") as HTMLDivElement;
+  private tplOutBtnFetchLayers = document.getElementById("tplOutBtnFetchLayers") as HTMLButtonElement;
+  private tplOutBtnSavePreset = document.getElementById("tplOutBtnSavePreset") as HTMLButtonElement;
+  private tplOutPresetList = document.getElementById("tplOutPresetList") as HTMLDivElement;
+  private tplOutBtnCopyOutput = document.getElementById("tplOutBtnCopyOutput") as HTMLButtonElement;
+  private tplOutOutputText = document.getElementById("tplOutOutputText") as HTMLTextAreaElement;
+
+  private tplOutPresets: TemplateOutputPresetConfig[] = [];
+  private tplOutTemplateOptions: Array<{name: string, template: string}> = [];
+  private static readonly TPL_OUT_PRESET_STORAGE_KEY = "layerTool.templateOutputPresets.v1";
+
   /**
    * 构造函数 - 初始化面板
    */
@@ -115,6 +146,13 @@ class LayerToolUI {
       this.initExportPath();
       this.renderPresetList();
       this.renderTemplateHint();
+      this.bindHintCopy(this.templateHint);
+      this.loadTemplateOutputPresets();
+      this.renderTemplateOutputPresetList();
+      this.renderTemplateOutputHint();
+      this.bindHintCopy(this.tplOutTemplateHint);
+      this.loadTemplateOutputOptions();
+      this.setTplOutAnchor("topLeft");
     });
   }
 
@@ -125,16 +163,25 @@ class LayerToolUI {
     try {
       const cs = new (window as any).CSInterface();
       const extPath = cs.getSystemPath("extension");
-      const filePath = extPath + "/dist/lib/presets.txt";
+      const filePath = extPath + "/dist/lib/presets.md";
       const result = (window as any).cep.fs.readFile(filePath);
       if (result.err !== 0) {
-        console.error("读取 presets.txt 失败，错误码：" + result.err);
+        console.error("读取 presets.md 失败，错误码：" + result.err);
         this.templatePresets = [];
         return;
       }
-      this.templatePresets = (result.data as string).split("\n")
-        .map((line: string) => line.replace(/\r$/, ""))
-        .filter((line: string) => line !== "");
+      var raw = result.data as string;
+      var blocks = raw.split("```");
+      var presets: string[] = [];
+      for (var bi = 1; bi < blocks.length; bi += 2) {
+        var blockContent = blocks[bi].replace(/^\r?\n/, "").replace(/\r?\n$/, "");
+        if (blockContent.split("\n")[0].trim().startsWith("example")) continue;
+        var lines = blocks[bi].split("\n")
+          .map(function(line: string) { return line.replace(/\r$/, ""); })
+          .filter(function(line: string) { return line.trim() !== ""; });
+        presets = presets.concat(lines);
+      }
+      this.templatePresets = presets;
     } catch (e) {
       console.error("加载模板预设失败:", e);
       this.templatePresets = [];
@@ -222,6 +269,7 @@ class LayerToolUI {
         btn.classList.add("active");
         const tabMap: Record<string, string> = {
           layerInfo: "tabLayerInfo",
+          templateOutput: "tabTemplateOutput",
           layerExport: "tabLayerExport",
           xmlTemplate: "tabXmlTemplate"
         };
@@ -365,6 +413,75 @@ class LayerToolUI {
 
     this.btnCopyXML.addEventListener("click", () => {
       void this.handleCopyXML();
+    });
+
+    // 模板输出 Tab 事件
+    this.tplOutBtnFetchLayers.addEventListener("click", () => {
+      void this.processTemplateOutput();
+    });
+
+    this.tplOutBtnSavePreset.addEventListener("click", () => {
+      this.saveTemplateOutputPreset();
+    });
+
+    this.tplOutBtnCopyOutput.addEventListener("click", () => {
+      void this.copyTemplateOutput();
+    });
+
+    this.tplOutAnchorSelect.addEventListener("change", () => {
+      this.setTplOutAnchor(this.tplOutAnchorSelect.value as AnchorType);
+    });
+
+    this.tplOutAnchorGridSelector.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      el.addEventListener("click", () => {
+        const anchor = (el as HTMLButtonElement).dataset.anchor as AnchorType;
+        if (!anchor) return;
+        this.setTplOutAnchor(anchor);
+      });
+      el.addEventListener("keydown", (e) => {
+        const keyEvent = e as KeyboardEvent;
+        if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+          e.preventDefault();
+          const anchor = (el as HTMLButtonElement).dataset.anchor as AnchorType;
+          if (!anchor) return;
+          this.setTplOutAnchor(anchor);
+        }
+      });
+    });
+
+    // 模板输出下拉列表事件
+    this.tplOutTemplateSelectTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleTplOutTemplateSelect();
+    });
+
+    this.tplOutTemplateSelectTrigger.addEventListener("keydown", (e) => {
+      var keyEvent = e as KeyboardEvent;
+      if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+        e.preventDefault();
+        this.toggleTplOutTemplateSelect();
+      }
+    });
+
+    this.tplOutTemplateSelectDropdown.addEventListener("click", (e) => {
+      var target = e.target as HTMLDivElement;
+      if (target.classList.contains("custom-select-option")) {
+        var value = target.dataset.value;
+        if (value === "custom") {
+          this.tplOutTemplateInput.value = '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />';
+        } else if (value && value !== "-1") {
+          var index = parseInt(value, 10);
+          if (index >= 0 && index < this.tplOutTemplateOptions.length) {
+            this.tplOutTemplateInput.value = this.tplOutTemplateOptions[index].template;
+          }
+        }
+        this.updateTplOutTemplateSelectDisplay(value || "-1");
+        this.tplOutTemplateSelect.classList.remove("open");
+      }
+    });
+
+    document.addEventListener("click", () => {
+      this.tplOutTemplateSelect.classList.remove("open");
     });
   }
 
@@ -1421,9 +1538,481 @@ class LayerToolUI {
     }, 2000);
   }
 
+  // ========== 模板输出 Tab 方法 ==========
+
   /**
-   * HTML 转义
+   * 设置模板输出锚点
+   * @param anchor 锚点类型
    */
+  private setTplOutAnchor(anchor: AnchorType): void {
+    this.tplOutAnchorSelect.value = anchor;
+    this.tplOutAnchorGridSelector.querySelectorAll(".anchor-grid-cell").forEach((el) => {
+      const cellAnchor = (el as HTMLButtonElement).dataset.anchor;
+      if (cellAnchor === anchor) {
+        el.classList.add("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "true");
+      } else {
+        el.classList.remove("is-active");
+        (el as HTMLButtonElement).setAttribute("aria-pressed", "false");
+      }
+    });
+  }
+
+  /**
+   * 获取模板输出当前表单配置
+   */
+  private getTplOutFormConfig(): Omit<TemplateOutputPresetConfig, "id"> {
+    return {
+      name: this.tplOutPresetName.value.trim(),
+      anchor: this.tplOutAnchorSelect.value as AnchorType,
+      sortBy: this.tplOutSortSelect.value as SortType,
+      template: this.tplOutTemplateInput.value
+    };
+  }
+
+  /**
+   * 从 localStorage 加载模板输出预设
+   */
+  private loadTemplateOutputPresets(): void {
+    try {
+      const raw = localStorage.getItem(LayerToolUI.TPL_OUT_PRESET_STORAGE_KEY);
+      if (!raw) {
+        this.tplOutPresets = [{
+          id: "default",
+          name: "默认",
+          anchor: "topLeft",
+          sortBy: "xAsc",
+          template: '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />\n<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />'
+        }];
+        this.persistTemplateOutputPresets();
+        return;
+      }
+      const parsed = JSON.parse(raw) as TemplateOutputPresetConfig[];
+      if (Array.isArray(parsed)) {
+        this.tplOutPresets = parsed;
+      }
+    } catch {
+      this.tplOutPresets = [];
+    }
+  }
+
+  /**
+   * 保存模板输出预设到 localStorage
+   */
+  private persistTemplateOutputPresets(): void {
+    localStorage.setItem(LayerToolUI.TPL_OUT_PRESET_STORAGE_KEY, JSON.stringify(this.tplOutPresets));
+  }
+
+  /**
+   * 保存模板输出预设
+   */
+  private saveTemplateOutputPreset(): void {
+    const config = this.getTplOutFormConfig();
+    if (!config.name) {
+      this.setStatus("请先输入预设名称", true);
+      return;
+    }
+    const idx = this.tplOutPresets.findIndex((p) => p.name === config.name);
+    const preset: TemplateOutputPresetConfig = {
+      ...config,
+      id: idx >= 0 ? this.tplOutPresets[idx].id : String(Date.now())
+    };
+    if (idx >= 0) {
+      this.tplOutPresets[idx] = preset;
+    } else {
+      this.tplOutPresets.push(preset);
+    }
+    this.persistTemplateOutputPresets();
+    this.renderTemplateOutputPresetList();
+    this.setStatus(`预设已保存：${config.name}`);
+  }
+
+  /**
+   * 删除模板输出预设
+   * @param presetId 预设 ID
+   */
+  private deleteTemplateOutputPreset(presetId: string): void {
+    this.tplOutPresets = this.tplOutPresets.filter((p) => p.id !== presetId);
+    this.persistTemplateOutputPresets();
+    this.renderTemplateOutputPresetList();
+    this.setStatus("预设已删除");
+  }
+
+  /**
+   * 将模板输出预设应用到表单
+   * @param preset 预设配置
+   */
+  private applyTemplateOutputPresetToForm(preset: TemplateOutputPresetConfig): void {
+    this.tplOutPresetName.value = preset.name;
+    this.setTplOutAnchor(preset.anchor);
+    this.tplOutSortSelect.value = preset.sortBy;
+    this.tplOutTemplateInput.value = preset.template;
+  }
+
+  /**
+   * 渲染模板输出预设列表
+   */
+  private renderTemplateOutputPresetList(): void {
+    if (this.tplOutPresets.length === 0) {
+      this.tplOutPresetList.innerHTML = '<div class="empty-state">暂无预设</div>';
+      return;
+    }
+    this.tplOutPresetList.innerHTML = this.tplOutPresets.map((preset) => {
+      return `
+        <div class="preset-item" data-id="${preset.id}" draggable="true">
+          <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
+          <div class="preset-main">
+            <span class="preset-name">${this.escapeHtml(preset.name)}</span>
+          </div>
+          <div class="preset-meta">
+            <div class="preset-anchor-grid">${this.getAnchorGridHtml(preset.anchor)}</div>
+            <span class="sort-badge">${this.getSortLabel(preset.sortBy)}</span>
+          </div>
+          <div class="preset-template-preview">${this.escapeHtml(preset.template || "")}</div>
+        </div>
+      `;
+    }).join("");
+
+    let draggedId: string | null = null;
+
+    this.tplOutPresetList.querySelectorAll(".preset-item").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.matches(".preset-delete")) return;
+        const id = (el as HTMLElement).dataset.id!;
+        const preset = this.tplOutPresets.find((p) => p.id === id);
+        if (!preset) return;
+        this.applyTemplateOutputPresetToForm(preset);
+        void this.processTemplateOutput();
+      });
+
+      el.addEventListener("dragstart", (e) => {
+        draggedId = (el as HTMLElement).dataset.id!;
+        el.classList.add("dragging");
+        e.stopPropagation();
+      });
+
+      el.addEventListener("dragend", () => {
+        el.classList.remove("dragging");
+        draggedId = null;
+      });
+
+      el.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!draggedId) return;
+        const targetId = (el as HTMLElement).dataset.id!;
+        if (targetId !== draggedId) {
+          el.classList.add("drag-over");
+        }
+      });
+
+      el.addEventListener("dragleave", () => {
+        el.classList.remove("drag-over");
+      });
+
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        el.classList.remove("drag-over");
+        if (!draggedId) return;
+        const targetId = (el as HTMLElement).dataset.id!;
+        if (targetId === draggedId) return;
+        this.reorderTemplateOutputPresets(draggedId, targetId);
+      });
+    });
+
+    this.tplOutPresetList.querySelectorAll("button[data-action='delete']").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = (el as HTMLButtonElement).dataset.id!;
+        this.deleteTemplateOutputPreset(id);
+      });
+    });
+  }
+
+  /**
+   * 重新排序模板输出预设
+   * @param draggedId 被拖拽的预设 ID
+   * @param targetId 目标位置的预设 ID
+   */
+  private reorderTemplateOutputPresets(draggedId: string, targetId: string): void {
+    const draggedIdx = this.tplOutPresets.findIndex((p) => p.id === draggedId);
+    const targetIdx = this.tplOutPresets.findIndex((p) => p.id === targetId);
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    const [draggedPreset] = this.tplOutPresets.splice(draggedIdx, 1);
+    this.tplOutPresets.splice(targetIdx, 0, draggedPreset);
+    this.persistTemplateOutputPresets();
+    this.renderTemplateOutputPresetList();
+    this.setStatus("预设顺序已更新");
+  }
+
+  /**
+   * 渲染模板输出变量提示
+   */
+  private renderTemplateOutputHint(): void {
+    const vars = [
+      { key: "name[i]", desc: "图层名称" },
+      { key: "type[i]", desc: "图层类型" },
+      { key: "x[i]", desc: "锚点X坐标" },
+      { key: "y[i]", desc: "锚点Y坐标" },
+      { key: "width[i]", desc: "宽度" },
+      { key: "height[i]", desc: "高度" },
+      { key: "rotation[i]", desc: "旋转角度" },
+      { key: "centerX[i]", desc: "中心X坐标" },
+      { key: "centerY[i]", desc: "中心Y坐标" },
+      { key: "path[i]", desc: "图层路径" },
+      { key: "gapX[i]", desc: "与前一图层X间距" },
+      { key: "gapY[i]", desc: "与前一图层Y间距" },
+      { key: "fontSize[i]", desc: "字体大小" },
+      { key: "fontColor[i]", desc: "字体颜色" },
+      { key: "text[i]", desc: "文字内容" }
+    ];
+    this.tplOutTemplateHint.innerHTML = vars.map(v =>
+      `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
+    ).join("");
+  }
+
+  /**
+   * 从 template.md 加载模板选项列表
+   */
+  private async loadTemplateOutputOptions(): Promise<void> {
+    try {
+      var cs = new (window as any).CSInterface();
+      var extPath = cs.getSystemPath("extension");
+      var filePath = extPath + "/dist/lib/template.md";
+      var result = (window as any).cep.fs.readFile(filePath);
+      if (result.err !== 0) {
+        console.error("读取 template.md 失败，错误码：" + result.err);
+        this.tplOutTemplateOptions = [];
+        this.renderTemplateOutputOptions();
+        return;
+      }
+      var raw = result.data as string;
+      var options: Array<{name: string, template: string}> = [];
+      var nameRegex = /^name:`([^`]*)`$/;
+      var lines = raw.split("\n");
+      var i = 0;
+      while (i < lines.length) {
+        var line = lines[i].replace(/\r$/, "");
+        var nameMatch = nameRegex.exec(line);
+        if (nameMatch) {
+          var name = nameMatch[1];
+          // 查找随后的代码块
+          var templateParts: string[] = [];
+          i++;
+          // 跳过空行，找到 ``` 开始
+          while (i < lines.length && lines[i].replace(/\r$/, "").trim() === "") { i++; }
+          if (i < lines.length && lines[i].replace(/\r$/, "").trim() === "```") {
+            i++;
+            // 收集代码块内容
+            while (i < lines.length && lines[i].replace(/\r$/, "").trim() !== "```") {
+              templateParts.push(lines[i].replace(/\r$/, ""));
+              i++;
+            }
+            i++; // 跳过结束 ```
+            var template = templateParts.join("\n").trim();
+            if (template) {
+              options.push({ name: name, template: template });
+            }
+          }
+        } else {
+          i++;
+        }
+      }
+      this.tplOutTemplateOptions = options;
+    } catch (e) {
+      console.error("加载模板选项失败:", e);
+      this.tplOutTemplateOptions = [];
+    }
+    this.renderTemplateOutputOptions();
+  }
+
+  /**
+   * 渲染模板输出下拉列表选项
+   */
+  private renderTemplateOutputOptions(): void {
+    this.tplOutTemplateSelectDropdown.innerHTML = "";
+    this.tplOutTemplateOptions.forEach((opt, index) => {
+      var option = document.createElement("div");
+      option.className = "custom-select-option";
+      option.textContent = opt.name;
+      option.dataset.value = String(index);
+      this.tplOutTemplateSelectDropdown.appendChild(option);
+    });
+    var customOption = document.createElement("div");
+    customOption.className = "custom-select-option";
+    customOption.textContent = "自定义";
+    customOption.dataset.value = "custom";
+    this.tplOutTemplateSelectDropdown.appendChild(customOption);
+    if (this.tplOutTemplateOptions.length > 0) {
+      this.updateTplOutTemplateSelectDisplay("0");
+      this.tplOutTemplateInput.value = this.tplOutTemplateOptions[0].template;
+    } else {
+      this.updateTplOutTemplateSelectDisplay("-1");
+    }
+  }
+
+  /**
+   * 更新模板输出下拉显示
+   */
+  private updateTplOutTemplateSelectDisplay(value: string): void {
+    var options = this.tplOutTemplateSelectDropdown.querySelectorAll(".custom-select-option");
+    var displayText = "选择模板";
+    options.forEach(function(opt) {
+      var el = opt as HTMLDivElement;
+      el.classList.remove("selected");
+      if (el.dataset.value === value) {
+        el.classList.add("selected");
+        displayText = el.textContent || "选择模板";
+      }
+    });
+    var valueSpan = this.tplOutTemplateSelectTrigger.querySelector(".select-value") as HTMLSpanElement;
+    if (valueSpan) {
+      valueSpan.textContent = displayText;
+    }
+    (this as any)._tplOutTemplateSelectValue = value;
+  }
+
+  /**
+   * 获取模板输出下拉当前值
+   */
+  private getTplOutTemplateSelectValue(): string {
+    return (this as any)._tplOutTemplateSelectValue || "-1";
+  }
+
+  /**
+   * 切换模板输出下拉显示
+   */
+  private toggleTplOutTemplateSelect(): void {
+    if (this.tplOutTemplateSelect.classList.contains("open")) {
+      this.tplOutTemplateSelect.classList.remove("open");
+    } else {
+      this.tplOutTemplateSelect.classList.add("open");
+    }
+  }
+
+  /**
+   * 为模板变量提示容器绑定点击复制事件
+   * @param container 提示容器元素
+   */
+  private bindHintCopy(container: HTMLDivElement): void {
+    container.addEventListener("click", (e) => {
+      const item = (e.target as HTMLElement).closest(".hint-item");
+      if (!item) return;
+      const varEl = item.querySelector(".hint-var");
+      if (!varEl) return;
+      const varText = varEl.textContent || "";
+      void psBridge.copyText(varText).then((result) => {
+        if (result.success) {
+          this.showToast("复制成功 " + varText);
+        } else {
+          this.showToast("复制失败", true);
+        }
+      });
+    });
+  }
+
+  /**
+   * 处理模板输出：获取图层信息并按模板生成输出
+   */
+  private async processTemplateOutput(): Promise<void> {
+    const template = this.tplOutTemplateInput.value;
+    if (!template) {
+      this.setStatus("请先输入输出模板", true);
+      this.showToast("请先输入输出模板", true);
+      return;
+    }
+
+    const result = await psBridge.getSelectedLayersInfo();
+    if (!result.success || !result.data) {
+      this.setStatus(`获取图层失败: ${result.error || "未知错误"}`, true);
+      this.showToast("获取图层失败", true);
+      return;
+    }
+    if (result.data.layers.length === 0) {
+      this.tplOutOutputText.value = "";
+      this.setStatus("未选中图层", true);
+      this.showToast("未选中图层", true);
+      return;
+    }
+
+    const sortBy: SortType = this.tplOutSortSelect.value as SortType || "xAsc";
+    const anchor: AnchorType = this.tplOutAnchorSelect.value as AnchorType || "topLeft";
+    const sorted = this.sortLayers(result.data.layers, sortBy);
+
+    // 计算每层的锚点坐标和间距
+    const layerScopes: Record<string, string>[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const layer = sorted[i];
+      const anchorXY = this.getAnchorXY(layer, anchor);
+      const gapX = i === 0 ? 0 : anchorXY.x - this.getAnchorXY(sorted[i - 1], anchor).x;
+      const gapY = i === 0 ? 0 : anchorXY.y - this.getAnchorXY(sorted[i - 1], anchor).y;
+      layerScopes.push({
+        name: layer.name,
+        type: layer.layerType,
+        x: String(anchorXY.x),
+        y: String(anchorXY.y),
+        width: String(layer.width),
+        height: String(layer.height),
+        rotation: String(layer.rotation),
+        centerX: String(layer.centerX),
+        centerY: String(layer.centerY),
+        path: layer.path || "",
+        text: layer.text?.content || "",
+        fontSize: layer.text?.fontSize != null ? String(layer.text.fontSize) : "",
+        fontColor: layer.text?.fontColor || "",
+        gapX: String(gapX),
+        gapY: String(gapY)
+      });
+    }
+
+    const output = this.applyArrayTemplate(template, layerScopes);
+    this.tplOutOutputText.value = output;
+
+    const copied = await this.copyOutputText(output);
+    const skippedCount = result.data.skipped.length;
+    if (copied) {
+      this.setStatus(`获取成功：${sorted.length} 个图层${skippedCount ? `，跳过 ${skippedCount} 个图层组` : ""}，已复制`);
+      this.showToast(`获取成功：${sorted.length} 个图层${skippedCount ? `，跳过 ${skippedCount} 个图层组` : ""}`);
+    } else {
+      this.setStatus('已生成输出，但复制到剪贴板失败，请点击"复制输出"重试', true);
+      this.showToast("复制到剪贴板失败", true);
+    }
+  }
+
+  /**
+   * 数组索引模板替换引擎
+   * 将 {key[index]} 格式的占位符替换为对应图层的值
+   * @param template 模板字符串
+   * @param layers 图层数据数组
+   * @returns 替换后的字符串
+   */
+  private applyArrayTemplate(template: string, layers: Record<string, string>[]): string {
+    return template.replace(/\{(\w+)\[(\d+)\]\}/g, (_match, key, idx) => {
+      const i = parseInt(idx, 10);
+      if (i >= 0 && i < layers.length) {
+        return layers[i][key] ?? "";
+      }
+      return "";
+    });
+  }
+
+  /**
+   * 复制模板输出文本
+   */
+  private async copyTemplateOutput(): Promise<void> {
+    const text = this.tplOutOutputText.value;
+    if (!text) {
+      this.setStatus("暂无可复制内容", true);
+      return;
+    }
+    const ok = await this.copyOutputText(text);
+    if (ok) {
+      this.setStatus("复制成功");
+    } else {
+      this.setStatus("复制失败，请检查 Photoshop 状态", true);
+    }
+  }
+
   /**
    * HTML 转义
    * @param text 原始文本
