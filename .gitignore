@@ -5,3 +5,4 @@ dist/
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+com.layertool.panel.zip
