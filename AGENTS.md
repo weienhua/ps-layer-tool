@@ -62,7 +62,7 @@ $.HostScript = {
 
 ## 预设系统
 
-**图层信息 Tab 模板变量**: `{name}`, `{acname}`, `{type}`, `{x}`, `{y}`, `{width}`, `{height}`, `{centerX}`, `{centerY}`, `{rotation}`, `{path}`, `{text}`, `{fontSize}`, `{fontColor}`, `{scaleAnim}`, `{rotateAnim}`
+**图层信息 Tab 模板变量**: `{i}`, `{name}`, `{acname}`, `{type}`, `{x}`, `{y}`, `{width}`, `{height}`, `{centerX}`, `{centerY}`, `{rotation}`, `{path}`, `{text}`, `{fontSize}`, `{fontColor}`, `{scaleAnim}`, `{rotateAnim}`
 
 **模板输出 Tab 模板变量**（数组索引语法 `{name[i]}`）: `{name[i]}`, `{acname[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
 

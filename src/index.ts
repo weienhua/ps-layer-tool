@@ -816,6 +816,7 @@ class LayerToolUI {
    */
   private renderTemplateHint(): void {
     const vars = [
+      { key: "i", desc: "图层序号(从0开始)" },
       { key: "name", desc: "图层名称" },
       { key: "acname", desc: "图层名称(去_数字后缀)" },
       { key: "type", desc: "图层类型" },
@@ -1213,7 +1214,7 @@ class LayerToolUI {
    * @param preset 预设配置
    * @returns 格式化后的字符串
    */
-  private formatLayerLine(layer: SelectedLayerInfo, preset: PresetConfig): string {
+  private formatLayerLine(layer: SelectedLayerInfo, preset: PresetConfig, index: number): string {
     const anchor = this.getAnchorXY(layer, preset.anchor);
     const scope: Record<string, string> = {
       name: layer.name,
@@ -1231,7 +1232,8 @@ class LayerToolUI {
       path: layer.path || "",
       fontSize: layer.text?.fontSize != null ? String(layer.text.fontSize) : "",
       fontColor: layer.text?.fontColor || "",
-      text: layer.text?.content || ""
+      text: layer.text?.content || "",
+      i: String(index)
     };
     return preset.template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_all, key) => {
       return scope[key] ?? "";
@@ -1284,7 +1286,7 @@ class LayerToolUI {
       return;
     }
     const sorted = this.sortLayers(result.data.layers, preset.sortBy);
-    const lines = sorted.map((layer) => this.formatLayerLine(layer, preset));
+    const lines = sorted.map((layer, index) => this.formatLayerLine(layer, preset, index));
     const output = lines.join("\n");
     this.outputText.value = output;
     const copied = await this.copyOutputText(output);

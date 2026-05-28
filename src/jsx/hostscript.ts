@@ -344,7 +344,7 @@ function getSelectedLayersInfo(): string {
       if (baseInfo.text) {
         textInfo = baseInfo.text;
       }
-      var acname = layerName.replace(/_\d+$/, "");
+      var acname = layerName.replace(/(\s*拷贝\s*\d+|_\d+)$/, "");
       layers.push({
         id: layerId,
         name: layerName,
@@ -789,7 +789,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
     /** 清理数字图层名：去掉 _数字 后缀 */
     var cleanDigitName = function(name: string): string {
-      return name.replace(/_\d+$/, "");
+      return name.replace(/(\s*拷贝\s*\d+|_\d+)$/, "");
     };
 
     var ahNum = Number(alignH);
@@ -813,7 +813,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       if (count < 2) return "__ERROR__:温度类型至少需要2个图层（符号位+数字位）";
       // 第1个图层为符号位，后续为数值位
       var signLayer = layers[0];
-      var signSrc = (signLayer.path || "") + (signLayer.name || "") + ".png";
+      var signSrc = (signLayer.path || "") + cleanDigitName(signLayer.name || "") + ".png";
 
       var numLayers: any[] = [];
       for (var si = 1; si < count; si++) {
@@ -894,8 +894,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
           pxExpr = pxExpr + "-" + pctOffsetsH[pj] + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
           pyExpr = pyExpr + "-" + pctOffsetsV[pj] + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
         }
-        var pCleanName = pLayer.name || "";
-        if (pi < pctSrcid.length) { pCleanName = cleanDigitName(pCleanName); }
+        var pCleanName = cleanDigitName(pLayer.name || "");
         var pSrcPath = (pLayer.path || "") + pCleanName + ".png";
         xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
         if (pi < pctSrcid.length) {

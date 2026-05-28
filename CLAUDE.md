@@ -203,8 +203,9 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 | 变量 | 说明 |
 |------|------|
+| `{i}` | 图层序号（从0开始，按排序方式） |
 | `{name}` | 图层名（去扩展名） |
-| `{acname}` | 图层名（去`_数字`后缀，如 `time_0` → `time`） |
+| `{acname}` | 图层名（去`_数字`/`拷贝`后缀，如 `time_0` → `time`，`dot 拷贝 11` → `dot`） |
 | `{type}` | 图层类型（normal / smartObject / text） |
 | `{x}`, `{y}` | 锚点坐标（由9点锚位和layer bounds计算） |
 | `{width}`, `{height}` | 图层宽高 |
