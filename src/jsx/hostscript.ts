@@ -344,7 +344,7 @@ function getSelectedLayersInfo(): string {
       if (baseInfo.text) {
         textInfo = baseInfo.text;
       }
-      var acname = layerName.replace(/(\s*拷贝\s*\d+|_\d+)$/, "");
+      var acname = layerName.replace(/(_\d+(\s*拷贝\s*\d*)?|\s*拷贝\s*\d*)$/, "");
       layers.push({
         id: layerId,
         name: layerName,
@@ -789,7 +789,7 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
     /** 清理数字图层名：去掉 _数字 后缀 */
     var cleanDigitName = function(name: string): string {
-      return name.replace(/(\s*拷贝\s*\d+|_\d+)$/, "");
+      return name.replace(/(_\d+(\s*拷贝\s*\d*)?|\s*拷贝\s*\d*)$/, "");
     };
 
     var ahNum = Number(alignH);
