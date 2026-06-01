@@ -11,7 +11,7 @@
     "dev": "concurrently -k -n panel,jsx \"npm run dev:panel\" \"npm run dev:jsx\"",
     "dev:panel": "webpack --mode=development --watch",
     "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist com.layertool.panel.zip",
     "package": "npm run build && powershell -Command \"Compress-Archive -Path CSXS,dist,doc -DestinationPath com.layertool.panel.zip -Force\""
   },
   "devDependencies": {
