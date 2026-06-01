@@ -1,5 +1,8 @@
 import { psBridge, SelectedLayerInfo, setLogCallback } from "./bridge";
 
+// webpack DefinePlugin 注入的全局变量
+declare const __DEBUG__: boolean;
+
 /**
  * 数学表达式求值器（递归下降解析器）
  * 支持：四则运算、括号、一元负号、变量引用
@@ -287,6 +290,12 @@ class LayerToolUI {
    * 构造函数 - 初始化面板
    */
   constructor() {
+    // 生产模式下隐藏调试面板
+    if (!__DEBUG__) {
+      var debugToggle = document.getElementById("debugToggle");
+      if (debugToggle) debugToggle.style.display = "none";
+    }
+
     Promise.all([
       this.loadTemplatePresets(),
       this.loadTemplateOutputOptions()
