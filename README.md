@@ -321,6 +321,22 @@ interface SelectedLayerInfo {
 }
 ```
 
+## 发布新版本
+
+使用 `npm version` 自动管理版本号：
+
+```bash
+npm version patch   # 1.0.0 → 1.0.1（bug 修复）
+npm version minor   # 1.0.0 → 1.1.0（新功能）
+npm version major   # 1.0.0 → 2.0.0（破坏性变更）
+git push --tags     # 推送 tag，自动触发 GitHub Actions 构建并发布
+```
+
+推送 tag 后，GitHub Actions 会自动：
+1. 构建项目
+2. 生成安装包（zip + exe）
+3. 创建 GitHub Release 并上传文件
+
 ## 许可证
 
 MIT
