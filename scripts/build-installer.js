@@ -13,7 +13,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const INSTALLER_DIR = path.join(ROOT, 'installer');
-const VERSION = require(path.join(ROOT, 'package.json')).version;
+const VERSION = process.env.VERSION || require(path.join(ROOT, 'package.json')).version;
 
 function log(msg) {
   console.log(`[打包] ${msg}`);
