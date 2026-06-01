@@ -5,14 +5,13 @@
   "scripts": {
     "build": "npm run build:jsx && npm run build:panel",
     "build:jsx": "webpack --config webpack.config.jsx.js",
-    "build:jsx:debug": "webpack --config webpack.config.jsx.js --mode=development",
-    "build:panel": "webpack --mode=production",
-    "build:panel:debug": "webpack --mode=development",
+    "build:panel": "webpack",
+    "build:panel:prod": "webpack --mode=production",
     "dev": "concurrently -k -n panel,jsx \"npm run dev:panel\" \"npm run dev:jsx\"",
-    "dev:panel": "webpack --mode=development --watch",
+    "dev:panel": "webpack --watch",
     "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
     "clean": "rimraf dist installer",
-    "package": "npm run build && node scripts/build-installer.js"
+    "package": "npm run build:jsx && npm run build:panel:prod && node scripts/build-installer.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

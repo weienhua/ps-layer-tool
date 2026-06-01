@@ -4,6 +4,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
+  const mode = isProduction ? 'production' : 'development';
 
   return {
     entry: './src/index.ts',
@@ -37,7 +38,7 @@ module.exports = (env, argv) => {
         ],
       }),
     ],
-    mode: isProduction ? 'production' : 'development',
+    mode: mode,
     devtool: isProduction ? false : 'source-map',
   };
 };
