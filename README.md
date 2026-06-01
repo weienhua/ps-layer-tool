@@ -83,10 +83,14 @@
 
 ### 方式一：自动安装（推荐）
 
-下载安装程序，双击运行即可自动完成安装：
+下载安装程序，运行即可自动完成安装：
 
 - **Windows**: 下载 `com.layertool.panel-installer.exe`，双击运行
-- **macOS**: 下载 `com.layertool.panel-installer-macos`，双击运行
+- **macOS**: 下载 `com.layertool.panel-installer-macos`，右键选择"打开"或使用终端运行：
+  ```bash
+  chmod +x com.layertool.panel-installer-macos
+  ./com.layertool.panel-installer-macos
+  ```
 
 安装程序会自动：
 1. 检测已安装的 Photoshop 版本
