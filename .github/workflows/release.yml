@@ -77,16 +77,33 @@ jobs:
           name: macos-build
           path: macos/
 
-      - name: Create Release and Upload Assets
+      - name: List downloaded files
+        run: ls -la windows/ macos/
+
+      - name: Create Release
         run: |
           gh release create ${{ github.ref_name }} \
             --title "图层处理工具 ${{ github.ref_name }}" \
-            --generate-notes \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Assets
+        run: |
+          gh release upload ${{ github.ref_name }} \
             windows/com.layertool.panel-*.zip \
             windows/com.layertool.panel-installer.exe \
             windows/com.layertool.panel-uninstaller.exe \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS Assets
+        run: |
+          gh release upload ${{ github.ref_name }} \
             macos/com.layertool.panel-*.zip \
             macos/com.layertool.panel-installer-macos \
-            macos/com.layertool.panel-uninstaller-macos
+            macos/com.layertool.panel-uninstaller-macos \
+            --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
