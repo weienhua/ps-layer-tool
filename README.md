@@ -181,7 +181,8 @@ npm run build:panel:debug  # 面板开发模式（带 source-map）
 npm run dev                # 同时启动面板 + 宿主 watch
 npm run dev:panel          # 仅面板 watch
 npm run dev:jsx            # 仅宿主 watch
-npm run clean              # 清理 dist
+npm run clean              # 清理 dist 和 installer
+npm run package            # 构建 + 打包发布文件（zip + 安装程序）到 installer/
 ```
 
 ### 模板变量参考
