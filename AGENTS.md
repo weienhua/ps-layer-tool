@@ -66,6 +66,8 @@ $.HostScript = {
 
 **模板输出 Tab 模板变量**（数组索引语法 `{name[i]}`）: `{name[i]}`, `{acname[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
 
+**数学表达式**: 模板中支持对数字类型变量进行数学运算（`+` `-` `*` `/` `%` 和括号）。可用字段：`i`, `x`, `y`, `width`, `height`, `rotation`, `centerX`, `centerY`, `fontSize`。示例：`{i+1}`, `{width*2}`, `{(i+1)*100}`。字符串字段不可参与计算。内部实现：`MathExpr` 递归下降解析器。
+
 动画表达式支持: `#loop` 变量、`sin`/`cos`/`abs`/`round` 函数、基本算术运算。
 
 用户预设存储在 `localStorage`:

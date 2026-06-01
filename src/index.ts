@@ -1,6 +1,156 @@
 import { psBridge, SelectedLayerInfo, setLogCallback } from "./bridge";
 
 /**
+ * 数学表达式求值器（递归下降解析器）
+ * 支持：四则运算、括号、一元负号、变量引用
+ * 变量必须在 numericScope 中存在且为 number 类型
+ */
+class MathExpr {
+  private pos: number;
+  private expr: string;
+  private scope: Record<string, number>;
+
+  private constructor(expr: string, scope: Record<string, number>) {
+    this.pos = 0;
+    this.expr = expr;
+    this.scope = scope;
+  }
+
+  /**
+   * 求值入口
+   * @param expr 表达式字符串
+   * @param scope 数字类型变量作用域
+   * @returns 计算结果，失败返回 null
+   */
+  static evaluate(expr: string, scope: Record<string, number>): number | null {
+    try {
+      var parser = new MathExpr(expr.trim(), scope);
+      var result = parser.parseExpression();
+      // 必须消费完所有字符才算合法
+      if (parser.pos < parser.expr.length) return null;
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 跳过空白 */
+  private skipSpaces(): void {
+    while (this.pos < this.expr.length && this.expr[this.pos] === " ") {
+      this.pos++;
+    }
+  }
+
+  /** 解析表达式：term (('+' | '-') term)* */
+  private parseExpression(): number {
+    var left = this.parseTerm();
+    this.skipSpaces();
+    while (this.pos < this.expr.length) {
+      var ch = this.expr[this.pos];
+      if (ch === "+" || ch === "-") {
+        this.pos++;
+        var right = this.parseTerm();
+        left = ch === "+" ? left + right : left - right;
+        this.skipSpaces();
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  /** 解析项：factor (('*' | '/' | '%') factor)* */
+  private parseTerm(): number {
+    var left = this.parseFactor();
+    this.skipSpaces();
+    while (this.pos < this.expr.length) {
+      var ch = this.expr[this.pos];
+      if (ch === "*" || ch === "/" || ch === "%") {
+        this.pos++;
+        var right = this.parseFactor();
+        if (ch === "*") left = left * right;
+        else if (ch === "/") left = right !== 0 ? left / right : NaN;
+        else left = right !== 0 ? left % right : NaN;
+        this.skipSpaces();
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  /** 解析因子：('-' factor) | primary */
+  private parseFactor(): number {
+    this.skipSpaces();
+    if (this.pos < this.expr.length && this.expr[this.pos] === "-") {
+      this.pos++;
+      return -this.parseFactor();
+    }
+    return this.parsePrimary();
+  }
+
+  /** 解析基本元素：数字 | 变量 | '(' expression ')' */
+  private parsePrimary(): number {
+    this.skipSpaces();
+    if (this.pos >= this.expr.length) throw new Error("unexpected end");
+
+    var ch = this.expr[this.pos];
+
+    // 括号
+    if (ch === "(") {
+      this.pos++;
+      var val = this.parseExpression();
+      this.skipSpaces();
+      if (this.pos >= this.expr.length || this.expr[this.pos] !== ")") {
+        throw new Error("missing ')'");
+      }
+      this.pos++;
+      return val;
+    }
+
+    // 数字
+    if (ch >= "0" && ch <= "9" || ch === ".") {
+      return this.parseNumber();
+    }
+
+    // 变量
+    if ((ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_") {
+      return this.parseVariable();
+    }
+
+    throw new Error("unexpected char: " + ch);
+  }
+
+  /** 解析数字字面量 */
+  private parseNumber(): number {
+    var start = this.pos;
+    while (this.pos < this.expr.length &&
+      ((this.expr[this.pos] >= "0" && this.expr[this.pos] <= "9") || this.expr[this.pos] === ".")) {
+      this.pos++;
+    }
+    if (this.pos === start) throw new Error("expected number");
+    return parseFloat(this.expr.substring(start, this.pos));
+  }
+
+  /** 解析变量名并查找值 */
+  private parseVariable(): number {
+    var start = this.pos;
+    while (this.pos < this.expr.length &&
+      ((this.expr[this.pos] >= "a" && this.expr[this.pos] <= "z") ||
+       (this.expr[this.pos] >= "A" && this.expr[this.pos] <= "Z") ||
+       (this.expr[this.pos] >= "0" && this.expr[this.pos] <= "9") ||
+       this.expr[this.pos] === "_")) {
+      this.pos++;
+    }
+    var name = this.expr.substring(start, this.pos);
+    if (!(name in this.scope)) throw new Error("unknown variable: " + name);
+    var val = this.scope[name];
+    if (typeof val !== "number") throw new Error("non-numeric variable: " + name);
+    return val;
+  }
+}
+
+/**
  * 锚点类型 - 九宫格位置
  */
 type AnchorType =
@@ -834,9 +984,16 @@ class LayerToolUI {
       { key: "fontColor", desc: "字体颜色" },
       { key: "text", desc: "文字内容" }
     ];
-    this.templateHint.innerHTML = vars.map(v => 
+    var html = vars.map(v =>
       `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
     ).join("");
+    html += '<div class="hint-rules">'
+      + '表达式规则：仅数字字段可用（i, x, y, width, height, rotation, centerX, centerY, fontSize），'
+      + '支持 <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> 和括号。'
+      + ' 示例：<code>{i+1}</code> <code>{width*2}</code> <code>{(i+1)*100}</code>。'
+      + '字符串字段（name, path 等）不可参与计算。'
+      + '</div>';
+    this.templateHint.innerHTML = html;
   }
 
   /**
@@ -1209,6 +1366,33 @@ class LayerToolUI {
   }
 
   /**
+   * 模板替换引擎（支持简单变量和数学表达式）
+   * @param template 模板字符串
+   * @param scope 字符串变量作用域
+   * @param numericScope 数字变量作用域（用于表达式求值）
+   * @returns 替换后的字符串
+   */
+  private applyTemplate(template: string, scope: Record<string, string>, numericScope: Record<string, number>): string {
+    return template.replace(/\{([^}]*)\}/g, (_all, content) => {
+      var trimmed = content.trim();
+      // 空内容 → 删除花括号
+      if (trimmed === "") return "";
+      // 简单变量名 → 字符串查找
+      if (/^[a-zA-Z_]\w*$/.test(trimmed)) {
+        return scope[trimmed] ?? "";
+      }
+      // 数学表达式 → 求值
+      var result = MathExpr.evaluate(trimmed, numericScope);
+      if (result !== null && isFinite(result)) {
+        // 整数不带小数点，浮点数保留合理精度
+        return result % 1 === 0 ? String(result) : String(Math.round(result * 1e10) / 1e10);
+      }
+      // 求值失败 → 保持原样
+      return "{" + content + "}";
+    });
+  }
+
+  /**
    * 格式化图层输出行
    * @param layer 图层信息
    * @param preset 预设配置
@@ -1235,9 +1419,18 @@ class LayerToolUI {
       text: layer.text?.content || "",
       i: String(index)
     };
-    return preset.template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_all, key) => {
-      return scope[key] ?? "";
-    });
+    const numericScope: Record<string, number> = {
+      i: index,
+      x: anchor.x,
+      y: anchor.y,
+      width: layer.width,
+      height: layer.height,
+      rotation: layer.rotation,
+      centerX: layer.centerX,
+      centerY: layer.centerY,
+      fontSize: layer.text?.fontSize != null ? layer.text.fontSize : 0
+    };
+    return this.applyTemplate(preset.template, scope, numericScope);
   }
 
   /**
@@ -1809,9 +2002,16 @@ class LayerToolUI {
       { key: "fontColor[i]", desc: "字体颜色" },
       { key: "text[i]", desc: "文字内容" }
     ];
-    this.tplOutTemplateHint.innerHTML = vars.map(v =>
+    var html = vars.map(v =>
       `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
     ).join("");
+    html += '<div class="hint-rules">'
+      + '表达式规则：仅数字字段可用（x[i], y[i], width[i], height[i], rotation[i], centerX[i], centerY[i], gapX[i], gapY[i], fontSize[i]），'
+      + '支持 <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> 和括号。'
+      + ' 示例：<code>{x[0]+1}</code> <code>{width[0]*2}</code> <code>{(i[0]+1)*100}</code>。'
+      + '可跨图层计算，如 <code>{x[0]+x[1]}</code>。字符串字段（name, path 等）不可参与计算。'
+      + '</div>';
+    this.tplOutTemplateHint.innerHTML = html;
   }
 
   /**
@@ -1997,6 +2197,7 @@ class LayerToolUI {
 
     // 计算每层的锚点坐标和间距
     const layerScopes: Record<string, string>[] = [];
+    const numericScopes: Record<string, number>[] = [];
     for (let i = 0; i < sorted.length; i++) {
       const layer = sorted[i];
       const anchorXY = this.getAnchorXY(layer, anchor);
@@ -2020,9 +2221,22 @@ class LayerToolUI {
         gapX: String(gapX),
         gapY: String(gapY)
       });
+      numericScopes.push({
+        i: i,
+        x: anchorXY.x,
+        y: anchorXY.y,
+        width: layer.width,
+        height: layer.height,
+        rotation: layer.rotation,
+        centerX: layer.centerX,
+        centerY: layer.centerY,
+        gapX: gapX,
+        gapY: gapY,
+        fontSize: layer.text?.fontSize != null ? layer.text.fontSize : 0
+      });
     }
 
-    const output = this.applyArrayTemplate(template, layerScopes);
+    const output = this.applyArrayTemplate(template, layerScopes, numericScopes);
     this.tplOutOutputText.value = output;
 
     const copied = await this.copyOutputText(output);
@@ -2037,19 +2251,47 @@ class LayerToolUI {
   }
 
   /**
-   * 数组索引模板替换引擎
-   * 将 {key[index]} 格式的占位符替换为对应图层的值
+   * 数组索引模板替换引擎（支持简单变量和数学表达式）
    * @param template 模板字符串
-   * @param layers 图层数据数组
+   * @param layers 图层字符串数据数组
+   * @param numericLayers 图层数字数据数组
    * @returns 替换后的字符串
    */
-  private applyArrayTemplate(template: string, layers: Record<string, string>[]): string {
-    return template.replace(/\{(\w+)\[(\d+)\]\}/g, (_match, key, idx) => {
-      const i = parseInt(idx, 10);
-      if (i >= 0 && i < layers.length) {
-        return layers[i][key] ?? "";
+  private applyArrayTemplate(template: string, layers: Record<string, string>[], numericLayers: Record<string, number>[]): string {
+    return template.replace(/\{([^}]*)\}/g, (_all, content) => {
+      var trimmed = content.trim();
+      // 空内容 → 删除花括号
+      if (trimmed === "") return "";
+      // 简单数组变量：key[index]
+      var simpleMatch = /^(\w+)\[(\d+)\]$/.exec(trimmed);
+      if (simpleMatch) {
+        var key = simpleMatch[1];
+        var idx = parseInt(simpleMatch[2], 10);
+        if (idx >= 0 && idx < layers.length) {
+          return layers[idx][key] ?? "";
+        }
+        return "";
       }
-      return "";
+      // 数学表达式：先将 key[index] 替换为数值，再求值
+      var expr = trimmed.replace(/(\w+)\[(\d+)\]/g, (_m: string, key: string, idx: string) => {
+        var i = parseInt(idx, 10);
+        if (i >= 0 && i < numericLayers.length && key in numericLayers[i]) {
+          return String(numericLayers[i][key]);
+        }
+        return _m; // 保持原样
+      });
+      // 替换后如果变成纯数字
+      if (/^-?\d+(\.\d+)?$/.test(expr)) {
+        var num = parseFloat(expr);
+        return num % 1 === 0 ? String(num) : String(Math.round(num * 1e10) / 1e10);
+      }
+      // 用空 scope 求值（所有变量应已被 key[index] 替换为数字）
+      var result = MathExpr.evaluate(expr, {});
+      if (result !== null && isFinite(result)) {
+        return result % 1 === 0 ? String(result) : String(Math.round(result * 1e10) / 1e10);
+      }
+      // 求值失败 → 保持原样
+      return "{" + content + "}";
     });
   }
 

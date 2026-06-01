@@ -218,6 +218,18 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 | `{scaleAnim}` | 缩放动画表达式（用户自定义） |
 | `{rotateAnim}` | 旋转动画表达式（用户自定义） |
 
+### 数学表达式
+
+模板中支持对数字类型的变量进行数学运算（`+` `-` `*` `/` `%` 和括号）。
+
+**可用字段**（数字类型）：`i`, `x`, `y`, `width`, `height`, `rotation`, `centerX`, `centerY`, `fontSize`
+
+示例：`{i+1}`（序号从1开始）、`{width*2}`（宽度翻倍）、`{x/2+5}`（x坐标一半加5）、`{(i+1)*100}`（序号+1再×100）
+
+字符串字段（`name`, `acname`, `type`, `path`, `text`, `fontColor` 等）不可参与计算。表达式语法错误或包含非数字字段时保持原样不替换。
+
+内部实现：`MathExpr` 递归下降解析器（`src/index.ts`），通过 `numericScope` 严格区分 number/string 类型。
+
 ### 动画表达式
 
 在"缩放动画"/"旋转动画"输入框中可以编写数学表达式，支持：

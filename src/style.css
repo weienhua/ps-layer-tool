@@ -746,6 +746,23 @@ textarea {
   white-space: nowrap;
 }
 
+.template-hint .hint-rules {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.template-hint .hint-rules code {
+  background: var(--bg-card);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  color: var(--text);
+}
+
 .preset-template-preview {
   display: none;
   position: absolute;
