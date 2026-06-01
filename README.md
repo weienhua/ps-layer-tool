@@ -182,7 +182,6 @@ npm run dev                # 同时启动面板 + 宿主 watch
 npm run dev:panel          # 仅面板 watch
 npm run dev:jsx            # 仅宿主 watch
 npm run clean              # 清理 dist
-npm run build:installer    # 打包自动安装/卸载程序（生成到 installer/ 目录）
 ```
 
 ### 模板变量参考

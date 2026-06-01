@@ -11,9 +11,8 @@
     "dev": "concurrently -k -n panel,jsx \"npm run dev:panel\" \"npm run dev:jsx\"",
     "dev:panel": "webpack --mode=development --watch",
     "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
-    "clean": "rimraf dist com.layertool.panel.zip installer",
-    "package": "npm run build && powershell -Command \"Compress-Archive -Path CSXS,dist,doc -DestinationPath com.layertool.panel.zip -Force\"",
-    "build:installer": "npm run build && node scripts/build-installer.js"
+    "clean": "rimraf dist installer",
+    "package": "npm run build && node scripts/build-installer.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -59,7 +59,6 @@ npm run dev                # 同时启动面板 + 宿主 watch（concurrently）
 npm run dev:panel          # 仅面板 webpack watch（开发模式）
 npm run dev:jsx            # 仅宿主 webpack watch（开发模式）
 npm run clean              # rimraf dist com.layertool.panel.zip installer
-npm run build:installer    # 打包自动安装/卸载程序（生成到 installer/ 目录）
 ```
 
 ## 架构：两个隔离的执行上下文
