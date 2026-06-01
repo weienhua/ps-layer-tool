@@ -78,10 +78,14 @@ function main() {
   if (!fs.existsSync(targetDir)) {
     log('未检测到已安装的图层处理工具插件', 'warn');
     console.log('');
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question('按回车键退出...', () => {
-      rl.close();
-    });
+    console.log('按任意键退出...');
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.on('data', () => process.exit(0));
+    } else {
+      setTimeout(() => process.exit(0), 30000);
+    }
     return;
   }
 
