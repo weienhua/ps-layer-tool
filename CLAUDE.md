@@ -60,6 +60,17 @@ npm run clean              # rimraf dist installer
 npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
 ```
 
+### 打包产物
+
+`npm run package` 生成：
+- `com.layertool.panel-vX.X.X.zip` — 跨平台手动安装包
+- `com.layertool.panel-installer.exe` — Windows 自动安装程序
+- `com.layertool.panel-installer-macos` — macOS 自动安装程序
+- `com.layertool.panel-uninstaller.exe` — Windows 卸载程序
+- `com.layertool.panel-uninstaller-macos` — macOS 卸载程序
+
+`pkg` 支持交叉编译，可在 macOS 上同时生成 Windows 和 macOS 安装程序。
+
 ## 架构：两个隔离的执行上下文
 
 ```

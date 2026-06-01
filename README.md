@@ -237,6 +237,20 @@ npm run clean              # 清理 dist 和 installer
 npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
 ```
 
+### 打包说明
+
+`npm run package` 会生成以下文件：
+
+| 文件 | 说明 | 平台 |
+|------|------|------|
+| `com.layertool.panel-vX.X.X.zip` | 手动安装包 | 跨平台 |
+| `com.layertool.panel-installer.exe` | Windows 自动安装程序 | Windows |
+| `com.layertool.panel-installer-macos` | macOS 自动安装程序 | macOS |
+| `com.layertool.panel-uninstaller.exe` | Windows 卸载程序 | Windows |
+| `com.layertool.panel-uninstaller-macos` | macOS 卸载程序 | macOS |
+
+**跨平台打包**：`pkg` 支持交叉编译，可在 macOS 上同时生成 Windows 和 macOS 安装程序。
+
 ### 模板变量参考
 
 #### 图层信息 Tab（单图层模板）

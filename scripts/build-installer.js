@@ -60,12 +60,21 @@ function buildZip() {
   copyDirSync(path.join(ROOT, 'dist'), path.join(pluginDir, 'dist'));
   copyDirSync(path.join(ROOT, 'doc'), path.join(pluginDir, 'doc'));
 
-  // 使用 PowerShell 压缩（Windows 内置）
+  // 根据平台选择压缩方式
   try {
-    execSync(
-      `powershell -Command "Compress-Archive -Path '${pluginDir}' -DestinationPath '${zipPath}' -Force"`,
-      { stdio: 'inherit' }
-    );
+    if (process.platform === 'win32') {
+      // Windows: 使用 PowerShell
+      execSync(
+        `powershell -Command "Compress-Archive -Path '${pluginDir}' -DestinationPath '${zipPath}' -Force"`,
+        { stdio: 'inherit' }
+      );
+    } else {
+      // macOS/Linux: 使用 zip 命令
+      execSync(
+        `cd '${tempDir}' && zip -r '${zipPath}' 'com.layertool.panel'`,
+        { stdio: 'inherit' }
+      );
+    }
     log(`zip 安装包已生成: ${zipPath}`);
   } catch (e) {
     console.error('[错误] zip 打包失败:', e.message);
