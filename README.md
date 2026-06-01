@@ -329,7 +329,7 @@ interface SelectedLayerInfo {
 npm version patch   # 1.0.0 → 1.0.1（bug 修复）
 npm version minor   # 1.0.0 → 1.1.0（新功能）
 npm version major   # 1.0.0 → 2.0.0（破坏性变更）
-git push --tags     # 推送 tag，自动触发 GitHub Actions 构建并发布
+git push --tags     # 推送 tag，自动触发 GitHub Actions 构建并发布（Windows + macOS）
 ```
 
 推送 tag 后，GitHub Actions 会自动：

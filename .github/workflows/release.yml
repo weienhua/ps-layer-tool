@@ -23,13 +23,63 @@ jobs:
       - name: Build and package
         run: npm run package
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: installer/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and package
+        run: npm run package
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: installer/
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: windows/
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: macos/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            installer/com.layertool.panel-v*.zip
-            installer/com.layertool.panel-installer.exe
-            installer/com.layertool.panel-uninstaller.exe
+            windows/com.layertool.panel-v*.zip
+            windows/com.layertool.panel-installer.exe
+            windows/com.layertool.panel-uninstaller.exe
+            macos/com.layertool.panel-v*.zip
+            macos/com.layertool.panel-installer-macos
+            macos/com.layertool.panel-uninstaller-macos
           draft: false
           prerelease: false
           generate_release_notes: true

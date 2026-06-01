@@ -145,6 +145,17 @@ function buildInstaller() {
 
   // macOS 打包（需要在 macOS 上执行）
   if (process.platform === 'darwin') {
+    // 打包 macOS 安装程序
+    const pkgJsonInstaller = {
+      name: 'layer-tool-installer',
+      version: VERSION,
+      bin: 'install.js',
+      pkg: {
+        assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
+      },
+    };
+    fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonInstaller, null, 2));
+
     log('正在打包 macOS 安装程序...');
     try {
       execSync(
@@ -153,7 +164,29 @@ function buildInstaller() {
       );
       log('macOS 安装程序打包完成');
     } catch (e) {
-      console.error('[错误] macOS 打包失败:', e.message);
+      console.error('[错误] macOS 安装程序打包失败:', e.message);
+    }
+
+    // 打包 macOS 卸载程序
+    const pkgJsonUninstaller = {
+      name: 'layer-tool-uninstaller',
+      version: VERSION,
+      bin: 'uninstall.js',
+      pkg: {
+        assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
+      },
+    };
+    fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonUninstaller, null, 2));
+
+    log('正在打包 macOS 卸载程序...');
+    try {
+      execSync(
+        `npx pkg . --targets node18-macos-x64 --output ../installer/com.layertool.panel-uninstaller-macos`,
+        { cwd: tempDir, stdio: 'inherit' }
+      );
+      log('macOS 卸载程序打包完成');
+    } catch (e) {
+      console.error('[错误] macOS 卸载程序打包失败:', e.message);
     }
   } else {
     log('当前为 Windows 系统，macOS 版本需要在 macOS 上打包');
