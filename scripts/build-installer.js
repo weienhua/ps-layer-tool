@@ -92,19 +92,21 @@ function buildInstaller() {
   fs.copyFileSync(path.join(__dirname, 'install.js'), path.join(tempDir, 'install.js'));
   fs.copyFileSync(path.join(__dirname, 'uninstall.js'), path.join(tempDir, 'uninstall.js'));
 
-  // 复制 dist 到临时目录（打包进可执行文件）
+  // 复制 CSXS、dist、doc 到临时目录（打包进可执行文件）
+  copyDirSync(path.join(ROOT, 'CSXS'), path.join(tempDir, 'CSXS'));
   copyDirSync(path.join(ROOT, 'dist'), path.join(tempDir, 'dist'));
+  copyDirSync(path.join(ROOT, 'doc'), path.join(tempDir, 'doc'));
 
-  // 创建 package.json 给 pkg 用
-  const pkgJson = {
+  // 创建 package.json 给 pkg 用（安装程序）
+  const pkgJsonInstaller = {
     name: 'layer-tool-installer',
     version: VERSION,
-    bin: {
-      install: 'install.js',
-      uninstall: 'uninstall.js',
+    bin: 'install.js',
+    pkg: {
+      assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
     },
   };
-  fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJson, null, 2));
+  fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonInstaller, null, 2));
 
   // 打包 Windows 安装程序
   log('正在打包 Windows 安装程序...');
@@ -117,6 +119,17 @@ function buildInstaller() {
   } catch (e) {
     console.error('[错误] Windows 打包失败:', e.message);
   }
+
+  // 创建 package.json 给 pkg 用（卸载程序）
+  const pkgJsonUninstaller = {
+    name: 'layer-tool-uninstaller',
+    version: VERSION,
+    bin: 'uninstall.js',
+    pkg: {
+      assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
+    },
+  };
+  fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonUninstaller, null, 2));
 
   // 打包 Windows 卸载程序
   log('正在打包 Windows 卸载程序...');

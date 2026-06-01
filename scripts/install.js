@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const readline = require('readline');
+
 
 const EXTENSION_ID = 'com.layertool.panel';
 const CSXS_VERSIONS = [6, 7, 8, 9, 10, 11];
@@ -243,29 +243,28 @@ function main() {
     process.exit(1);
   }
 
-  // 1. 获取插件源文件目录
-  // pkg 打包时资源文件在 process.execPath 同级或 snapshot 目录
-  let distSource;
+  // 1. 获取插件源文件目录（打包时包含 CSXS、dist、doc）
+  let rootSource;
   if (typeof process.pkg !== 'undefined') {
-    // pkg 打包模式：资源文件打包在 snapshot 中
-    distSource = path.join(path.dirname(process.execPath), 'dist');
-    if (!fs.existsSync(distSource)) {
-      // 尝试 snapshot 路径
-      distSource = path.join(__dirname, 'dist');
-    }
+    // pkg 打包模式：assets 打包在 snapshot 中
+    rootSource = __dirname;
   } else {
     // 开发模式：从项目根目录读取
-    distSource = path.join(__dirname, '..', 'dist');
+    rootSource = path.join(__dirname, '..');
   }
 
-  if (!fs.existsSync(distSource)) {
-    log('找不到插件文件目录 (dist/)，请确保安装程序完整', 'error');
-    process.exit(1);
+  const dirsToCopy = ['CSXS', 'dist', 'doc'];
+  for (const dir of dirsToCopy) {
+    if (!fs.existsSync(path.join(rootSource, dir))) {
+      log(`找不到 ${dir}/ 目录，请确保安装程序完整`, 'error');
+      process.exit(1);
+    }
   }
 
-  log(`插件源目录: ${distSource}`);
+  log(`插件源目录: ${rootSource}`);
 
   // 2. 检测 Photoshop 安装
+  // （复制 CSXS 和 doc 目录）
   let psInstallations = [];
 
   if (isWin) {
@@ -305,10 +304,13 @@ function main() {
     rmrfSync(targetDir);
   }
 
-  // 5. 创建扩展目录并复制文件
+  // 5. 创建扩展目录并复制文件（CSXS、dist、doc）
   try {
-    fs.mkdirSync(extensionsPath, { recursive: true });
-    copyDirSync(distSource, targetDir);
+    fs.mkdirSync(targetDir, { recursive: true });
+    for (const dir of dirsToCopy) {
+      copyDirSync(path.join(rootSource, dir), path.join(targetDir, dir));
+      log(`复制 ${dir}/ 完成`);
+    }
     log('插件文件复制完成', 'success');
   } catch (e) {
     log(`复制文件失败: ${e.message}`, 'error');
@@ -335,10 +337,15 @@ function main() {
   console.log('');
 
   // 等待用户按键退出
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  rl.question('按回车键退出...', () => {
-    rl.close();
-  });
+  console.log('按任意键退出...');
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on('data', () => process.exit(0));
+  } else {
+    // 非 TTY 环境（如打包后），等待一段时间后退出
+    setTimeout(() => process.exit(0), 30000);
+  }
 }
 
 main();
