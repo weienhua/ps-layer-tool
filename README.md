@@ -168,6 +168,53 @@ defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 | 宿主脚本不生效 | PS 缓存旧脚本 | 重启 Photoshop 或重新加载扩展 |
 | 修改代码后不更新 | 未重新构建 | 运行 `npm run build` 后重启 PS |
 
+## 新版本发布
+
+### 方式一：GitHub Actions 自动发布（推荐）
+
+```bash
+# 1. 更新 package.json 版本号
+npm version 1.0.2    # 自动修改 package.json 并创建 git tag
+
+# 2. 推送代码和 tag
+git push origin master --tags
+
+# 3. 等待 GitHub Actions 自动构建并发布
+# 查看构建状态：https://github.com/weienhua/ps-layer-tool/actions
+```
+
+GitHub Actions 会自动：
+- 构建 Windows 和 macOS 安装程序
+- 生成 zip 安装包
+- 创建 GitHub Release 并上传所有文件
+
+发布后记得编辑 Release 页面，添加更新说明：
+```bash
+gh release edit v1.0.2 --notes "更新内容说明"
+```
+
+### 方式二：手动发布
+
+```bash
+# 1. 更新版本号
+npm version 1.0.2
+
+# 2. 本地打包
+npm run package
+
+# 3. 推送代码和 tag
+git push origin master --tags
+
+# 4. 手动上传 installer/ 目录中的文件到 GitHub Release
+```
+
+### 版本号规范
+
+遵循 [语义化版本](https://semver.org/lang/zh-CN/)：
+- `1.0.0` → `1.0.1`：Bug 修复
+- `1.0.0` → `1.1.0`：新功能
+- `1.0.0` → `2.0.0`：重大更新
+
 ## 开发
 
 ### 构建命令
