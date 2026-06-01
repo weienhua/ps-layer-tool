@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## 兼容性
+
+- **Photoshop 版本**: 2019 (v20.0) 及以上
+- **CEP 版本**: 9.0+
+- **CSInterface.js**: v9.4.0
+
 ## 构建命令
 
 ```bash

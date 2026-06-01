@@ -36,7 +36,10 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+}
+
+.container > * + * {
+  margin-top: 10px;
 }
 
 /* 最后一张卡片不需要底部间距 */
@@ -68,11 +71,14 @@ body {
 /* Tab 导航栏 */
 .tab-bar {
   display: flex;
-  gap: 4px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
+}
+
+.tab-bar > * + * {
+  margin-left: 4px;
 }
 
 .tab-btn {
@@ -102,7 +108,10 @@ body {
 .tab-content {
   display: none;
   flex-direction: column;
-  gap: 16px;
+}
+
+.tab-content > * + * {
+  margin-top: 10px;
 }
 
 .tab-content.active {
@@ -112,8 +121,11 @@ body {
 /* 导出相关样式 */
 .export-path-row {
   display: flex;
-  gap: 6px;
   align-items: center;
+}
+
+.export-path-row > * + * {
+  margin-left: 6px;
 }
 
 .export-path-row input {
@@ -123,16 +135,22 @@ body {
 .export-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+}
+
+.export-actions > * + * {
+  margin-top: 8px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 8px;
   font-size: 11px;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+.checkbox-label > * + * {
+  margin-left: 8px;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -334,7 +352,7 @@ textarea:focus-visible {
   border-radius: 8px;
   padding: 12px;
   box-shadow: var(--shadow);
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .section-title {
@@ -347,7 +365,10 @@ textarea:focus-visible {
 .preset-form {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+}
+
+.preset-form > * + * {
+  margin-top: 6px;
 }
 
 .template-hint {
@@ -374,7 +395,10 @@ textarea:focus-visible {
 .row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+}
+
+.row > * + * {
+  margin-top: 4px;
 }
 
 .row label {
@@ -386,8 +410,11 @@ textarea:focus-visible {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
   flex-wrap: nowrap;
+}
+
+.anchor-row > * + * {
+  margin-left: 6px;
 }
 
 input[type="text"],
@@ -423,8 +450,11 @@ textarea {
 .actions {
   flex-direction: row;
   justify-content: flex-end;
-  gap: 8px;
   margin-top: 12px;
+}
+
+.actions > * + * {
+  margin-left: 8px;
 }
 
 .action-group {
@@ -434,7 +464,7 @@ textarea {
 .anchor-grid-selector {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
+  grid-gap: 2px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -471,14 +501,19 @@ textarea {
 .preset-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  margin-right: -8px;
+  margin-bottom: -8px;
+}
+
+.preset-list > * {
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
 
 .preset-item {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
   min-width: 120px;
   max-width: 200px;
   flex: 1 1 140px;
@@ -488,6 +523,10 @@ textarea {
   padding: 8px 24px 8px 10px;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.preset-item > * + * {
+  margin-top: 6px;
 }
 
 .preset-item.dragging {
@@ -546,12 +585,18 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+}
+
+.preset-main > * + * {
+  margin-left: 8px;
 }
 
 .preset-actions {
   display: flex;
-  gap: 4px;
+}
+
+.preset-actions > * + * {
+  margin-left: 4px;
 }
 
 .preset-meta {
@@ -559,14 +604,17 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
+}
+
+.preset-meta > * + * {
+  margin-left: 6px;
 }
 
 .preset-anchor-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
+  grid-gap: 3px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -602,7 +650,10 @@ textarea {
 .template-select-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+}
+
+.template-select-row > * + * {
+  margin-top: 6px;
 }
 
 /* 自定义下拉组件 */
@@ -717,25 +768,34 @@ textarea {
 .template-hint {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 10px;
   padding: 8px 10px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 10px;
   line-height: 1.6;
+  margin-right: -10px;
+  margin-bottom: -6px;
+}
+
+.template-hint > * {
+  margin-right: 10px;
+  margin-bottom: 6px;
 }
 
 .template-hint .hint-item {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
   padding: 2px 6px;
   background: var(--bg-card);
   border-radius: 4px;
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+.template-hint .hint-item > * + * {
+  margin-left: 3px;
 }
 .template-hint .hint-item:hover {
   background: var(--border);
@@ -820,10 +880,13 @@ textarea {
   right: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
   font-size: 11px;
   color: #888;
   z-index: 50;
+}
+
+.debug-toggle > * + * {
+  margin-left: 8px;
 }
 
 .switch {
@@ -961,7 +1024,10 @@ input:checked + .slider:before {
 /* XML 模板 Tab 样式 */
 .xml-datatype-group {
   display: flex;
-  gap: 6px;
+}
+
+.xml-datatype-group > * + * {
+  margin-left: 6px;
 }
 
 .xml-datatype-btn {

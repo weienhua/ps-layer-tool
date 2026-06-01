@@ -47,8 +47,8 @@
 - **面板侧**: TypeScript + webpack → ES6
 - **宿主侧**: TypeScript + photoshop-script-api + webpack → ES3 (ExtendScript)
 - **通信**: CEP `evalScript` 桥接
-- **CEP 版本**: 10.0+
-- **兼容 Photoshop**: 2021 (v22.0) 及以上
+- **CEP 版本**: 9.0+
+- **兼容 Photoshop**: 2019 (v20.0) 及以上
 
 ## 项目结构
 
@@ -60,7 +60,7 @@
 │   │   ├── hostscript.ts     # 宿主脚本入口
 │   │   └── ps-api/           # photoshop-script-api 源代码（vendored）
 │   ├── lib/
-│   │   ├── CSInterface.js    # Adobe 官方 CEP 库（v10.0.0）
+│   │   ├── CSInterface.js    # Adobe 官方 CEP 库（v9.4.0）
 │   │   ├── presets.md        # 图层信息内置模板预设（7 条）
 │   │   └── template.md       # 模板输出预定义模板
 │   ├── types/
@@ -123,7 +123,12 @@ ln -s $(pwd) ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.p
 
 **Windows (注册表)**:
 ```powershell
-# CEP 10 (PS 2021)
+# CEP 9 (PS 2019)
+New-Item -Path "HKCU:\Software\Adobe\CSXS.9" -Force
+Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.9" `
+  -Name "PlayerDebugMode" -Value "1" -Type DWord
+
+# CEP 10 (PS 2020-2021)
 New-Item -Path "HKCU:\Software\Adobe\CSXS.10" -Force
 Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.10" `
   -Name "PlayerDebugMode" -Value "1" -Type DWord
@@ -138,7 +143,8 @@ Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.11" `
 
 **macOS**:
 ```bash
-defaults write com.adobe.CSXS.10 PlayerDebugMode 1   # PS 2021
+defaults write com.adobe.CSXS.9 PlayerDebugMode 1    # PS 2019
+defaults write com.adobe.CSXS.10 PlayerDebugMode 1   # PS 2020-2021
 defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 ```
 

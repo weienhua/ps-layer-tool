@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ExtensionBundleId="com.layertool.panel" ExtensionBundleVersion="1.0.0" Version="10.0">
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ExtensionBundleId="com.layertool.panel" ExtensionBundleVersion="1.0.0" Version="9.0">
   <ExtensionList>
     <Extension Id="com.layertool.panel" Version="1.0.0"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>
-      <Host Name="PHXS" Version="[22.0,99.9]"/>
-      <Host Name="PHSP" Version="[22.0,99.9]"/>
+      <Host Name="PHXS" Version="[20.0,99.9]"/>
+      <Host Name="PHSP" Version="[20.0,99.9]"/>
     </HostList>
     <LocaleList>
       <Locale Code="All"/>
     </LocaleList>
     <RequiredRuntimeList>
-      <RequiredRuntime Name="CSXS" Version="10.0"/>
+      <RequiredRuntime Name="CSXS" Version="9.0"/>
     </RequiredRuntimeList>
   </ExecutionEnvironment>
   <DispatchInfoList>
