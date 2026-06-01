@@ -92,8 +92,9 @@
 1. 检测已安装的 Photoshop 版本
 2. 复制插件文件到 CEP 扩展目录
 3. 开启调试模式
+4. 保留用户自定义的 `presets.md` 和 `template.md` 文件（如果存在）
 
-卸载：运行 `com.layertool.panel-uninstaller.exe`（Windows）或对应卸载程序。
+卸载：运行 `com.layertool.panel-uninstaller.exe`（Windows）或对应卸载程序。卸载时会自动备份用户自定义的 `presets.md` 和 `template.md` 到 `com.layertool.panel_user_files` 目录，下次安装时会自动恢复。
 
 ### 方式二：手动安装
 

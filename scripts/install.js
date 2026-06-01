@@ -13,6 +13,8 @@ const { execSync } = require('child_process');
 
 const EXTENSION_ID = 'com.layertool.panel';
 const CSXS_VERSIONS = [6, 7, 8, 9, 10, 11];
+// 安装时需要保留的用户文件（相对于 lib/ 目录）
+const LIB_KEEP_FILES = ['presets.md', 'template.md'];
 
 // ==================== 工具函数 ====================
 
@@ -62,6 +64,39 @@ function rmrfSync(dir) {
       }
     });
     fs.rmdirSync(dir);
+  }
+}
+
+/**
+ * 备份 lib 目录下需要保留的用户文件
+ * @param {string} targetDir - 目标插件目录
+ * @returns {Array<{name: string, data: Buffer}>} 备份文件数组
+ */
+function backupLibKeepFiles(targetDir) {
+  const backups = [];
+  const libDir = path.join(targetDir, 'dist', 'lib');
+  if (fs.existsSync(libDir)) {
+    for (const name of LIB_KEEP_FILES) {
+      const filePath = path.join(libDir, name);
+      if (fs.existsSync(filePath)) {
+        backups.push({ name, data: fs.readFileSync(filePath) });
+      }
+    }
+  }
+  return backups;
+}
+
+/**
+ * 恢复备份的用户文件到目标 lib 目录
+ * @param {string} targetDir - 目标插件目录
+ * @param {Array<{name: string, data: Buffer}>} backups - 备份文件数组
+ */
+function restoreLibKeepFiles(targetDir, backups) {
+  if (backups.length === 0) return;
+  const libDir = path.join(targetDir, 'dist', 'lib');
+  fs.mkdirSync(libDir, { recursive: true });
+  for (const { name, data } of backups) {
+    fs.writeFileSync(path.join(libDir, name), data);
   }
 }
 
@@ -298,9 +333,14 @@ function main() {
   const targetDir = path.join(extensionsPath, EXTENSION_ID);
   log(`安装目标: ${targetDir}`);
 
-  // 4. 如果已存在，先卸载
+  // 4. 如果已存在，备份用户文件后卸载
+  const userFileBackups = [];
   if (fs.existsSync(targetDir)) {
     log('检测到已安装的版本，正在卸载...');
+    userFileBackups.push(...backupLibKeepFiles(targetDir));
+    if (userFileBackups.length > 0) {
+      log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+    }
     rmrfSync(targetDir);
   }
 
@@ -315,6 +355,26 @@ function main() {
   } catch (e) {
     log(`复制文件失败: ${e.message}`, 'error');
     process.exit(1);
+  }
+
+  // 恢复用户文件（覆盖安装包中的默认文件）
+  restoreLibKeepFiles(targetDir, userFileBackups);
+
+  // 从卸载备份目录恢复用户文件（如果存在）
+  const backupDir = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
+  if (fs.existsSync(backupDir)) {
+    const restoredFiles = [];
+    for (const name of LIB_KEEP_FILES) {
+      const backupFile = path.join(backupDir, name);
+      if (fs.existsSync(backupFile)) {
+        fs.copyFileSync(backupFile, path.join(targetDir, 'dist', 'lib', name));
+        restoredFiles.push(name);
+      }
+    }
+    if (restoredFiles.length > 0) {
+      log(`已从备份恢复用户文件: ${restoredFiles.join(', ')}`, 'success');
+      try { rmrfSync(backupDir); } catch (e) { /* 忽略 */ }
+    }
   }
 
   // 6. 开启调试模式

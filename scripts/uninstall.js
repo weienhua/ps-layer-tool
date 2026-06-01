@@ -10,8 +10,29 @@ const path = require('path');
 
 
 const EXTENSION_ID = 'com.layertool.panel';
+// 卸载时需要保留的用户文件（相对于 lib/ 目录）
+const LIB_KEEP_FILES = ['presets.md', 'template.md'];
 
 // ==================== 工具函数 ====================
+
+/**
+ * 备份 lib 目录下需要保留的用户文件
+ * @param {string} targetDir - 目标插件目录
+ * @returns {Array<{name: string, data: Buffer}>} 备份文件数组
+ */
+function backupLibKeepFiles(targetDir) {
+  const backups = [];
+  const libDir = path.join(targetDir, 'dist', 'lib');
+  if (fs.existsSync(libDir)) {
+    for (const name of LIB_KEEP_FILES) {
+      const filePath = path.join(libDir, name);
+      if (fs.existsSync(filePath)) {
+        backups.push({ name, data: fs.readFileSync(filePath) });
+      }
+    }
+  }
+  return backups;
+}
 
 function log(msg, type = 'info') {
   const prefix = {
@@ -89,7 +110,12 @@ function main() {
     return;
   }
 
-  // 3. 删除插件目录
+  // 3. 备份用户文件后删除插件目录
+  const userFileBackups = backupLibKeepFiles(targetDir);
+  if (userFileBackups.length > 0) {
+    log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+  }
+
   try {
     rmrfSync(targetDir);
     log('插件文件已删除', 'success');
@@ -98,7 +124,17 @@ function main() {
     process.exit(1);
   }
 
-  // 4. 完成
+  // 4. 将备份文件保存到插件目录旁边
+  if (userFileBackups.length > 0) {
+    const backupDir = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
+    fs.mkdirSync(backupDir, { recursive: true });
+    for (const { name, data } of userFileBackups) {
+      fs.writeFileSync(path.join(backupDir, name), data);
+    }
+    log(`用户文件已保存到: ${backupDir}`, 'success');
+  }
+
+  // 5. 完成
   console.log('');
   console.log('╔══════════════════════════════════════════════╗');
   console.log('║             卸载完成！                       ║');
