@@ -6,3 +6,5 @@ dist/
 Thumbs.db
 .claude/settings.local.json
 com.layertool.panel.zip
+installer/
+.installer-temp/

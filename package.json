@@ -11,13 +11,15 @@
     "dev": "concurrently -k -n panel,jsx \"npm run dev:panel\" \"npm run dev:jsx\"",
     "dev:panel": "webpack --mode=development --watch",
     "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
-    "clean": "rimraf dist com.layertool.panel.zip",
-    "package": "npm run build && powershell -Command \"Compress-Archive -Path CSXS,dist,doc -DestinationPath com.layertool.panel.zip -Force\""
+    "clean": "rimraf dist com.layertool.panel.zip installer",
+    "package": "npm run build && powershell -Command \"Compress-Archive -Path CSXS,dist,doc -DestinationPath com.layertool.panel.zip -Force\"",
+    "build:installer": "npm run build && node scripts/build-installer.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
     "@types/node": "^20.0.0",
     "copy-webpack-plugin": "^11.0.0",
+    "pkg": "^5.8.1",
     "ps-extendscript-types": "^1.0.2",
     "rimraf": "^5.0.0",
     "ts-loader": "^9.4.0",

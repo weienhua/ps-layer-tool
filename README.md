@@ -81,14 +81,30 @@
 
 ## 安装
 
-### 1. 构建项目
+### 方式一：自动安装（推荐）
+
+下载安装程序，双击运行即可自动完成安装：
+
+- **Windows**: 下载 `com.layertool.panel-installer.exe`，双击运行
+- **macOS**: 下载 `com.layertool.panel-installer-macos`，双击运行
+
+安装程序会自动：
+1. 检测已安装的 Photoshop 版本
+2. 复制插件文件到 CEP 扩展目录
+3. 开启调试模式
+
+卸载：运行 `com.layertool.panel-uninstaller.exe`（Windows）或对应卸载程序。
+
+### 方式二：手动安装
+
+#### 1. 构建项目
 
 ```bash
 npm install
 npm run build
 ```
 
-### 2. 安装到 Photoshop
+#### 2. 安装到 Photoshop
 
 **Windows (PowerShell 管理员)**:
 ```powershell
@@ -102,7 +118,7 @@ New-Item -ItemType Junction `
 ln -s $(pwd) ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.panel
 ```
 
-### 3. 启用调试模式
+#### 3. 启用调试模式
 
 **Windows (注册表)**:
 ```powershell
@@ -125,7 +141,7 @@ defaults write com.adobe.CSXS.10 PlayerDebugMode 1   # PS 2021
 defaults write com.adobe.CSXS.11 PlayerDebugMode 1   # PS 2022+
 ```
 
-### 4. 重启 Photoshop
+#### 4. 重启 Photoshop
 
 在菜单中找到: **窗口 > 扩展功能 > 图层处理工具**
 
@@ -166,6 +182,7 @@ npm run dev                # 同时启动面板 + 宿主 watch
 npm run dev:panel          # 仅面板 watch
 npm run dev:jsx            # 仅宿主 watch
 npm run clean              # 清理 dist
+npm run build:installer    # 打包自动安装/卸载程序（生成到 installer/ 目录）
 ```
 
 ### 模板变量参考
