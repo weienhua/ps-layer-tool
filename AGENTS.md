@@ -3,14 +3,14 @@
 ## 构建命令
 
 ```bash
-npm run build              # 完整构建 (build:jsx → build:panel)
+npm run build              # 完整构建（开发模式，显示调试面板）
 npm run build:jsx          # 仅编译宿主脚本 (webpack --config webpack.config.jsx.js)
-npm run build:panel        # 仅构建面板 (webpack --mode=production)
+npm run build:panel        # 仅构建面板（开发模式）
 npm run dev                # 同时启动面板 + 宿主 watch（concurrently）
 npm run dev:panel          # 仅面板 watch 模式
 npm run dev:jsx            # 仅宿主 watch 模式
 npm run clean              # rimraf dist installer
-npm run package            # 构建 + 打包发布文件（zip + 安装程序）到 installer/
+npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
 ```
 
 ## 项目架构
