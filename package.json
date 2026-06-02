@@ -1,6 +1,6 @@
 {
   "name": "layer-tool-cep",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Photoshop CEP 图层处理工具插件",
   "scripts": {
     "build": "npm run build:jsx && npm run build:panel",
@@ -11,7 +11,8 @@
     "dev:panel": "webpack --watch",
     "dev:jsx": "webpack --config webpack.config.jsx.js --watch",
     "clean": "rimraf dist installer",
-    "package": "npm run build:jsx && npm run build:panel:prod && node scripts/build-installer.js"
+    "package": "npm run build:jsx && npm run build:panel:prod && node scripts/build-installer.js",
+    "release": "node scripts/release.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -52,3 +52,19 @@ name:`华为农历（农历闰六月初一）`
 <Image x="{x[5]}-{gapX[2]}*eq(#run,0)" y="{y[5]}" src="{path[5]}{acname[5]}.png" 	srcid="ifelse(eq(#lunarDay%10,0),10,#lunarDay%10)"/>
 ```
 
+name:`电量进度条mask`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" alpha="#kpal4" visibility="eq(#cur_bsid,1)">
+    <Mask src="{path[1]}{acname[1]}.png" x="{x[1]}-{-gapX[2]}+ifelse(eq(#battery_state,1)+eq(#battery_state,3),{-gapX[2]}*(#loop/2000%1),{-gapX[2]}*0.01*#battery_level)" y="{y[1]}" align="absolute" hybridMode="6"/>
+</Image>
+```
+
+name:`条形进度条mask`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" alpha="#kpal4" visibility="eq(#cur_bsid,1)">
+    <Mask src="{path[1]}{acname[1]}.png" x="{x[1]}-{-gapX[2]}+{-gapX[2]}*0.01*max(#jrsy_bfb,3)*ne(#jrsy_bfb,0)" y="{y[1]}" align="absolute" hybridMode="6"/>
+</Image>
+```
+

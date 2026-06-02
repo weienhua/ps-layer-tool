@@ -17,7 +17,12 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(powershell -Command \"Start-Process -FilePath '.\\\\com.layertool.panel-installer.exe' -Wait -NoNewWindow\")",
+      "Bash(gh run *)",
+      "Bash(gh release *)",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }
