@@ -835,9 +835,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         offsetLtH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
         offsetLtV = Math.round(Math.abs(numLayers[0].y - signLayer.y));
       }
-      // offsetGe: 符号层到第一个数字层的间距（用于 ge 条件）
+      // offsetGe: x 用符号层到第一个数字层的间距，y 与 offsetLt 保持一致
       var offsetGeH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
-      var offsetGeV = Math.round(Math.abs(numLayers[0].y - signLayer.y));
+      var offsetGeV = offsetLtV;
 
       var absVn = "abs(" + vn + ")";
 
