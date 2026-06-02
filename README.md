@@ -401,19 +401,20 @@ interface SelectedLayerInfo {
 
 ## 发布新版本
 
-使用 `npm version` 自动管理版本号：
+使用 `npm run release` 自动管理版本号：
 
 ```bash
-npm version patch   # 1.0.0 → 1.0.1（bug 修复）
-npm version minor   # 1.0.0 → 1.1.0（新功能）
-npm version major   # 1.0.0 → 2.0.0（破坏性变更）
-git push --tags     # 推送 tag，自动触发 GitHub Actions 构建并发布（Windows + macOS）
+npm run release patch   # 1.0.1 → 1.0.2（bug 修复）
+npm run release minor   # 1.0.1 → 1.1.0（新功能）
+npm run release major   # 1.0.1 → 2.0.0（破坏性变更）
+npm run release 1.2.3   # 直接指定版本号
 ```
 
-推送 tag 后，GitHub Actions 会自动：
-1. 构建项目
-2. 生成安装包（zip + exe）
-3. 创建 GitHub Release 并上传文件
+命令会自动：
+1. 更新 `package.json` 和使用文档中的版本号
+2. 构建项目并生成安装包（zip + exe）
+3. 提交代码并创建 git tag
+4. 推送到 GitHub，触发 Actions 自动发布
 
 ## 许可证
 
