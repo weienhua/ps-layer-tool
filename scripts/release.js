@@ -69,21 +69,21 @@ function parseVersionType(current, input) {
 
 /**
  * 更新 doc/使用文档.md 中的插件版本号
+ * 注意：zip 文件名由打包脚本自动从 package.json 读取，无需手动更新
  */
-function updateDocVersion(newVersion) {
+function updateDocVersion(oldVersion, newVersion) {
   log('更新 doc/使用文档.md 版本号...');
 
   let content = fs.readFileSync(DOC_FILE, 'utf-8');
-  const oldPattern = /\*\*插件版本\*\*: \d+\.\d+\.\d+/;
-  const newContent = content.replace(oldPattern, `**插件版本**: ${newVersion}`);
+  const updated = content.replace(/\*\*插件版本\*\*: \d+\.\d+\.\d+/, `**插件版本**: ${newVersion}`);
 
-  if (content === newContent) {
+  if (content === updated) {
     console.warn('[警告] 未找到版本号占位符，跳过文档更新');
     return false;
   }
 
-  fs.writeFileSync(DOC_FILE, newContent, 'utf-8');
-  log(`doc/使用文档.md 已更新: ${newVersion}`);
+  fs.writeFileSync(DOC_FILE, updated, 'utf-8');
+  log(`doc/使用文档.md 已更新: ${oldVersion} → ${newVersion}`);
   return true;
 }
 
@@ -107,7 +107,7 @@ function main() {
   console.log('');
 
   // 2. 更新 doc/使用文档.md
-  const docUpdated = updateDocVersion(newVersion);
+  const docUpdated = updateDocVersion(currentVersion, newVersion);
 
   // 3. 执行 npm version（更新 package.json + 创建 commit + 创建 tag）
   log(`执行 npm version ${newVersion}...`);
