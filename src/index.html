@@ -29,8 +29,12 @@
     <!-- 图层信息 Tab -->
     <div class="tab-content active" id="tabLayerInfo">
 
-    <div class="section card preset-form">
-      <div class="section-title">预设配置</div>
+    <div class="section card preset-form section-collapsible" data-section-key="tab1-preset-form">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">预设配置</div>
+      </div>
+      <div class="section-body">
       <div class="row">
         <label>预设名</label>
         <input type="text" id="presetName" placeholder="例如：UI导出模板">
@@ -102,19 +106,30 @@
         <button class="btn btn-primary" id="btnFetchLayers">获取选中图层信息</button>
         <button class="btn" id="btnSavePreset">保存预设</button>
       </div>
+      </div><!-- /section-body -->
     </div>
 
-    <div class="section card">
-      <div class="section-title">预设列表</div>
-      <div id="presetList" class="preset-list"></div>
-    </div>
-
-    <div class="section card">
-      <div class="section-title">输出结果</div>
-      <div class="row actions">
-        <button class="btn" id="btnCopyOutput">复制输出</button>
+    <div class="section card section-collapsible" data-section-key="tab1-preset-list">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">预设列表</div>
       </div>
-      <textarea id="outputText" rows="8" readonly></textarea>
+      <div class="section-body">
+        <div id="presetList" class="preset-list"></div>
+      </div>
+    </div>
+
+    <div class="section card section-collapsible" data-section-key="tab1-output">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">输出结果</div>
+      </div>
+      <div class="section-body">
+        <div class="row actions">
+          <button class="btn" id="btnCopyOutput">复制输出</button>
+        </div>
+        <textarea id="outputText" rows="8" readonly></textarea>
+      </div>
     </div>
 
     </div><!-- /tabLayerInfo -->
@@ -122,8 +137,12 @@
     <!-- 模板输出 Tab -->
     <div class="tab-content" id="tabTemplateOutput">
 
-    <div class="section card preset-form">
-      <div class="section-title">预设配置</div>
+    <div class="section card preset-form section-collapsible" data-section-key="tab2-preset-form">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">预设配置</div>
+      </div>
+      <div class="section-body">
       <div class="row">
         <label>预设名</label>
         <input type="text" id="tplOutPresetName" placeholder="例如：模板输出预设">
@@ -187,19 +206,30 @@
         <button class="btn btn-primary" id="tplOutBtnFetchLayers">获取选中图层信息</button>
         <button class="btn" id="tplOutBtnSavePreset">保存预设</button>
       </div>
+      </div><!-- /section-body -->
     </div>
 
-    <div class="section card">
-      <div class="section-title">预设列表</div>
-      <div id="tplOutPresetList" class="preset-list"></div>
-    </div>
-
-    <div class="section card">
-      <div class="section-title">输出结果</div>
-      <div class="row actions">
-        <button class="btn" id="tplOutBtnCopyOutput">复制输出</button>
+    <div class="section card section-collapsible" data-section-key="tab2-preset-list">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">预设列表</div>
       </div>
-      <textarea id="tplOutOutputText" rows="8" readonly></textarea>
+      <div class="section-body">
+        <div id="tplOutPresetList" class="preset-list"></div>
+      </div>
+    </div>
+
+    <div class="section card section-collapsible" data-section-key="tab2-output">
+      <div class="section-header">
+        <span class="section-toggle-icon">▼</span>
+        <div class="section-title">输出结果</div>
+      </div>
+      <div class="section-body">
+        <div class="row actions">
+          <button class="btn" id="tplOutBtnCopyOutput">复制输出</button>
+        </div>
+        <textarea id="tplOutOutputText" rows="8" readonly></textarea>
+      </div>
     </div>
 
     </div><!-- /tabTemplateOutput -->
@@ -207,61 +237,76 @@
     <!-- 图层处理 Tab -->
     <div class="tab-content" id="tabLayerExport">
       <!-- 导出设置 -->
-      <div class="section card">
-        <div class="section-title">导出设置</div>
-        <div class="row">
-          <label>导出路径</label>
-          <div class="export-path-row">
-            <input type="text" id="exportPath" placeholder="选择导出路径...">
-            <button class="btn btn-sm" id="btnBrowsePath">浏览</button>
+      <div class="section card section-collapsible" data-section-key="tab3-export-settings">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">导出设置</div>
+        </div>
+        <div class="section-body">
+          <div class="row">
+            <label>导出路径</label>
+            <div class="export-path-row">
+              <input type="text" id="exportPath" placeholder="选择导出路径...">
+              <button class="btn btn-sm" id="btnBrowsePath">浏览</button>
+            </div>
           </div>
-        </div>
-        <div class="row">
-          <label>导出格式</label>
-          <select id="exportFormat">
-            <option value="PNGFormat" selected>PNG</option>
-            <option value="JPEG">JPG</option>
-            <option value="bMPFormat">BMP</option>
-          </select>
-        </div>
-        <div class="row">
-          <label class="checkbox-label">
-            <input type="checkbox" id="cbExportHidden">
-            <span>导出不可见图层</span>
-          </label>
-        </div>
-        <div class="row">
-          <label class="checkbox-label">
-            <input type="checkbox" id="cbExportXML">
-            <span>导出图层信息 XML (manifest.xml)</span>
-          </label>
-        </div>
-        <div class="row">
-          <label class="checkbox-label">
-            <input type="checkbox" id="cbFolderHierarchy">
-            <span>保留文件夹层级</span>
-          </label>
+          <div class="row">
+            <label>导出格式</label>
+            <select id="exportFormat">
+              <option value="PNGFormat" selected>PNG</option>
+              <option value="JPEG">JPG</option>
+              <option value="bMPFormat">BMP</option>
+            </select>
+          </div>
+          <div class="row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cbExportHidden">
+              <span>导出不可见图层</span>
+            </label>
+          </div>
+          <div class="row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cbExportXML">
+              <span>导出图层信息 XML (manifest.xml)</span>
+            </label>
+          </div>
+          <div class="row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cbFolderHierarchy">
+              <span>保留文件夹层级</span>
+            </label>
+          </div>
         </div>
       </div>
 
       <!-- 导出操作 -->
-      <div class="section card">
-        <div class="section-title">导出操作</div>
-        <div class="export-actions">
-          <button class="btn btn-primary" id="btnExportSelected">导出选中图层</button>
-          <button class="btn" id="btnExportGroup">导出选中图层组</button>
-          <button class="btn" id="btnExportAll">导出全部图层</button>
+      <div class="section card section-collapsible" data-section-key="tab3-export-actions">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">导出操作</div>
         </div>
-        <div class="export-progress" id="exportProgress" style="display:none;">
-          <span class="progress-text" id="progressText">导出中...</span>
+        <div class="section-body">
+          <div class="export-actions">
+            <button class="btn btn-primary" id="btnExportSelected">导出选中图层</button>
+            <button class="btn" id="btnExportGroup">导出选中图层组</button>
+            <button class="btn" id="btnExportAll">导出全部图层</button>
+          </div>
+          <div class="export-progress" id="exportProgress" style="display:none;">
+            <span class="progress-text" id="progressText">导出中...</span>
+          </div>
         </div>
       </div>
 
       <!-- 导出结果 -->
-      <div class="section card">
-        <div class="section-title">导出结果</div>
-        <div id="exportResultList" class="export-result-list">
-          <div class="empty-state">尚未导出</div>
+      <div class="section card section-collapsible" data-section-key="tab3-export-result">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">导出结果</div>
+        </div>
+        <div class="section-body">
+          <div id="exportResultList" class="export-result-list">
+            <div class="empty-state">尚未导出</div>
+          </div>
         </div>
       </div>
     </div><!-- /tabLayerExport -->
@@ -269,8 +314,12 @@
     <!-- XML 模板 Tab -->
     <div class="tab-content" id="tabXmlTemplate">
       <!-- 变量名 -->
-      <div class="section card">
-        <div class="section-title">变量配置</div>
+      <div class="section card section-collapsible" data-section-key="tab4-var-config">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">变量配置</div>
+        </div>
+        <div class="section-body">
         <div class="row">
           <label>变量名</label>
           <input type="text" id="xmlVarName" placeholder="例如：#battery_level">
@@ -355,34 +404,38 @@
         <div class="row actions action-group">
           <button class="btn btn-primary" id="btnGenerateXML">生成 XML 并复制</button>
         </div>
+        </div><!-- /section-body -->
       </div>
 
       <!-- 常用变量 -->
-      <div class="section card">
-        <div class="hint-collapsible" data-hint-key="tab4-vars">
-          <div class="hint-header">
-            <span class="hint-toggle-icon">▼</span>
-            <span>常用变量</span>
-          </div>
-          <div class="hint-body">
-            <div class="xml-vars-panel" id="xmlVarsPanel">
-              <div class="xml-vars-list" id="xmlVarsList"></div>
-              <div class="xml-vars-actions">
-                <button class="btn btn-sm" id="btnAddXmlVar">+ 添加变量</button>
-                <button class="btn btn-sm" id="btnResetXmlVars">恢复默认</button>
-              </div>
+      <div class="section card section-collapsible" data-section-key="tab4-common-vars">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">常用变量</div>
+        </div>
+        <div class="section-body">
+          <div class="xml-vars-panel" id="xmlVarsPanel">
+            <div class="xml-vars-list" id="xmlVarsList"></div>
+            <div class="xml-vars-actions">
+              <button class="btn btn-sm" id="btnAddXmlVar">+ 添加变量</button>
+              <button class="btn btn-sm" id="btnResetXmlVars">恢复默认</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 输出结果 -->
-      <div class="section card">
-        <div class="section-title">输出结果</div>
-        <div class="row actions">
-          <button class="btn" id="btnCopyXML">复制输出</button>
+      <div class="section card section-collapsible" data-section-key="tab4-output">
+        <div class="section-header">
+          <span class="section-toggle-icon">▼</span>
+          <div class="section-title">输出结果</div>
         </div>
-        <textarea id="xmlOutput" rows="10" readonly></textarea>
+        <div class="section-body">
+          <div class="row actions">
+            <button class="btn" id="btnCopyXML">复制输出</button>
+          </div>
+          <textarea id="xmlOutput" rows="10" readonly></textarea>
+        </div>
       </div>
     </div><!-- /tabXmlTemplate -->
 

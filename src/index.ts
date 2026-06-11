@@ -403,6 +403,7 @@ class LayerToolUI {
       this.bindHintCopy(this.tplOutTemplateHint);
       this.setTplOutAnchor("topLeft");
       this.initHintCollapsible();
+      this.initSectionCollapsible();
       // 加载 Tab4 配置（变量列表 + rotation 设置）
       await this.loadXmlConfigAsync();
       this.xmlIncludeRotation.checked = this.getXmlIncludeRotation();
@@ -562,6 +563,37 @@ class LayerToolUI {
   }
 
   /**
+   * 恢复上次选择的tab
+   */
+  private restoreActiveTab(): void {
+    try {
+      const savedTab = localStorage.getItem("layerTool.activeTab.v1");
+      if (!savedTab) return;
+
+      const tabMap: Record<string, string> = {
+        layerInfo: "tabLayerInfo",
+        templateOutput: "tabTemplateOutput",
+        layerExport: "tabLayerExport",
+        xmlTemplate: "tabXmlTemplate"
+      };
+
+      if (!tabMap[savedTab]) return;
+
+      // 切换到保存的tab
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+      if (btn) btn.classList.add("active");
+
+      const content = document.getElementById(tabMap[savedTab]);
+      if (content) content.classList.add("active");
+    } catch (e) {
+      // 忽略错误
+    }
+  }
+
+  /**
    * 绑定 DOM 事件
    */
   private bindEvents(): void {
@@ -580,8 +612,13 @@ class LayerToolUI {
           xmlTemplate: "tabXmlTemplate"
         };
         document.getElementById(tabMap[tabId])?.classList.add("active");
+        // 保存当前tab选择到localStorage
+        localStorage.setItem("layerTool.activeTab.v1", tabId);
       });
     });
+
+    // 恢复上次选择的tab
+    this.restoreActiveTab();
 
     // 调试面板事件
     this.debugModeCheckbox.addEventListener("change", (e) => {
@@ -2943,6 +2980,60 @@ class LayerToolUI {
   private loadHintStates(): Record<string, boolean> {
     try {
       var raw = localStorage.getItem("layerTool.hintStates.v1");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * 初始化section折叠面板：绑定点击事件，恢复保存的折叠状态
+   */
+  private initSectionCollapsible(): void {
+    var collapsibles = document.querySelectorAll(".section-collapsible");
+    var states = this.loadSectionStates();
+
+    for (var i = 0; i < collapsibles.length; i++) {
+      var el = collapsibles[i] as HTMLElement;
+      var key = el.getAttribute("data-section-key") || "";
+      var header = el.querySelector(".section-header");
+      if (!header) continue;
+
+      // 恢复折叠状态（默认展开）
+      if (key && states[key] === false) {
+        el.classList.add("collapsed");
+      }
+
+      // 绑定点击事件
+      (function(self: LayerToolUI, element: HTMLElement, sectionKey: string) {
+        header!.addEventListener("click", function() {
+          element.classList.toggle("collapsed");
+          var isExpanded = !element.classList.contains("collapsed");
+          self.saveSectionState(sectionKey, isExpanded);
+        });
+      })(this, el, key);
+    }
+  }
+
+  /**
+   * 保存section折叠状态到localStorage
+   */
+  private saveSectionState(key: string, expanded: boolean): void {
+    try {
+      var states = this.loadSectionStates();
+      states[key] = expanded;
+      localStorage.setItem("layerTool.sectionStates.v1", JSON.stringify(states));
+    } catch (e) {
+      console.error("保存section状态失败:", e);
+    }
+  }
+
+  /**
+   * 从localStorage加载section折叠状态
+   */
+  private loadSectionStates(): Record<string, boolean> {
+    try {
+      var raw = localStorage.getItem("layerTool.sectionStates.v1");
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
