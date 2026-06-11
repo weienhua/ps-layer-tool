@@ -89,8 +89,21 @@ Promise<PSResult<T>>
 
 ## 代码规范
 
+- **上传github**：根据项目代码修改编写commit，不用包裹在@@中
 - **注释**：TS/JS 代码使用 JSDoc + 中文描述，函数、类、接口必须有注释
 - **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
+- **ExtendScript hasKey 缓存**：`hasKey()` 等方法在 `if-else if` 结构中多次调用时可能产生不可预期的行为。必须将结果缓存到变量后再进行条件判断，避免重复调用。示例：
+  ```typescript
+  // ✗ 错误写法
+  if (obj.hasKey(s2t("red"))) { ... }
+  else if (obj.hasKey(s2t("redFloat"))) { ... }
+
+  // ✓ 正确写法
+  var hasRed = obj.hasKey(s2t("red"));
+  var hasRedFloat = obj.hasKey(s2t("redFloat"));
+  if (hasRed && !hasRedFloat) { ... }
+  else if (!hasRed && hasRedFloat) { ... }
+  ```
 
 ## 宿主脚本约定（src/jsx/hostscript.ts）
 

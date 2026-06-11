@@ -150,21 +150,23 @@ function getNormalLayerInfo(layerDesc: any, s2t: (s: string) => number): any {
           var color = textStyle.getObjectValue(s2t("color"));
           var r: number, g: number, b: number;
           // 优先尝试整数格式 (red, grain, blue)
-          if (color.hasKey(s2t("red"))) {
+          var colorRed=color.hasKey(s2t("red"));
+          var colorRedFloat=color.hasKey(s2t("redFloat"));
+          if (colorRed && !colorRedFloat ) {
             r = roundValue(color.getDouble(s2t("red")));
             g = roundValue(color.getDouble(s2t("grain")));
             b = roundValue(color.getDouble(s2t("blue")));
             fontColor = rgbToHex(r, g, b);
           }
           // 回退到浮点格式 (redFloat, greenFloat, blueFloat)
-          else if (color.hasKey(s2t("redFloat"))) {
+          if (!colorRed && colorRedFloat ) {
             r = roundValue(color.getDouble(s2t("redFloat")) * 255);
             g = roundValue(color.getDouble(s2t("greenFloat")) * 255);
             b = roundValue(color.getDouble(s2t("blueFloat")) * 255);
             fontColor = rgbToHex(r, g, b);
           }
           // 无法识别的颜色格式，返回空
-          else {
+          if (!colorRed && !colorRedFloat ) {
             fontColor = "";
           }
         }
