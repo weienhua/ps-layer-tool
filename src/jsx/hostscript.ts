@@ -423,8 +423,11 @@ function getDocumentPath(): string {
 function ensureDirectory(dirPath: string): string {
   // log("ensureDirectory called", dirPath);
   try {
+    // @ts-ignore - ExtendScript Folder 构造函数
     var folder = new Folder(dirPath);
+    // @ts-ignore - ExtendScript Folder 属性
     if (!folder.exists) {
+      // @ts-ignore - ExtendScript Folder 方法
       folder.create();
     }
     return "__OK__";
@@ -441,8 +444,10 @@ function ensureDirectory(dirPath: string): string {
 function selectFolderDialog(): string {
   // log("selectFolderDialog called");
   try {
+    // @ts-ignore - ExtendScript Folder 静态方法
     var folder = Folder.selectDialog("选择导出文件夹");
     if (!folder) return "__CANCEL__";
+    // @ts-ignore - ExtendScript Folder 属性
     return JSON.stringify({ path: folder.fsName });
   } catch (e) {
     log("selectFolderDialog error", String(e));
@@ -686,7 +691,9 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
     var ext = getLayerExtension(format);
     var cleanName = layerName.replace(/\.[^.]+$/, "");
     var subDir = exportPath + "/" + groupPath;
+    // @ts-ignore - ExtendScript Folder 构造函数
     var folder = new Folder(subDir);
+    // @ts-ignore - ExtendScript Folder 属性和方法
     if (!folder.exists) folder.create();
     var fullPath = subDir + cleanName + ext;
     
@@ -975,10 +982,15 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
  */
 function readFile(filePath: string): string {
   try {
+    // @ts-ignore - ExtendScript File 构造函数
     var file = new File(filePath);
+    // @ts-ignore - ExtendScript File 属性
     if (!file.exists) return "__ERROR__:file not found";
+    // @ts-ignore - ExtendScript File 方法
     file.open("r");
+    // @ts-ignore - ExtendScript File 方法
     var content = file.read();
+    // @ts-ignore - ExtendScript File 方法
     file.close();
     return content;
   } catch (e) {
@@ -994,9 +1006,13 @@ function readFile(filePath: string): string {
  */
 function writeFile(filePath: string, content: string): string {
   try {
+    // @ts-ignore - ExtendScript File 构造函数
     var file = new File(filePath);
+    // @ts-ignore - ExtendScript File 方法
     file.open("w");
+    // @ts-ignore - ExtendScript File 方法
     file.write(content);
+    // @ts-ignore - ExtendScript File 方法
     file.close();
     return "__OK__";
   } catch (e) {
@@ -1012,12 +1028,17 @@ function writeFile(filePath: string, content: string): string {
  */
 function listFiles(dirPath: string, filter: string): string {
   try {
+    // @ts-ignore - ExtendScript Folder 构造函数
     var dir = new Folder(dirPath);
+    // @ts-ignore - ExtendScript Folder 属性
     if (!dir.exists) return "[]";
+    // @ts-ignore - ExtendScript Folder 方法
     var files = dir.getFiles(filter || "*");
     var result: string[] = [];
     for (var i = 0; i < files.length; i++) {
+      // @ts-ignore - ExtendScript File 类型检查
       if (files[i] instanceof File) {
+        // @ts-ignore - ExtendScript File 属性
         result.push(files[i].name);
       }
     }

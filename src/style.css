@@ -1199,3 +1199,128 @@ input:checked + .slider:before {
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* Modal 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modalFadeIn 0.15s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 320px;
+  max-width: 90%;
+  box-shadow: var(--shadow);
+  animation: modalSlideIn 0.15s ease;
+}
+
+.modal-title {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-body {
+  padding: 16px;
+}
+
+.modal-body > * + * {
+  margin-top: 12px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.modal-label .required {
+  color: var(--error);
+}
+
+.modal-input {
+  height: 32px;
+  padding: 0 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.modal-input:focus {
+  border-color: var(--primary);
+  background: var(--bg-input-focus);
+}
+
+.modal-input::placeholder {
+  color: var(--text-muted);
+}
+
+.modal-error {
+  display: none;
+  font-size: 10px;
+  color: var(--error);
+  margin-top: 4px;
+}
+
+.modal-field.error .modal-input {
+  border-color: var(--error);
+}
+
+.modal-field.error .modal-error {
+  display: block;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.modal-actions > * + * {
+  margin-left: 8px;
+}
+
+/* 小尺寸弹窗 */
+.modal-card-sm {
+  width: 280px;
+}
+
+/* 确认消息文本 */
+.modal-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}

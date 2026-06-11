@@ -322,6 +322,22 @@ class LayerToolUI {
   private xmlVarsList = document.getElementById("xmlVarsList") as HTMLDivElement;
   private btnAddXmlVar = document.getElementById("btnAddXmlVar") as HTMLButtonElement;
   private btnResetXmlVars = document.getElementById("btnResetXmlVars") as HTMLButtonElement;
+
+  // 添加变量弹窗元素
+  private addVarModal = document.getElementById("addVarModal") as HTMLDivElement;
+  private modalVarName = document.getElementById("modalVarName") as HTMLInputElement;
+  private modalVarDesc = document.getElementById("modalVarDesc") as HTMLInputElement;
+  private modalVarNameError = document.getElementById("modalVarNameError") as HTMLDivElement;
+  private btnModalCancel = document.getElementById("btnModalCancel") as HTMLButtonElement;
+  private btnModalConfirm = document.getElementById("btnModalConfirm") as HTMLButtonElement;
+
+  // 确认弹窗元素
+  private confirmModal = document.getElementById("confirmModal") as HTMLDivElement;
+  private confirmModalTitle = document.getElementById("confirmModalTitle") as HTMLDivElement;
+  private confirmModalMessage = document.getElementById("confirmModalMessage") as HTMLDivElement;
+  private btnConfirmCancel = document.getElementById("btnConfirmCancel") as HTMLButtonElement;
+  private btnConfirmOk = document.getElementById("btnConfirmOk") as HTMLButtonElement;
+  private confirmResolve: ((value: boolean) => void) | null = null;
   private xmlDatatypeGroup = document.getElementById("xmlDatatypeGroup") as HTMLDivElement;
   private xmlAnchorGridSelector = document.getElementById("xmlAnchorGridSelector") as HTMLDivElement;
   private xmlAnchorSelect = document.getElementById("xmlAnchorSelect") as HTMLSelectElement;
@@ -784,15 +800,63 @@ class LayerToolUI {
   private initXmlVarsPanel(): void {
     this.renderXmlVarsList();
 
+    // 绑定添加变量按钮 - 打开 Modal
     this.btnAddXmlVar.addEventListener("click", () => {
-      var name = prompt("请输入变量名（如 #myVar）：");
-      if (!name) return;
-      var desc = prompt("请输入变量说明：") || "";
-      void this.addXmlVar({ name: name, desc: desc, builtin: false });
+      this.showAddVarModal();
     });
 
-    this.btnResetXmlVars.addEventListener("click", () => {
-      if (confirm("确定要恢复默认变量列表吗？自定义变量将被保留。")) {
+    // 绑定 Modal 按钮事件
+    this.btnModalCancel.addEventListener("click", () => {
+      this.hideAddVarModal();
+    });
+
+    this.btnModalConfirm.addEventListener("click", () => {
+      this.handleModalConfirm();
+    });
+
+    // 点击遮罩层关闭 Modal
+    this.addVarModal.addEventListener("click", (e) => {
+      if (e.target === this.addVarModal) {
+        this.hideAddVarModal();
+      }
+    });
+
+    // 输入时清除错误状态
+    this.modalVarName.addEventListener("input", () => {
+      var field = this.modalVarName.parentElement as HTMLElement;
+      field.classList.remove("error");
+    });
+
+    // 绑定确认弹窗按钮事件
+    this.btnConfirmCancel.addEventListener("click", () => {
+      this.hideConfirmModal(false);
+    });
+
+    this.btnConfirmOk.addEventListener("click", () => {
+      this.hideConfirmModal(true);
+    });
+
+    // 点击遮罩层关闭确认弹窗
+    this.confirmModal.addEventListener("click", (e) => {
+      if (e.target === this.confirmModal) {
+        this.hideConfirmModal(false);
+      }
+    });
+
+    // ESC 键关闭弹窗（优先关闭确认弹窗，再关闭添加变量弹窗）
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (this.confirmModal.style.display !== "none") {
+          this.hideConfirmModal(false);
+        } else if (this.addVarModal.style.display !== "none") {
+          this.hideAddVarModal();
+        }
+      }
+    });
+
+    this.btnResetXmlVars.addEventListener("click", async () => {
+      var confirmed = await this.showConfirmModal("恢复默认变量", "确定要恢复默认变量列表吗？自定义变量将被保留。");
+      if (confirmed) {
         void this.resetXmlVars();
       }
     });
@@ -801,6 +865,73 @@ class LayerToolUI {
     this.xmlIncludeRotation.addEventListener("change", () => {
       void this.saveXmlIncludeRotation(this.xmlIncludeRotation.checked);
     });
+  }
+
+  /**
+   * 显示确认弹窗
+   * @param title 标题
+   * @param message 消息内容
+   * @returns Promise<boolean> 用户是否确认
+   */
+  private showConfirmModal(title: string, message: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.confirmResolve = resolve;
+      this.confirmModalTitle.textContent = title;
+      this.confirmModalMessage.textContent = message;
+      this.confirmModal.style.display = "flex";
+      this.btnConfirmOk.focus();
+    });
+  }
+
+  /**
+   * 隐藏确认弹窗
+   * @param result 用户选择结果
+   */
+  private hideConfirmModal(result: boolean): void {
+    this.confirmModal.style.display = "none";
+    if (this.confirmResolve) {
+      this.confirmResolve(result);
+      this.confirmResolve = null;
+    }
+  }
+
+  /**
+   * 显示添加变量弹窗
+   */
+  private showAddVarModal(): void {
+    this.modalVarName.value = "";
+    this.modalVarDesc.value = "";
+    var field = this.modalVarName.parentElement as HTMLElement;
+    field.classList.remove("error");
+    this.addVarModal.style.display = "flex";
+    this.modalVarName.focus();
+  }
+
+  /**
+   * 隐藏添加变量弹窗
+   */
+  private hideAddVarModal(): void {
+    this.addVarModal.style.display = "none";
+  }
+
+  /**
+   * 处理 Modal 确认按钮点击
+   */
+  private handleModalConfirm(): void {
+    var name = this.modalVarName.value.trim();
+    var desc = this.modalVarDesc.value.trim();
+
+    // 验证变量名
+    if (!name) {
+      var field = this.modalVarName.parentElement as HTMLElement;
+      field.classList.add("error");
+      this.modalVarName.focus();
+      return;
+    }
+
+    // 关闭弹窗并添加变量
+    this.hideAddVarModal();
+    void this.addXmlVar({ name: name, desc: desc, builtin: false });
   }
 
   /**

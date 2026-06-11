@@ -405,6 +405,42 @@
       <div class="debug-logs" id="debugLogs"></div>
     </div>
 
+    <!-- 添加变量弹窗 -->
+    <div class="modal-overlay" id="addVarModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-title">添加自定义变量</div>
+        <div class="modal-body">
+          <div class="modal-field">
+            <label class="modal-label" for="modalVarName">变量名 <span class="required">*</span></label>
+            <input type="text" id="modalVarName" class="modal-input" placeholder="例如：#myVar" autocomplete="off">
+            <div class="modal-error" id="modalVarNameError">变量名不能为空</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label" for="modalVarDesc">描述说明</label>
+            <input type="text" id="modalVarDesc" class="modal-input" placeholder="可选，用于说明变量用途" autocomplete="off">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="btnModalCancel">取消</button>
+          <button class="btn btn-primary" id="btnModalConfirm">确认添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="modal-overlay" id="confirmModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-title" id="confirmModalTitle">确认操作</div>
+        <div class="modal-body">
+          <div class="modal-message" id="confirmModalMessage">确定要执行此操作吗？</div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="btnConfirmCancel">取消</button>
+          <button class="btn btn-primary" id="btnConfirmOk">确认</button>
+        </div>
+      </div>
+    </div>
+
     <script src="lib/CSInterface.js"></script>
     <script src="bundle.js"></script>
   </div>
