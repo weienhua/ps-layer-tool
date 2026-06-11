@@ -5,13 +5,27 @@ declare const __DEBUG__: boolean;
 
 /**
  * 数学表达式求值器（递归下降解析器）
- * 支持：四则运算、括号、一元负号、变量引用
+ * 支持：四则运算、括号、一元负号、变量引用、函数调用（可嵌套）
  * 变量必须在 numericScope 中存在且为 number 类型
  */
 class MathExpr {
   private pos: number;
   private expr: string;
   private scope: Record<string, number>;
+
+  /** 内置函数表 */
+  private static readonly FUNCTIONS: Record<string, (...args: number[]) => number> = {
+    round: (x: number, n?: number) => n != null ? Math.round(x * Math.pow(10, n)) / Math.pow(10, n) : Math.round(x),
+    ceil: (x: number) => Math.ceil(x),
+    floor: (x: number) => Math.floor(x),
+    int: (x: number) => Math.floor(x),
+    abs: (x: number) => Math.abs(x),
+    min: (a: number, b: number) => Math.min(a, b),
+    max: (a: number, b: number) => Math.max(a, b),
+    rand: () => Math.random(),
+    pow: (x: number, y: number) => Math.pow(x, y),
+    sqrt: (x: number) => x < 0 ? 0 : Math.sqrt(x),
+  };
 
   private constructor(expr: string, scope: Record<string, number>) {
     this.pos = 0;
@@ -92,7 +106,7 @@ class MathExpr {
     return this.parsePrimary();
   }
 
-  /** 解析基本元素：数字 | 变量 | '(' expression ')' */
+  /** 解析基本元素：数字 | 函数调用 | 变量 | '(' expression ')' */
   private parsePrimary(): number {
     this.skipSpaces();
     if (this.pos >= this.expr.length) throw new Error("unexpected end");
@@ -116,12 +130,64 @@ class MathExpr {
       return this.parseNumber();
     }
 
-    // 变量
+    // 标识符（函数调用或变量）
     if ((ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_") {
-      return this.parseVariable();
+      return this.parseIdentifierOrFunction();
     }
 
     throw new Error("unexpected char: " + ch);
+  }
+
+  /**
+   * 解析标识符：函数调用或变量引用
+   * 函数调用：name(args)  参数可以是任意表达式，支持嵌套
+   * 变量引用：name
+   */
+  private parseIdentifierOrFunction(): number {
+    var start = this.pos;
+    while (this.pos < this.expr.length &&
+      ((this.expr[this.pos] >= "a" && this.expr[this.pos] <= "z") ||
+       (this.expr[this.pos] >= "A" && this.expr[this.pos] <= "Z") ||
+       (this.expr[this.pos] >= "0" && this.expr[this.pos] <= "9") ||
+       this.expr[this.pos] === "_")) {
+      this.pos++;
+    }
+    var name = this.expr.substring(start, this.pos);
+
+    this.skipSpaces();
+
+    // 检查是否是函数调用：name(...)
+    if (this.pos < this.expr.length && this.expr[this.pos] === "(") {
+      this.pos++; // 跳过 '('
+      var args: number[] = [];
+
+      // 解析参数列表
+      this.skipSpaces();
+      if (this.pos < this.expr.length && this.expr[this.pos] !== ")") {
+        args.push(this.parseExpression());
+        while (this.pos < this.expr.length && this.expr[this.pos] === ",") {
+          this.pos++; // 跳过 ','
+          args.push(this.parseExpression());
+        }
+      }
+
+      this.skipSpaces();
+      if (this.pos >= this.expr.length || this.expr[this.pos] !== ")") {
+        throw new Error("missing ')' after function args");
+      }
+      this.pos++; // 跳过 ')'
+
+      // 查找并执行函数
+      var fn = MathExpr.FUNCTIONS[name];
+      if (!fn) throw new Error("unknown function: " + name);
+      return fn.apply(null, args);
+    }
+
+    // 不是函数调用，走变量解析
+    if (!(name in this.scope)) throw new Error("unknown variable: " + name);
+    var val = this.scope[name];
+    if (typeof val !== "number") throw new Error("non-numeric variable: " + name);
+    return val;
   }
 
   /** 解析数字字面量 */
@@ -133,23 +199,6 @@ class MathExpr {
     }
     if (this.pos === start) throw new Error("expected number");
     return parseFloat(this.expr.substring(start, this.pos));
-  }
-
-  /** 解析变量名并查找值 */
-  private parseVariable(): number {
-    var start = this.pos;
-    while (this.pos < this.expr.length &&
-      ((this.expr[this.pos] >= "a" && this.expr[this.pos] <= "z") ||
-       (this.expr[this.pos] >= "A" && this.expr[this.pos] <= "Z") ||
-       (this.expr[this.pos] >= "0" && this.expr[this.pos] <= "9") ||
-       this.expr[this.pos] === "_")) {
-      this.pos++;
-    }
-    var name = this.expr.substring(start, this.pos);
-    if (!(name in this.scope)) throw new Error("unknown variable: " + name);
-    var val = this.scope[name];
-    if (typeof val !== "number") throw new Error("non-numeric variable: " + name);
-    return val;
   }
 }
 
@@ -194,12 +243,30 @@ interface TemplateOutputPresetConfig {
 }
 
 /**
+ * XML 变量接口
+ */
+interface XmlVariable {
+  name: string;
+  desc: string;
+  builtin: boolean;
+}
+
+/**
+ * Tab4 XML 模板配置接口
+ */
+interface XmlTemplateConfig {
+  vars: XmlVariable[];
+  includeRotation: boolean;
+}
+
+/**
  * LayerToolUI - 图层工具面板主类
  * 管理面板 UI 交互、预设配置、图层信息获取等功能
  */
 class LayerToolUI {
   private static readonly PRESET_STORAGE_KEY = "layerTool.presets.v1";
-  
+  private static readonly XML_CONFIG_STORAGE_KEY = "layerTool.xmlConfig.v1";
+
   /**
    * 模板预设列表 - 从 presets.txt 动态加载
    */
@@ -252,12 +319,16 @@ class LayerToolUI {
 
   // XML 模板 Tab 元素
   private xmlVarName = document.getElementById("xmlVarName") as HTMLInputElement;
+  private xmlVarsList = document.getElementById("xmlVarsList") as HTMLDivElement;
+  private btnAddXmlVar = document.getElementById("btnAddXmlVar") as HTMLButtonElement;
+  private btnResetXmlVars = document.getElementById("btnResetXmlVars") as HTMLButtonElement;
   private xmlDatatypeGroup = document.getElementById("xmlDatatypeGroup") as HTMLDivElement;
   private xmlAnchorGridSelector = document.getElementById("xmlAnchorGridSelector") as HTMLDivElement;
   private xmlAnchorSelect = document.getElementById("xmlAnchorSelect") as HTMLSelectElement;
   private xmlPositionAnchorGrid = document.getElementById("xmlPositionAnchorGrid") as HTMLDivElement;
   private xmlPositionAnchorSelect = document.getElementById("xmlPositionAnchorSelect") as HTMLSelectElement;
   private xmlSortSelect = document.getElementById("xmlSortSelect") as HTMLSelectElement;
+  private xmlIncludeRotation = document.getElementById("xmlIncludeRotation") as HTMLInputElement;
   private btnGenerateXML = document.getElementById("btnGenerateXML") as HTMLButtonElement;
   private btnCopyXML = document.getElementById("btnCopyXML") as HTMLButtonElement;
   private xmlOutput = document.getElementById("xmlOutput") as HTMLTextAreaElement;
@@ -299,9 +370,9 @@ class LayerToolUI {
     Promise.all([
       this.loadTemplatePresets(),
       this.loadTemplateOutputOptions()
-    ]).then(() => {
+    ]).then(async () => {
       this.initDefaultForm();
-      this.loadPresets();
+      await this.loadPresetsAsync();
       this.bindEvents();
       this.bindPresetListDelegation();
       this.initDebugPanel();
@@ -310,11 +381,16 @@ class LayerToolUI {
       this.renderPresetList();
       this.renderTemplateHint();
       this.bindHintCopy(this.templateHint);
-      this.loadTemplateOutputPresets();
+      await this.loadTemplateOutputPresetsAsync();
       this.renderTemplateOutputPresetList();
       this.renderTemplateOutputHint();
       this.bindHintCopy(this.tplOutTemplateHint);
       this.setTplOutAnchor("topLeft");
+      this.initHintCollapsible();
+      // 加载 Tab4 配置（变量列表 + rotation 设置）
+      await this.loadXmlConfigAsync();
+      this.xmlIncludeRotation.checked = this.getXmlIncludeRotation();
+      this.renderXmlVarsList();
     });
   }
 
@@ -629,6 +705,9 @@ class LayerToolUI {
       void this.handleCopyXML();
     });
 
+    // XML 变量面板事件
+    this.initXmlVarsPanel();
+
     // 模板输出 Tab 事件
     this.tplOutBtnFetchLayers.addEventListener("click", () => {
       void this.processTemplateOutput();
@@ -697,6 +776,301 @@ class LayerToolUI {
     document.addEventListener("click", () => {
       this.tplOutTemplateSelect.classList.remove("open");
     });
+  }
+
+  /**
+   * 初始化 XML 变量面板
+   */
+  private initXmlVarsPanel(): void {
+    this.renderXmlVarsList();
+
+    this.btnAddXmlVar.addEventListener("click", () => {
+      var name = prompt("请输入变量名（如 #myVar）：");
+      if (!name) return;
+      var desc = prompt("请输入变量说明：") || "";
+      void this.addXmlVar({ name: name, desc: desc, builtin: false });
+    });
+
+    this.btnResetXmlVars.addEventListener("click", () => {
+      if (confirm("确定要恢复默认变量列表吗？自定义变量将被保留。")) {
+        void this.resetXmlVars();
+      }
+    });
+
+    // rotation 输出设置变化时保存
+    this.xmlIncludeRotation.addEventListener("change", () => {
+      void this.saveXmlIncludeRotation(this.xmlIncludeRotation.checked);
+    });
+  }
+
+  /**
+   * XML 变量接口
+   */
+  private static readonly DEFAULT_XML_VARS: XmlVariable[] = [
+    { name: "#battery_level", desc: "电量", builtin: true },
+    { name: "#weatherTemp", desc: "当前温度", builtin: true },
+    { name: "#dayTempgao2", desc: "最高温度", builtin: true },
+    { name: "#nightTempdi2", desc: "最低温度", builtin: true },
+    { name: "#dayTempgao2Yes", desc: "昨天最高温度", builtin: true },
+    { name: "#nightTempdi2Yes", desc: "昨天最低温度", builtin: true },
+    { name: "#dayTempgao2Tom", desc: "明天最高温度", builtin: true },
+    { name: "#nightTempdi2Tom", desc: "明天最低温度", builtin: true },
+    { name: "#humidityNum", desc: "湿度", builtin: true },
+    { name: "#steps_value", desc: "步数", builtin: true },
+    { name: "#jinnianDay", desc: "今年剩余天数", builtin: true },
+    { name: "#benyueDay", desc: "本月剩余天数", builtin: true },
+    { name: "#jinriHour", desc: "今日剩余小时数", builtin: true },
+    { name: "#jinriMinute", desc: "当前小时剩余分钟数", builtin: true },
+    { name: "#jinriSecond", desc: "当前分钟剩余秒数", builtin: true },
+    { name: "#benzhouDay", desc: "本周剩余天数", builtin: true }
+  ];
+
+  /**
+   * Tab4 XML 模板配置（内存缓存）
+   */
+  private xmlConfig: XmlTemplateConfig = {
+    vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
+    includeRotation: true
+  };
+
+  /**
+   * 获取 CEP 扩展目录路径（面板侧）
+   * @returns 扩展目录路径，失败返回空字符串
+   */
+  private getExtensionPathSync(): string {
+    try {
+      var cs = new (window as any).CSInterface();
+      return cs.getSystemPath("extension") || "";
+    } catch (e) {
+      console.error("获取扩展路径失败:", e);
+      return "";
+    }
+  }
+
+  /**
+   * 从本地文件或 localStorage 加载 Tab4 配置
+   * 优先级：本地文件 > localStorage > 默认配置
+   */
+  private async loadXmlConfigAsync(): Promise<void> {
+    try {
+      // 1. 尝试从本地文件读取
+      const extPath = this.getExtensionPathSync();
+      if (extPath) {
+        const presetsDir = extPath + "/dist/lib/presets/tab4";
+        const filePath = presetsDir + "/default.json";
+
+        // 确保目录存在
+        await psBridge.ensureDirectory(presetsDir);
+
+        const fileResult = await psBridge.readFile(filePath);
+        if (fileResult.success && fileResult.data) {
+          const parsed = JSON.parse(fileResult.data) as XmlTemplateConfig;
+          if (parsed && Array.isArray(parsed.vars)) {
+            this.xmlConfig = parsed;
+            // 同步到 localStorage 作为备份
+            this.persistXmlConfigToLocalStorage();
+            return;
+          }
+        }
+
+        // 2. 本地文件不存在，检查 localStorage 是否有数据
+        var localRaw = localStorage.getItem(LayerToolUI.XML_CONFIG_STORAGE_KEY);
+        if (localRaw) {
+          const parsed = JSON.parse(localRaw) as XmlTemplateConfig;
+          if (parsed && Array.isArray(parsed.vars)) {
+            this.xmlConfig = parsed;
+            // 迁移到本地文件
+            await this.persistXmlConfigToFile();
+            console.log("已将 Tab4 localStorage 配置迁移到本地文件");
+            return;
+          }
+        }
+
+        // 3. 检查旧格式 localStorage（兼容迁移）
+        var oldVarsRaw = localStorage.getItem("layerTool.xmlVars.v1");
+        var oldRotationRaw = localStorage.getItem("layerTool.xmlIncludeRotation.v1");
+        if (oldVarsRaw || oldRotationRaw) {
+          this.xmlConfig = {
+            vars: oldVarsRaw ? JSON.parse(oldVarsRaw) : LayerToolUI.DEFAULT_XML_VARS.slice(),
+            includeRotation: oldRotationRaw === null || oldRotationRaw === undefined ? true : oldRotationRaw === "true"
+          };
+          await this.persistXmlConfigToFile();
+          // 清理旧格式
+          localStorage.removeItem("layerTool.xmlVars.v1");
+          localStorage.removeItem("layerTool.xmlIncludeRotation.v1");
+          console.log("已将旧格式 Tab4 配置迁移到新格式");
+          return;
+        }
+
+        // 4. 使用默认配置，保存到文件
+        this.xmlConfig = {
+          vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
+          includeRotation: true
+        };
+        await this.persistXmlConfigToFile();
+        return;
+      }
+    } catch (e) {
+      console.error("从本地文件加载 Tab4 配置失败:", e);
+    }
+
+    // 回退：使用默认配置
+    this.xmlConfig = {
+      vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
+      includeRotation: true
+    };
+  }
+
+  /**
+   * 保存 Tab4 配置到 localStorage
+   */
+  private persistXmlConfigToLocalStorage(): void {
+    try {
+      localStorage.setItem(LayerToolUI.XML_CONFIG_STORAGE_KEY, JSON.stringify(this.xmlConfig));
+    } catch (e) {
+      // 忽略
+    }
+  }
+
+  /**
+   * 保存 Tab4 配置到本地文件
+   */
+  private async persistXmlConfigToFile(): Promise<void> {
+    try {
+      const extPath = this.getExtensionPathSync();
+      if (!extPath) return;
+
+      const presetsDir = extPath + "/dist/lib/presets/tab4";
+      const filePath = presetsDir + "/default.json";
+
+      // 确保目录存在
+      await psBridge.ensureDirectory(presetsDir);
+
+      // 写入文件
+      const content = JSON.stringify(this.xmlConfig, null, 2);
+      await psBridge.writeFile(filePath, content);
+
+      // 同步到 localStorage
+      this.persistXmlConfigToLocalStorage();
+    } catch (e) {
+      console.error("保存 Tab4 配置到本地文件失败:", e);
+    }
+  }
+
+  /**
+   * 持久化保存 Tab4 配置（文件 + localStorage）
+   */
+  private async persistXmlConfig(): Promise<void> {
+    await this.persistXmlConfigToFile();
+  }
+
+  /**
+   * 获取 XML 变量列表
+   */
+  private getXmlVars(): XmlVariable[] {
+    return this.xmlConfig.vars;
+  }
+
+  /**
+   * 保存 XML 变量列表
+   */
+  private async saveXmlVars(vars: XmlVariable[]): Promise<void> {
+    this.xmlConfig.vars = vars;
+    await this.persistXmlConfig();
+  }
+
+  /**
+   * 获取 rotation 输出设置
+   */
+  private getXmlIncludeRotation(): boolean {
+    return this.xmlConfig.includeRotation;
+  }
+
+  /**
+   * 保存 rotation 输出设置
+   */
+  private async saveXmlIncludeRotation(include: boolean): Promise<void> {
+    this.xmlConfig.includeRotation = include;
+    await this.persistXmlConfig();
+  }
+
+  /**
+   * 渲染 XML 变量列表
+   */
+  private renderXmlVarsList(): void {
+    var vars = this.getXmlVars();
+    this.xmlVarsList.innerHTML = "";
+    for (var i = 0; i < vars.length; i++) {
+      (function(self: LayerToolUI, v: XmlVariable) {
+        var item = document.createElement("div");
+        item.className = "xml-var-item";
+        item.innerHTML = '<span class="var-name">' + self.escapeHtml(v.name) + '</span>' +
+          (v.desc ? '<span class="var-desc">' + self.escapeHtml(v.desc) + '</span>' : '') +
+          '<span class="var-delete" title="删除">×</span>';
+
+        item.addEventListener("click", function(e) {
+          if ((e.target as HTMLElement).classList.contains("var-delete")) {
+            self.deleteXmlVar(v.name);
+            return;
+          }
+          self.xmlVarName.value = v.name;
+          self.showToast("已选择变量 " + v.name);
+        });
+
+        self.xmlVarsList.appendChild(item);
+      })(this, vars[i]);
+    }
+  }
+
+  /**
+   * 添加 XML 变量
+   */
+  private async addXmlVar(v: XmlVariable): Promise<void> {
+    var vars = this.getXmlVars();
+    // 检查是否已存在
+    for (var i = 0; i < vars.length; i++) {
+      if (vars[i].name === v.name) {
+        this.showToast("变量已存在", true);
+        return;
+      }
+    }
+    vars.push(v);
+    await this.saveXmlVars(vars);
+    this.renderXmlVarsList();
+    this.showToast("已添加变量 " + v.name);
+  }
+
+  /**
+   * 删除 XML 变量
+   */
+  private async deleteXmlVar(name: string): Promise<void> {
+    var vars = this.getXmlVars();
+    var filtered: XmlVariable[] = [];
+    for (var i = 0; i < vars.length; i++) {
+      if (vars[i].name !== name) {
+        filtered.push(vars[i]);
+      }
+    }
+    await this.saveXmlVars(filtered);
+    this.renderXmlVarsList();
+    this.showToast("已删除变量 " + name);
+  }
+
+  /**
+   * 重置 XML 变量为默认值（保留自定义变量）
+   */
+  private async resetXmlVars(): Promise<void> {
+    var vars = this.getXmlVars();
+    var customVars: XmlVariable[] = [];
+    for (var i = 0; i < vars.length; i++) {
+      if (!vars[i].builtin) {
+        customVars.push(vars[i]);
+      }
+    }
+    var defaultVars = LayerToolUI.DEFAULT_XML_VARS.slice();
+    await this.saveXmlVars(defaultVars.concat(customVars));
+    this.renderXmlVarsList();
+    this.showToast("已恢复默认变量");
   }
 
   /**
@@ -997,10 +1371,25 @@ class LayerToolUI {
       `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
     ).join("");
     html += '<div class="hint-rules">'
-      + '表达式规则：仅数字字段可用（i, x, y, width, height, rotation, centerX, centerY, fontSize），'
+      + '<strong>表达式规则：</strong>仅数字字段可用（i, x, y, width, height, rotation, centerX, centerY, fontSize），'
       + '支持 <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> 和括号。'
       + ' 示例：<code>{i+1}</code> <code>{width*2}</code> <code>{(i+1)*100}</code>。'
       + '字符串字段（name, path 等）不可参与计算。'
+      + '</div>';
+    html += '<div class="hint-rules">'
+      + '<strong>支持的函数：</strong>'
+      + '<code>round(x)</code> 四舍五入 · '
+      + '<code>round(x,n)</code> 保留n位小数 · '
+      + '<code>ceil(x)</code> 向上取整 · '
+      + '<code>floor(x)</code> 向下取整 · '
+      + '<code>int(x)</code> 取整数部分 · '
+      + '<code>abs(x)</code> 绝对值 · '
+      + '<code>min(a,b)</code> 最小值 · '
+      + '<code>max(a,b)</code> 最大值 · '
+      + '<code>rand()</code> 随机数(0-1) · '
+      + '<code>pow(x,y)</code> x的y次方 · '
+      + '<code>sqrt(x)</code> 平方根'
+      + '<br>示例：<code>{round(width/2)}</code> <code>{int(rand()*10)}</code> <code>{max(x,y)}</code>'
       + '</div>';
     this.templateHint.innerHTML = html;
   }
@@ -1008,7 +1397,7 @@ class LayerToolUI {
   /**
    * 保存预设配置
    */
-  private savePreset(): void {
+  private async savePreset(): Promise<void> {
     const config = this.getCurrentFormConfig();
     if (!config.name) {
       this.setStatus("请先输入预设名称", true);
@@ -1024,7 +1413,7 @@ class LayerToolUI {
     } else {
       this.presets.push(preset);
     }
-    this.persistPresets();
+    await this.persistPresets();
     this.renderPresetList();
     this.setStatus(`预设已保存：${config.name}`);
   }
@@ -1060,30 +1449,76 @@ class LayerToolUI {
    * 删除预设配置
    * @param presetId 预设 ID
    */
-  private deletePreset(presetId: string): void {
+  private async deletePreset(presetId: string): Promise<void> {
     this.presets = this.presets.filter((p) => p.id !== presetId);
-    this.persistPresets();
+    await this.persistPresets();
     this.renderPresetList();
     this.setStatus("预设已删除");
   }
 
   /**
-   * 从 localStorage 加载预设配置
+   * 从本地文件或 localStorage 加载预设配置
+   * 优先级：本地文件 > localStorage > 默认预设
+   * 首次启动时自动迁移 localStorage 数据到本地文件
    */
-  private loadPresets(): void {
+  private async loadPresetsAsync(): Promise<void> {
+    try {
+      // 1. 尝试从本地文件读取
+      const extPath = this.getExtensionPathSync();
+      if (extPath) {
+        const presetsDir = extPath + "/dist/lib/presets/tab1";
+        const filePath = presetsDir + "/default.json";
+
+        // 确保目录存在
+        await psBridge.ensureDirectory(presetsDir);
+
+        const fileResult = await psBridge.readFile(filePath);
+        if (fileResult.success && fileResult.data) {
+          // 本地文件存在，使用文件数据
+          const parsed = JSON.parse(fileResult.data) as PresetConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.presets = parsed;
+            // 同步到 localStorage 作为备份
+            this.persistToLocalStorage();
+            return;
+          }
+        }
+
+        // 2. 本地文件不存在，检查 localStorage 是否有数据（用户之前的使用数据）
+        const localData = localStorage.getItem(LayerToolUI.PRESET_STORAGE_KEY);
+        if (localData) {
+          const parsed = JSON.parse(localData) as PresetConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // 迁移到本地文件
+            this.presets = parsed;
+            await this.persistToFile();
+            console.log("已将 localStorage 预设数据迁移到本地文件");
+            return;
+          }
+        }
+
+        // 3. 都没有数据，使用默认预设并保存
+        this.presets = this.getDefaultPresets();
+        await this.persistToFile();
+        return;
+      }
+    } catch (e) {
+      console.error("从本地文件加载预设失败:", e);
+    }
+
+    // 降级：从 localStorage 加载
+    this.loadFromLocalStorage();
+  }
+
+  /**
+   * 从 localStorage 加载预设（降级方案）
+   */
+  private loadFromLocalStorage(): void {
     try {
       const raw = localStorage.getItem(LayerToolUI.PRESET_STORAGE_KEY);
       if (!raw) {
-        this.presets = [{
-          id: "default",
-          name: "默认",
-          anchor: "topLeft",
-          sortBy: "xAsc",
-          scaleAnim: "",
-          rotateAnim: "",
-          template: 'x="{x}" y="{y}" '
-        }];
-        this.persistPresets();
+        this.presets = this.getDefaultPresets();
+        this.persistToLocalStorage();
         return;
       }
       const parsed = JSON.parse(raw) as PresetConfig[];
@@ -1091,15 +1526,61 @@ class LayerToolUI {
         this.presets = parsed;
       }
     } catch {
-      this.presets = [];
+      this.presets = this.getDefaultPresets();
     }
+  }
+
+  /**
+   * 获取默认预设
+   */
+  private getDefaultPresets(): PresetConfig[] {
+    return [{
+      id: "default",
+      name: "默认",
+      anchor: "topLeft",
+      sortBy: "xAsc",
+      scaleAnim: "",
+      rotateAnim: "",
+      template: 'x="{x}" y="{y}" '
+    }];
+  }
+
+  /**
+   * 保存预设（同时写入本地文件和 localStorage）
+   */
+  private async persistPresets(): Promise<void> {
+    // 双写：本地文件 + localStorage
+    this.persistToLocalStorage();
+    await this.persistToFile();
   }
 
   /**
    * 保存到 localStorage
    */
-  private persistPresets(): void {
+  private persistToLocalStorage(): void {
     localStorage.setItem(LayerToolUI.PRESET_STORAGE_KEY, JSON.stringify(this.presets));
+  }
+
+  /**
+   * 保存到本地文件
+   */
+  private async persistToFile(): Promise<void> {
+    try {
+      const extPath = this.getExtensionPathSync();
+      if (!extPath) return;
+
+      const presetsDir = extPath + "/dist/lib/presets/tab1";
+      const filePath = presetsDir + "/default.json";
+
+      // 确保目录存在
+      await psBridge.ensureDirectory(presetsDir);
+
+      // 写入文件
+      const content = JSON.stringify(this.presets, null, 2);
+      await psBridge.writeFile(filePath, content);
+    } catch (e) {
+      console.error("保存预设到本地文件失败:", e);
+    }
   }
 
   /**
@@ -1160,13 +1641,13 @@ class LayerToolUI {
    * @param draggedId 被拖拽的预设 ID
    * @param targetId 目标位置的预设 ID
    */
-  private reorderPresets(draggedId: string, targetId: string): void {
+  private async reorderPresets(draggedId: string, targetId: string): Promise<void> {
     const draggedIdx = this.presets.findIndex((p) => p.id === draggedId);
     const targetIdx = this.presets.findIndex((p) => p.id === targetId);
     if (draggedIdx === -1 || targetIdx === -1) return;
     const [draggedPreset] = this.presets.splice(draggedIdx, 1);
     this.presets.splice(targetIdx, 0, draggedPreset);
-    this.persistPresets();
+    await this.persistPresets();
     this.renderPresetList();
     this.setStatus("预设顺序已更新");
   }
@@ -1304,6 +1785,7 @@ class LayerToolUI {
 
     // 按位置锚点计算 x/y 坐标
     const posAnchor = this.xmlPositionAnchor;
+    const includeRotation = this.xmlIncludeRotation.checked;
     const positioned = sorted.map((layer) => {
       const anchorXY = this.getAnchorXY(layer, posAnchor);
       return {
@@ -1313,7 +1795,8 @@ class LayerToolUI {
         height: layer.height,
         name: layer.name,
         path: layer.path || "",
-        id: layer.id
+        id: layer.id,
+        rotation: includeRotation ? layer.rotation : undefined
       };
     });
 
@@ -1393,12 +1876,22 @@ class LayerToolUI {
       // 数学表达式 → 求值
       var result = MathExpr.evaluate(trimmed, numericScope);
       if (result !== null && isFinite(result)) {
-        // 整数不带小数点，浮点数保留合理精度
-        return result % 1 === 0 ? String(result) : String(Math.round(result * 1e10) / 1e10);
+        return this.formatNumber(result);
       }
       // 求值失败 → 保持原样
       return "{" + content + "}";
     });
+  }
+
+  /**
+   * 格式化数字输出：最多保留两位小数
+   * - 整数 → 不补零（100 而非 100.00）
+   * - 一位小数 → 保留一位（37.5）
+   * - 两位及以上 → 四舍五入到两位（33.33）
+   */
+  private formatNumber(num: number): string {
+    if (num % 1 === 0) return String(num);
+    return String(Math.round(num * 100) / 100);
   }
 
   /**
@@ -1409,7 +1902,9 @@ class LayerToolUI {
    */
   private formatLayerLine(layer: SelectedLayerInfo, preset: PresetConfig, index: number): string {
     const anchor = this.getAnchorXY(layer, preset.anchor);
-    const scope: Record<string, string> = {
+
+    // 构建基础 scope，用于动画字段预处理
+    const baseScope: Record<string, string> = {
       name: layer.name,
       acname: layer.acname,
       type: layer.layerType,
@@ -1418,17 +1913,15 @@ class LayerToolUI {
       width: String(layer.width),
       height: String(layer.height),
       rotation: String(layer.rotation),
-      scaleAnim: preset.scaleAnim,
-      rotateAnim: preset.rotateAnim,
       centerX: String(layer.centerX),
       centerY: String(layer.centerY),
       path: layer.path || "",
+      text: layer.text?.content || "",
       fontSize: layer.text?.fontSize != null ? String(layer.text.fontSize) : "",
       fontColor: layer.text?.fontColor || "",
-      text: layer.text?.content || "",
       i: String(index)
     };
-    const numericScope: Record<string, number> = {
+    const baseNumericScope: Record<string, number> = {
       i: index,
       x: anchor.x,
       y: anchor.y,
@@ -1439,7 +1932,19 @@ class LayerToolUI {
       centerY: layer.centerY,
       fontSize: layer.text?.fontSize != null ? layer.text.fontSize : 0
     };
-    return this.applyTemplate(preset.template, scope, numericScope);
+
+    // 预处理：动画字段先做变量替换
+    const scaleAnim = this.applyTemplate(preset.scaleAnim, baseScope, baseNumericScope);
+    const rotateAnim = this.applyTemplate(preset.rotateAnim, baseScope, baseNumericScope);
+
+    // 构建完整 scope（包含处理后的动画字段）
+    const scope: Record<string, string> = {
+      ...baseScope,
+      scaleAnim,
+      rotateAnim,
+    };
+
+    return this.applyTemplate(preset.template, scope, baseNumericScope);
   }
 
   /**
@@ -1870,20 +2375,67 @@ class LayerToolUI {
   }
 
   /**
-   * 从 localStorage 加载模板输出预设
+   * 从本地文件或 localStorage 加载模板输出预设
+   * 优先级：本地文件 > localStorage > 默认预设
    */
-  private loadTemplateOutputPresets(): void {
+  private async loadTemplateOutputPresetsAsync(): Promise<void> {
+    try {
+      // 1. 尝试从本地文件读取
+      const extPath = this.getExtensionPathSync();
+      if (extPath) {
+        const presetsDir = extPath + "/dist/lib/presets/tab2";
+        const filePath = presetsDir + "/default.json";
+
+        // 确保目录存在
+        await psBridge.ensureDirectory(presetsDir);
+
+        const fileResult = await psBridge.readFile(filePath);
+        if (fileResult.success && fileResult.data) {
+          // 本地文件存在，使用文件数据
+          const parsed = JSON.parse(fileResult.data) as TemplateOutputPresetConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.tplOutPresets = parsed;
+            // 同步到 localStorage 作为备份
+            this.persistTplOutToLocalStorage();
+            return;
+          }
+        }
+
+        // 2. 本地文件不存在，检查 localStorage 是否有数据
+        const localData = localStorage.getItem(LayerToolUI.TPL_OUT_PRESET_STORAGE_KEY);
+        if (localData) {
+          const parsed = JSON.parse(localData) as TemplateOutputPresetConfig[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // 迁移到本地文件
+            this.tplOutPresets = parsed;
+            await this.persistTplOutToFile();
+            console.log("已将 localStorage 模板输出预设数据迁移到本地文件");
+            return;
+          }
+        }
+
+        // 3. 都没有数据，使用默认预设并保存
+        this.tplOutPresets = this.getDefaultTplOutPresets();
+        await this.persistTplOutToFile();
+        return;
+      }
+    } catch (e) {
+      console.error("从本地文件加载模板输出预设失败:", e);
+    }
+
+    // 降级：从 localStorage 加载
+    this.loadTplOutFromLocalStorage();
+  }
+
+  /**
+   * 从 localStorage 加载模板输出预设（降级方案）
+   */
+  private loadTplOutFromLocalStorage(): void {
     try {
       const raw = localStorage.getItem(LayerToolUI.TPL_OUT_PRESET_STORAGE_KEY);
       if (!raw) {
-        this.tplOutPresets = [{
-          id: "default",
-          name: "默认",
-          anchor: "topLeft",
-          sortBy: "xAsc",
-          template: '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />\n<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />'
-        }];
-        this.persistTemplateOutputPresets();
+        this.tplOutPresets = this.getDefaultTplOutPresets();
+        this.persistTplOutToLocalStorage();
         return;
       }
       const parsed = JSON.parse(raw) as TemplateOutputPresetConfig[];
@@ -1891,21 +2443,64 @@ class LayerToolUI {
         this.tplOutPresets = parsed;
       }
     } catch {
-      this.tplOutPresets = [];
+      this.tplOutPresets = this.getDefaultTplOutPresets();
     }
+  }
+
+  /**
+   * 获取默认模板输出预设
+   */
+  private getDefaultTplOutPresets(): TemplateOutputPresetConfig[] {
+    return [{
+      id: "default",
+      name: "默认",
+      anchor: "topLeft",
+      sortBy: "xAsc",
+      template: '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />\n<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />'
+    }];
+  }
+
+  /**
+   * 保存模板输出预设（同时写入本地文件和 localStorage）
+   */
+  private async persistTemplateOutputPresets(): Promise<void> {
+    this.persistTplOutToLocalStorage();
+    await this.persistTplOutToFile();
   }
 
   /**
    * 保存模板输出预设到 localStorage
    */
-  private persistTemplateOutputPresets(): void {
+  private persistTplOutToLocalStorage(): void {
     localStorage.setItem(LayerToolUI.TPL_OUT_PRESET_STORAGE_KEY, JSON.stringify(this.tplOutPresets));
+  }
+
+  /**
+   * 保存模板输出预设到本地文件
+   */
+  private async persistTplOutToFile(): Promise<void> {
+    try {
+      const extPath = this.getExtensionPathSync();
+      if (!extPath) return;
+
+      const presetsDir = extPath + "/dist/lib/presets/tab2";
+      const filePath = presetsDir + "/default.json";
+
+      // 确保目录存在
+      await psBridge.ensureDirectory(presetsDir);
+
+      // 写入文件
+      const content = JSON.stringify(this.tplOutPresets, null, 2);
+      await psBridge.writeFile(filePath, content);
+    } catch (e) {
+      console.error("保存模板输出预设到本地文件失败:", e);
+    }
   }
 
   /**
    * 保存模板输出预设
    */
-  private saveTemplateOutputPreset(): void {
+  private async saveTemplateOutputPreset(): Promise<void> {
     const config = this.getTplOutFormConfig();
     if (!config.name) {
       this.setStatus("请先输入预设名称", true);
@@ -1921,7 +2516,7 @@ class LayerToolUI {
     } else {
       this.tplOutPresets.push(preset);
     }
-    this.persistTemplateOutputPresets();
+    await this.persistTemplateOutputPresets();
     this.renderTemplateOutputPresetList();
     this.setStatus(`预设已保存：${config.name}`);
   }
@@ -1930,9 +2525,9 @@ class LayerToolUI {
    * 删除模板输出预设
    * @param presetId 预设 ID
    */
-  private deleteTemplateOutputPreset(presetId: string): void {
+  private async deleteTemplateOutputPreset(presetId: string): Promise<void> {
     this.tplOutPresets = this.tplOutPresets.filter((p) => p.id !== presetId);
-    this.persistTemplateOutputPresets();
+    await this.persistTemplateOutputPresets();
     this.renderTemplateOutputPresetList();
     this.setStatus("预设已删除");
   }
@@ -1978,13 +2573,13 @@ class LayerToolUI {
    * @param draggedId 被拖拽的预设 ID
    * @param targetId 目标位置的预设 ID
    */
-  private reorderTemplateOutputPresets(draggedId: string, targetId: string): void {
+  private async reorderTemplateOutputPresets(draggedId: string, targetId: string): Promise<void> {
     const draggedIdx = this.tplOutPresets.findIndex((p) => p.id === draggedId);
     const targetIdx = this.tplOutPresets.findIndex((p) => p.id === targetId);
     if (draggedIdx === -1 || targetIdx === -1) return;
     const [draggedPreset] = this.tplOutPresets.splice(draggedIdx, 1);
     this.tplOutPresets.splice(targetIdx, 0, draggedPreset);
-    this.persistTemplateOutputPresets();
+    await this.persistTemplateOutputPresets();
     this.renderTemplateOutputPresetList();
     this.setStatus("预设顺序已更新");
   }
@@ -2015,10 +2610,25 @@ class LayerToolUI {
       `<span class="hint-item"><span class="hint-var">{${v.key}}</span><span class="hint-desc">${v.desc}</span></span>`
     ).join("");
     html += '<div class="hint-rules">'
-      + '表达式规则：仅数字字段可用（x[i], y[i], width[i], height[i], rotation[i], centerX[i], centerY[i], gapX[i], gapY[i], fontSize[i]），'
+      + '<strong>表达式规则：</strong>仅数字字段可用（x[i], y[i], width[i], height[i], rotation[i], centerX[i], centerY[i], gapX[i], gapY[i], fontSize[i]），'
       + '支持 <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> 和括号。'
       + ' 示例：<code>{x[0]+1}</code> <code>{width[0]*2}</code> <code>{(i[0]+1)*100}</code>。'
       + '可跨图层计算，如 <code>{x[0]+x[1]}</code>。字符串字段（name, path 等）不可参与计算。'
+      + '</div>';
+    html += '<div class="hint-rules">'
+      + '<strong>支持的函数：</strong>'
+      + '<code>round(x)</code> 四舍五入 · '
+      + '<code>round(x,n)</code> 保留n位小数 · '
+      + '<code>ceil(x)</code> 向上取整 · '
+      + '<code>floor(x)</code> 向下取整 · '
+      + '<code>int(x)</code> 取整数部分 · '
+      + '<code>abs(x)</code> 绝对值 · '
+      + '<code>min(a,b)</code> 最小值 · '
+      + '<code>max(a,b)</code> 最大值 · '
+      + '<code>rand()</code> 随机数(0-1) · '
+      + '<code>pow(x,y)</code> x的y次方 · '
+      + '<code>sqrt(x)</code> 平方根'
+      + '<br>示例：<code>{round(width[0]/2)}</code> <code>{int(rand()*10)}</code> <code>{max(x[0],y[0])}</code>'
       + '</div>';
     this.tplOutTemplateHint.innerHTML = html;
   }
@@ -2152,6 +2762,59 @@ class LayerToolUI {
       this.tplOutTemplateSelect.classList.remove("open");
     } else {
       this.tplOutTemplateSelect.classList.add("open");
+    }
+  }
+
+  /**
+   * 初始化折叠面板：绑定点击事件，恢复保存的折叠状态
+   */
+  private initHintCollapsible(): void {
+    var collapsibles = document.querySelectorAll(".hint-collapsible");
+    var states = this.loadHintStates();
+    for (var i = 0; i < collapsibles.length; i++) {
+      var el = collapsibles[i] as HTMLElement;
+      var key = el.getAttribute("data-hint-key") || "";
+      var header = el.querySelector(".hint-header");
+      if (!header) continue;
+
+      // 恢复折叠状态（默认展开）
+      if (key && states[key] === false) {
+        el.classList.add("collapsed");
+      }
+
+      // 绑定点击事件
+      (function(self: LayerToolUI, element: HTMLElement, hintKey: string) {
+        header!.addEventListener("click", function() {
+          element.classList.toggle("collapsed");
+          var isExpanded = !element.classList.contains("collapsed");
+          self.saveHintState(hintKey, isExpanded);
+        });
+      })(this, el, key);
+    }
+  }
+
+  /**
+   * 保存折叠状态到 localStorage
+   */
+  private saveHintState(key: string, expanded: boolean): void {
+    try {
+      var states = this.loadHintStates();
+      states[key] = expanded;
+      localStorage.setItem("layerTool.hintStates.v1", JSON.stringify(states));
+    } catch (e) {
+      // 忽略存储错误
+    }
+  }
+
+  /**
+   * 加载折叠状态
+   */
+  private loadHintStates(): Record<string, boolean> {
+    try {
+      var raw = localStorage.getItem("layerTool.hintStates.v1");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
     }
   }
 
@@ -2291,13 +2954,12 @@ class LayerToolUI {
       });
       // 替换后如果变成纯数字
       if (/^-?\d+(\.\d+)?$/.test(expr)) {
-        var num = parseFloat(expr);
-        return num % 1 === 0 ? String(num) : String(Math.round(num * 1e10) / 1e10);
+        return this.formatNumber(parseFloat(expr));
       }
       // 用空 scope 求值（所有变量应已被 key[index] 替换为数字）
       var result = MathExpr.evaluate(expr, {});
       if (result !== null && isFinite(result)) {
-        return result % 1 === 0 ? String(result) : String(Math.round(result * 1e10) / 1e10);
+        return this.formatNumber(result);
       }
       // 求值失败 → 保持原样
       return "{" + content + "}";

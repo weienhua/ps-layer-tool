@@ -823,6 +823,160 @@ textarea {
   color: var(--text);
 }
 
+/* 折叠面板 */
+.hint-collapsible {
+  margin-top: 6px;
+}
+
+.hint-collapsible .hint-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: background 0.15s;
+}
+
+.hint-collapsible.collapsed .hint-header {
+  border-radius: 6px;
+}
+
+.hint-collapsible .hint-header:hover {
+  background: var(--border);
+}
+
+.hint-collapsible .hint-toggle-icon {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.hint-collapsible.collapsed .hint-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.hint-collapsible .hint-body {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out;
+}
+
+.hint-collapsible.collapsed .hint-body {
+  display: none;
+}
+
+.hint-collapsible .hint-body .template-hint {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* 复选框标签 */
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* XML 变量面板 */
+.xml-vars-panel {
+  padding: 0;
+}
+
+.xml-vars-list {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-right: -10px;
+  margin-bottom: -6px;
+}
+
+.xml-vars-list > * {
+  margin-right: 10px;
+  margin-bottom: 6px;
+}
+
+.xml-var-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.xml-var-item:hover {
+  background: var(--border);
+}
+
+.xml-var-item .var-name {
+  color: var(--primary);
+  font-family: Consolas, Monaco, monospace;
+  white-space: nowrap;
+}
+
+.xml-var-item .var-desc {
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.xml-var-item .var-delete {
+  visibility: hidden;
+  margin-left: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  width: 12px;
+}
+
+.xml-var-item:hover .var-delete {
+  visibility: visible;
+}
+
+.xml-var-item .var-delete:hover {
+  color: #e74c3c;
+}
+
+.xml-vars-actions {
+  display: flex;
+  margin-top: 0;
+  padding: 14px 0 10px 4px;
+}
+
+.xml-vars-actions .btn-sm {
+  padding: 6px 12px;
+  font-size: 10px;
+}
+
+.xml-vars-actions .btn-sm + .btn-sm {
+  margin-left: 12px;
+}
+
 .preset-template-preview {
   display: none;
   position: absolute;

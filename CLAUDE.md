@@ -127,7 +127,11 @@ $.HostScript = {
   collectGroupLayersForExport,
   exportSingleLayer,
   exportLayerInfoXML,
-  generateXMLTemplate
+  generateXMLTemplate,
+  readFile,
+  writeFile,
+  listFiles,
+  getExtensionPath
 };
 ```
 
@@ -167,6 +171,10 @@ $.HostScript = {
 | `exportSingleLayer(layerId, exportPath, format, groupPath, includeHidden)` | 导出单个图层为图片文件 |
 | `exportLayerInfoXML(exportPath, layersJson)` | 导出图层信息 XML（manifest.xml） |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码（百分比/温度/步数） |
+| `readFile(filePath)` | 读取文件内容 |
+| `writeFile(filePath, content)` | 写入文件内容 |
+| `listFiles(dirPath)` | 列出目录下的文件 |
+| `getExtensionPath()` | 获取插件扩展目录路径 |
 
 ## 面板通信约定（src/bridge.ts）
 
@@ -209,6 +217,18 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 模板输出 Tab 的下拉列表来源，每条模板有 `name:` 标题和代码块内容。使用数组索引语法（如 `{name[0]}`, `{x[1]}`）。
 
+### 预设持久化存储
+
+预设数据同时保存到本地文件和 localStorage，优先级：**本地文件 > localStorage > 默认值**。
+
+| Tab | 本地文件路径 | localStorage Key |
+|-----|-------------|------------------|
+| Tab1 图层信息 | `dist/lib/presets/tab1/default.json` | `layerTool.presets.v1` |
+| Tab2 模板输出 | `dist/lib/presets/tab2/default.json` | `layerTool.templateOutputPresets.v1` |
+| Tab4 XML 模板 | `dist/lib/presets/tab4/default.json` | `layerTool.xmlConfig.v1` |
+
+首次启动时自动迁移 localStorage 数据到本地文件。安装/卸载脚本会自动备份和恢复 `dist/lib/presets/` 目录。
+
 ### 模板变量
 
 | 变量 | 说明 |
@@ -240,6 +260,26 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 内部实现：`MathExpr` 递归下降解析器（`src/index.ts`），通过 `numericScope` 严格区分 number/string 类型。
 
+### 支持的函数
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `round(x)` | 四舍五入取整 | `{round(width/2)}` |
+| `round(x, n)` | 保留 n 位小数 | `{round(x/3, 2)}` |
+| `ceil(x)` | 向上取整 | `{ceil(height/10)}` |
+| `floor(x)` | 向下取整 | `{floor(x/5)}` |
+| `int(x)` | 取整数部分 | `{int(rand()*10)}` |
+| `abs(x)` | 绝对值 | `{abs(x-100)}` |
+| `min(a, b)` | 最小值 | `{min(width, height)}` |
+| `max(a, b)` | 最大值 | `{max(x, y)}` |
+| `rand()` | 随机数 (0-1) | `{int(rand()*100)}` |
+| `pow(x, y)` | x 的 y 次方 | `{pow(2, 10)}` |
+| `sqrt(x)` | 平方根 | `{sqrt(width*height)}` |
+
+函数支持嵌套：`{int(rand()*10)}` — 生成 0-9 随机整数；`{round(pow(2, 0.5), 3)}` — √2 保留 3 位小数。
+
+默认所有数值输出保留 2 位小数（整数除外）。
+
 ### 动画表达式
 
 在"缩放动画"/"旋转动画"输入框中可以编写数学表达式，支持：
@@ -249,10 +289,12 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 示例：`(1-0.1*sin((#loop-100*0)/300))` — 波形缩放；`(5*sin((#loop-100*0)/300))` — 波形旋转。
 
-### 用户预设（localStorage）
+### 用户预设（localStorage + 本地文件）
 
-- **图层信息预设**：`localStorage` key `layerTool.presets.v1`
-- **模板输出预设**：`localStorage` key `layerTool.templateOutputPresets.v1`
+- **图层信息预设**：`localStorage` key `layerTool.presets.v1`，本地文件 `dist/lib/presets/tab1/default.json`
+- **模板输出预设**：`localStorage` key `layerTool.templateOutputPresets.v1`，本地文件 `dist/lib/presets/tab2/default.json`
+- **XML 模板配置**：`localStorage` key `layerTool.xmlConfig.v1`，本地文件 `dist/lib/presets/tab4/default.json`
+- **折叠面板状态**：`localStorage` key `layerTool.hintStates.v1`（仅 localStorage，不持久化到文件）
 
 支持保存/加载/删除预设、拖拽排序（HTML5 Drag and Drop API）、预设卡片带 3×3 锚点网格微预览。
 
@@ -328,6 +370,15 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **位置锚点**：3×3 网格可视化选择器 + 下拉选择器（控制 XML 中 baseX/baseY 的计算）
 - **排序方式**：按 X 升序 / 按 Y 升序 / 按 PS 图层顺序
 - **对齐方式**：3×3 网格可视化选择器 + 下拉选择器（控制 `lt()`/`ge()` 表达式中的对齐系数）
+- **输出 rotation 属性**：复选框，默认勾选，勾选后在每个 Image 标签上输出 `rotation` 属性（仅当 rotation ≠ 0 时）
+
+#### 常用变量管理
+- **变量列表**：显示所有可用的 XML 变量（内置 + 自定义），点击可选择变量名填入输入框
+- **添加变量**：点击按钮输入自定义变量名和说明
+- **恢复默认**：重置为内置变量列表（保留自定义变量）
+- **删除变量**：悬停变量标签显示删除按钮
+
+内置变量：`#battery_level`（电量）、`#weatherTemp`（当前温度）、`#dayTempgao2`（最高温度）、`#nightTempdi2`（最低温度）、`#humidityNum`（湿度）、`#steps_value`（步数）等。
 
 #### 操作
 - **生成 XML 模板**：读取选中图层信息，根据数据类型和对齐方式生成 XML 代码，自动复制到剪贴板

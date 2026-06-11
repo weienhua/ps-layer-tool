@@ -391,6 +391,44 @@ export class PSBridge {
     const safeJson = this.escapeForSingleQuotedString(layersJson);
     return this.evalScript<string>(`$.HostScript.generateXMLTemplate('${safeVar}', '${dataType}', ${alignH}, ${alignV}, '${safeJson}')`);
   }
+
+  /**
+   * 读取本地文件
+   * @param filePath 文件路径
+   */
+  async readFile(filePath: string): Promise<PSResult<string>> {
+    const safePath = this.escapeForSingleQuotedString(filePath);
+    return this.evalScript<string>(`$.HostScript.readFile('${safePath}')`);
+  }
+
+  /**
+   * 写入本地文件
+   * @param filePath 文件路径
+   * @param content 文件内容
+   */
+  async writeFile(filePath: string, content: string): Promise<PSResult<void>> {
+    const safePath = this.escapeForSingleQuotedString(filePath);
+    const safeContent = this.escapeForSingleQuotedString(content);
+    return this.evalScript<void>(`$.HostScript.writeFile('${safePath}', '${safeContent}')`);
+  }
+
+  /**
+   * 列出目录下的文件
+   * @param dirPath 目录路径
+   * @param filter 文件扩展名过滤（如 "*.json"）
+   */
+  async listFiles(dirPath: string, filter: string = "*.json"): Promise<PSResult<string[]>> {
+    const safePath = this.escapeForSingleQuotedString(dirPath);
+    const safeFilter = this.escapeForSingleQuotedString(filter);
+    return this.evalScript<string[]>(`$.HostScript.listFiles('${safePath}', '${safeFilter}')`);
+  }
+
+  /**
+   * 获取插件扩展目录路径
+   */
+  async getExtensionPath(): Promise<PSResult<string>> {
+    return this.evalScript<string>(`$.HostScript.getExtensionPath()`);
+  }
 }
 
 /**

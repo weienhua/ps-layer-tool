@@ -15,6 +15,11 @@ const EXTENSION_ID = 'com.layertool.panel';
 const CSXS_VERSIONS = [6, 7, 8, 9, 10, 11];
 // 安装时需要保留的用户文件（相对于 lib/ 目录）
 const LIB_KEEP_FILES = ['presets.md', 'template.md'];
+// 安装时需要保留的用户目录（相对于 dist/lib/ 目录，与 template.md 同级）
+const LIB_KEEP_DIRS = ['presets'];
+// 备份目录中的用户文件和目录（相对于备份目录根）
+const BACKUP_KEEP_FILES = LIB_KEEP_FILES;
+const BACKUP_KEEP_DIRS = LIB_KEEP_DIRS;
 
 // ==================== 工具函数 ====================
 
@@ -97,6 +102,72 @@ function restoreLibKeepFiles(targetDir, backups) {
   fs.mkdirSync(libDir, { recursive: true });
   for (const { name, data } of backups) {
     fs.writeFileSync(path.join(libDir, name), data);
+  }
+}
+
+/**
+ * 递归备份目录
+ * @param {string} dirPath - 目录路径
+ * @returns {Object|null} 备份数据，目录不存在返回 null
+ */
+function backupDir(dirPath) {
+  if (!fs.existsSync(dirPath)) return null;
+  const result = {};
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      result[entry.name] = backupDir(fullPath);
+    } else {
+      result[entry.name] = fs.readFileSync(fullPath);
+    }
+  }
+  return result;
+}
+
+/**
+ * 递归恢复目录
+ * @param {string} dirPath - 目标目录路径
+ * @param {Object|null} backup - 备份数据
+ */
+function restoreDir(dirPath, backup) {
+  if (!backup) return;
+  fs.mkdirSync(dirPath, { recursive: true });
+  for (const [name, data] of Object.entries(backup)) {
+    const fullPath = path.join(dirPath, name);
+    if (Buffer.isBuffer(data)) {
+      fs.writeFileSync(fullPath, data);
+    } else {
+      restoreDir(fullPath, data);
+    }
+  }
+}
+
+/**
+ * 备份 dist/lib 目录下需要保留的用户目录（与 template.md 同级）
+ * @param {string} targetDir - 目标插件目录
+ * @returns {Object} 备份数据，key 为目录名
+ */
+function backupLibKeepDirs(targetDir) {
+  const backups = {};
+  for (const dirName of LIB_KEEP_DIRS) {
+    const dirPath = path.join(targetDir, 'dist', 'lib', dirName);
+    const backup = backupDir(dirPath);
+    if (backup) {
+      backups[dirName] = backup;
+    }
+  }
+  return backups;
+}
+
+/**
+ * 恢复备份的用户目录到目标 dist/lib 目录
+ * @param {string} targetDir - 目标插件目录
+ * @param {Object} backups - 备份数据
+ */
+function restoreLibKeepDirs(targetDir, backups) {
+  for (const [dirName, backup] of Object.entries(backups)) {
+    restoreDir(path.join(targetDir, 'dist', 'lib', dirName), backup);
   }
 }
 
@@ -333,15 +404,32 @@ function main() {
   const targetDir = path.join(extensionsPath, EXTENSION_ID);
   log(`安装目标: ${targetDir}`);
 
-  // 4. 如果已存在，备份用户文件后卸载
+  // 4. 如果已存在，备份用户文件和目录后卸载
   const userFileBackups = [];
+  let userDirBackups = {};
+  // 记录用户之前是否有 presets 目录（用于后续判断是否删除安装包中的默认 presets）
+  let hadPresetsDir = false;
   if (fs.existsSync(targetDir)) {
     log('检测到已安装的版本，正在卸载...');
     userFileBackups.push(...backupLibKeepFiles(targetDir));
     if (userFileBackups.length > 0) {
       log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
     }
+    userDirBackups = backupLibKeepDirs(targetDir);
+    const backedUpDirs = Object.keys(userDirBackups);
+    if (backedUpDirs.length > 0) {
+      log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
+    }
+    // 检查用户之前是否有 presets 目录
+    hadPresetsDir = userDirBackups.hasOwnProperty('presets');
     rmrfSync(targetDir);
+  }
+
+  // 从卸载备份目录检查是否有 presets 备份（用户可能通过卸载程序卸载过）
+  const backupDirPath = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
+  if (!hadPresetsDir && fs.existsSync(backupDirPath)) {
+    const backupPresetsDir = path.join(backupDirPath, 'presets');
+    hadPresetsDir = fs.existsSync(backupPresetsDir);
   }
 
   // 5. 创建扩展目录并复制文件（CSXS、dist、doc）
@@ -359,13 +447,13 @@ function main() {
 
   // 恢复用户文件（覆盖安装包中的默认文件）
   restoreLibKeepFiles(targetDir, userFileBackups);
+  restoreLibKeepDirs(targetDir, userDirBackups);
 
-  // 从卸载备份目录恢复用户文件（如果存在）
-  const backupDir = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
-  if (fs.existsSync(backupDir)) {
+  // 从卸载备份目录恢复用户文件和目录（如果存在）
+  if (fs.existsSync(backupDirPath)) {
     const restoredFiles = [];
-    for (const name of LIB_KEEP_FILES) {
-      const backupFile = path.join(backupDir, name);
+    for (const name of BACKUP_KEEP_FILES) {
+      const backupFile = path.join(backupDirPath, name);
       if (fs.existsSync(backupFile)) {
         fs.copyFileSync(backupFile, path.join(targetDir, 'dist', 'lib', name));
         restoredFiles.push(name);
@@ -373,7 +461,35 @@ function main() {
     }
     if (restoredFiles.length > 0) {
       log(`已从备份恢复用户文件: ${restoredFiles.join(', ')}`, 'success');
-      try { rmrfSync(backupDir); } catch (e) { /* 忽略 */ }
+    }
+    // 恢复目录（备份目录中的目录结构与 dist/lib/ 一致）
+    const restoredDirs = [];
+    for (const dirName of BACKUP_KEEP_DIRS) {
+      const backupDirSrc = path.join(backupDirPath, dirName);
+      if (fs.existsSync(backupDirSrc)) {
+        copyDirSync(backupDirSrc, path.join(targetDir, 'dist', 'lib', dirName));
+        restoredDirs.push(dirName);
+      }
+    }
+    if (restoredDirs.length > 0) {
+      log(`已从备份恢复用户目录: ${restoredDirs.join(', ')}/`, 'success');
+    }
+    // 删除备份目录
+    try {
+      rmrfSync(backupDirPath);
+      log('已删除备份目录', 'info');
+    } catch (e) {
+      log(`删除备份目录失败: ${e.message}`, 'warn');
+    }
+  }
+
+  // 6. 如果用户之前没有 presets 目录，删除安装包中的默认 presets 目录
+  // 这样可以避免覆盖用户数据，预设会在用户首次使用时自动创建
+  if (!hadPresetsDir) {
+    const defaultPresetsDir = path.join(targetDir, 'dist', 'lib', 'presets');
+    if (fs.existsSync(defaultPresetsDir)) {
+      rmrfSync(defaultPresetsDir);
+      log('用户之前无预设文件，已删除默认预设目录', 'info');
     }
   }
 

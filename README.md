@@ -9,10 +9,11 @@
 - **预设模板系统**：7 条内置输出模板（坐标、XML、动画等），支持用户自定义和保存预设
 - **格式化输出**：基于模板变量（`{x}`, `{y}`, `{width}`, `{name}` 等）将图层信息格式化为文本
 - **数学表达式**：模板中支持对数字变量进行数学运算，如 `{i+1}`、`{width*2}`、`{(i+1)*100}`
+- **函数支持**：`round`、`ceil`、`floor`、`int`、`abs`、`min`、`max`、`rand`、`pow`、`sqrt`，支持嵌套
 - **排序方式**：按 X 升序 / Y 升序 / PS 图层顺序
 - **锚点选择**：3×3 网格可视化锚点选择器（左上、中上、右上、左中、中心、右中、左下、中下、右下）
 - **动画表达式**：支持 `#loop`、`sin`、`cos` 等数学函数的动态表达式输入
-- **预设管理**：localStorage 持久化存储，支持拖拽排序和删除
+- **预设管理**：本地文件 + localStorage 双重持久化存储，支持拖拽排序和删除
 - **一键复制**：格式化结果一键复制到系统剪贴板
 - **变量提示点击复制**：点击模板变量提示项即可复制变量名到剪贴板
 
@@ -28,6 +29,9 @@
 - **对齐方式**：9 宫格可视化锚点选择器 + 水平/垂直对齐下拉列表
 - **自动生成偏移公式**：根据图层实际位置计算相邻数位间距，生成 `lt()`/`ge()` 条件表达式
 - **温度特殊处理**：符号位自动反转对齐系数，支持正负温度显示
+- **输出 rotation 属性**：可选在 Image 标签上输出 rotation 属性（默认勾选，仅 rotation ≠ 0 时输出）
+- **常用变量管理**：内置变量列表 + 自定义变量支持，点击选择变量名
+- **变量配置持久化**：变量列表和 rotation 设置保存到本地文件
 - **一键复制**：生成的 XML 代码自动复制到剪贴板
 
 ### 图层导出
@@ -96,7 +100,7 @@
 1. 检测已安装的 Photoshop 版本
 2. 复制插件文件到 CEP 扩展目录
 3. 开启调试模式
-4. 保留用户自定义的 `presets.md` 和 `template.md` 文件（如果存在）
+4. 保留用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录（如果存在）
 
 **卸载方法**：
 - **Windows**: 双击运行 `com.layertool.panel-uninstaller.exe`
@@ -106,7 +110,7 @@
   ./com.layertool.panel-uninstaller-macos
   ```
 
-卸载时会自动备份用户自定义的 `presets.md` 和 `template.md` 到 `com.layertool.panel_user_files` 目录，下次安装时会自动恢复。
+卸载时会自动备份用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录到 `com.layertool.panel_user_files` 目录，下次安装时会自动恢复。
 
 ### 方式二：手动安装
 
@@ -286,6 +290,8 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 
 **数学表达式**：支持对数字类型变量（`i`, `x`, `y`, `width`, `height`, `rotation`, `centerX`, `centerY`, `fontSize`）进行运算（`+` `-` `*` `/` `%` 和括号）。示例：`{i+1}`, `{width*2}`, `{(i+1)*100}`。字符串字段不可参与计算。
 
+**支持的函数**：`round(x)`、`round(x,n)`、`ceil(x)`、`floor(x)`、`int(x)`、`abs(x)`、`min(a,b)`、`max(a,b)`、`rand()`、`pow(x,y)`、`sqrt(x)`。支持嵌套，如 `{int(rand()*10)}`、`{round(pow(2,0.5),3)}`。默认所有数值输出保留 2 位小数。
+
 #### 模板输出 Tab（数组索引模板）
 
 使用 `{变量名[索引]}` 语法，如 `{name[0]}`, `{x[1]}`。
@@ -358,6 +364,10 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | `exportSingleLayer(id, path, format, groupPath, includeHidden)` | 导出单个图层 | `{ name, x, y, w, h, filePath }` |
 | `exportLayerInfoXML(path, json)` | 导出图层信息 XML | `__OK__` |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码 | XML 字符串 |
+| `readFile(filePath)` | 读取文件内容 | `{ content }` |
+| `writeFile(filePath, content)` | 写入文件内容 | `__OK__` |
+| `listFiles(dirPath)` | 列出目录下的文件 | `{ files[] }` |
+| `getExtensionPath()` | 获取插件扩展目录路径 | `{ path }` |
 
 ### PSBridge 方法
 
@@ -378,6 +388,10 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | `exportSingleLayer(id, path, format, groupPath, includeHidden)` | `$.HostScript.exportSingleLayer(...)` |
 | `exportLayerInfoXML(path, json)` | `$.HostScript.exportLayerInfoXML(...)` |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | `$.HostScript.generateXMLTemplate(...)` |
+| `readFile(filePath)` | `$.HostScript.readFile(...)` |
+| `writeFile(filePath, content)` | `$.HostScript.writeFile(...)` |
+| `listFiles(dirPath)` | `$.HostScript.listFiles(...)` |
+| `getExtensionPath()` | `$.HostScript.getExtensionPath()` |
 
 ### LayerInfo 结构
 

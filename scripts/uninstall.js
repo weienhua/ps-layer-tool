@@ -12,6 +12,8 @@ const path = require('path');
 const EXTENSION_ID = 'com.layertool.panel';
 // 卸载时需要保留的用户文件（相对于 lib/ 目录）
 const LIB_KEEP_FILES = ['presets.md', 'template.md'];
+// 卸载时需要保留的用户目录（相对于 dist/lib/ 目录，与 template.md 同级）
+const LIB_KEEP_DIRS = ['presets'];
 
 // ==================== 工具函数 ====================
 
@@ -56,6 +58,61 @@ function rmrfSync(dir) {
     });
     fs.rmdirSync(dir);
   }
+}
+
+/**
+ * 递归备份目录
+ * @param {string} dirPath - 目录路径
+ * @returns {Object|null} 备份数据，目录不存在返回 null
+ */
+function backupDir(dirPath) {
+  if (!fs.existsSync(dirPath)) return null;
+  const result = {};
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      result[entry.name] = backupDir(fullPath);
+    } else {
+      result[entry.name] = fs.readFileSync(fullPath);
+    }
+  }
+  return result;
+}
+
+/**
+ * 递归恢复目录
+ * @param {string} dirPath - 目标目录路径
+ * @param {Object|null} backup - 备份数据
+ */
+function restoreDir(dirPath, backup) {
+  if (!backup) return;
+  fs.mkdirSync(dirPath, { recursive: true });
+  for (const [name, data] of Object.entries(backup)) {
+    const fullPath = path.join(dirPath, name);
+    if (Buffer.isBuffer(data)) {
+      fs.writeFileSync(fullPath, data);
+    } else {
+      restoreDir(fullPath, data);
+    }
+  }
+}
+
+/**
+ * 备份 dist/lib 目录下需要保留的用户目录（与 template.md 同级）
+ * @param {string} targetDir - 目标插件目录
+ * @returns {Object} 备份数据，key 为目录名
+ */
+function backupLibKeepDirs(targetDir) {
+  const backups = {};
+  for (const dirName of LIB_KEEP_DIRS) {
+    const dirPath = path.join(targetDir, 'dist', 'lib', dirName);
+    const backup = backupDir(dirPath);
+    if (backup) {
+      backups[dirName] = backup;
+    }
+  }
+  return backups;
 }
 
 // ==================== 主流程 ====================
@@ -110,10 +167,15 @@ function main() {
     return;
   }
 
-  // 3. 备份用户文件后删除插件目录
+  // 3. 备份用户文件和目录后删除插件目录
   const userFileBackups = backupLibKeepFiles(targetDir);
   if (userFileBackups.length > 0) {
     log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+  }
+  const userDirBackups = backupLibKeepDirs(targetDir);
+  const backedUpDirs = Object.keys(userDirBackups);
+  if (backedUpDirs.length > 0) {
+    log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
   }
 
   try {
@@ -124,14 +186,19 @@ function main() {
     process.exit(1);
   }
 
-  // 4. 将备份文件保存到插件目录旁边
-  if (userFileBackups.length > 0) {
-    const backupDir = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
-    fs.mkdirSync(backupDir, { recursive: true });
+  // 4. 将备份文件和目录保存到插件目录旁边
+  if (userFileBackups.length > 0 || Object.keys(userDirBackups).length > 0) {
+    const backupDirPath = path.join(path.dirname(targetDir), EXTENSION_ID + '_user_files');
+    fs.mkdirSync(backupDirPath, { recursive: true });
+    // 保存文件
     for (const { name, data } of userFileBackups) {
-      fs.writeFileSync(path.join(backupDir, name), data);
+      fs.writeFileSync(path.join(backupDirPath, name), data);
     }
-    log(`用户文件已保存到: ${backupDir}`, 'success');
+    // 保存目录
+    for (const [dirName, backup] of Object.entries(userDirBackups)) {
+      restoreDir(path.join(backupDirPath, dirName), backup);
+    }
+    log(`用户文件已保存到: ${backupDirPath}`, 'success');
   }
 
   // 5. 完成

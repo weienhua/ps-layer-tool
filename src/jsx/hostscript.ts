@@ -846,7 +846,11 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       var signAvInv = String(1 - avNum);
       var signXExpr = signLayer.x + "+" + offsetLtH + "*" + signAhInv + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
       var signYExpr = signLayer.y + "+" + offsetLtV + "*" + signAvInv + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
-      xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '" src="' + signSrc + '" visibility="lt(' + vn + ',0)"/>\n';
+      xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '" src="' + signSrc + '"';
+      if (signLayer.rotation !== undefined && signLayer.rotation !== 0) {
+        xml += ' rotation="' + signLayer.rotation + '"';
+      }
+      xml += ' visibility="lt(' + vn + ',0)"/>\n';
 
       // 数值位：所有层都有 lt(abs) 和 ge 偏移项
       for (var ni = 0; ni < numCount; ni++) {
@@ -859,6 +863,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var nyExpr = String(nBaseY) + "-" + offsetLtV + "*" + av + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
 
         xml += '<Image x="' + nxExpr + '" y="' + nyExpr + '" src="' + nSrc + '"';
+        if (nLayer.rotation !== undefined && nLayer.rotation !== 0) {
+          xml += ' rotation="' + nLayer.rotation + '"';
+        }
         if (ni < tempThresholds.length) {
           var nSrcid = absVn + "/" + tempThresholds[ni] + "%10";
           xml += ' srcid="' + nSrcid + '"';
@@ -897,6 +904,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var pCleanName = cleanDigitName(pLayer.name || "");
         var pSrcPath = (pLayer.path || "") + pCleanName + ".png";
         xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
+        if (pLayer.rotation !== undefined && pLayer.rotation !== 0) {
+          xml += ' rotation="' + pLayer.rotation + '"';
+        }
         if (pi < pctSrcid.length) {
           xml += ' srcid="' + vn + '/' + pctSrcid[pi] + '%10"';
           if (pi < pctSrcid.length - 1) {
@@ -943,7 +953,11 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
         var stVis = stepsSrcid[sti];
         if (sti === count - 1) { stVis = 0; }
-        xml += '<Image x="' + stxExpr + '" y="' + styExpr + '" src="' + stSrcPath + '" srcid="' + stSrcid + '" visibility="ge(' + vn + ',' + stVis + ')"/>\n';
+        xml += '<Image x="' + stxExpr + '" y="' + styExpr + '" src="' + stSrcPath + '"';
+        if (stLayer.rotation !== undefined && stLayer.rotation !== 0) {
+          xml += ' rotation="' + stLayer.rotation + '"';
+        }
+        xml += ' srcid="' + stSrcid + '" visibility="ge(' + vn + ',' + stVis + ')"/>\n';
       }
     }
 
@@ -951,6 +965,78 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
   } catch (e) {
     log("generateXMLTemplate error", String(e));
     return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 读取本地文件内容
+ * @param filePath 文件路径
+ * @returns 文件内容字符串，失败返回 __ERROR__:msg
+ */
+function readFile(filePath: string): string {
+  try {
+    var file = new File(filePath);
+    if (!file.exists) return "__ERROR__:file not found";
+    file.open("r");
+    var content = file.read();
+    file.close();
+    return content;
+  } catch (e) {
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 写入本地文件
+ * @param filePath 文件路径
+ * @param content 文件内容
+ * @returns 成功返回 __OK__，失败返回 __ERROR__:msg
+ */
+function writeFile(filePath: string, content: string): string {
+  try {
+    var file = new File(filePath);
+    file.open("w");
+    file.write(content);
+    file.close();
+    return "__OK__";
+  } catch (e) {
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 列出目录下的文件
+ * @param dirPath 目录路径
+ * @param filter 文件扩展名过滤（如 "*.json"），默认列出所有文件
+ * @returns JSON 数组字符串，失败返回 __ERROR__:msg
+ */
+function listFiles(dirPath: string, filter: string): string {
+  try {
+    var dir = new Folder(dirPath);
+    if (!dir.exists) return "[]";
+    var files = dir.getFiles(filter || "*");
+    var result: string[] = [];
+    for (var i = 0; i < files.length; i++) {
+      if (files[i] instanceof File) {
+        result.push(files[i].name);
+      }
+    }
+    return JSON.stringify(result);
+  } catch (e) {
+    return "__ERROR__:" + e;
+  }
+}
+
+/**
+ * 获取插件扩展目录路径
+ * @returns 扩展目录路径
+ */
+function getExtensionPath(): string {
+  try {
+    // @ts-ignore
+    return $.fileName ? new File($.fileName).parent.parent.fsName : "";
+  } catch (e) {
+    return "";
   }
 }
 
@@ -975,7 +1061,11 @@ $.HostScript = {
   collectGroupLayersForExport: collectGroupLayersForExport,
   exportSingleLayer: exportSingleLayer,
   exportLayerInfoXML: exportLayerInfoXML,
-  generateXMLTemplate: generateXMLTemplate
+  generateXMLTemplate: generateXMLTemplate,
+  readFile: readFile,
+  writeFile: writeFile,
+  listFiles: listFiles,
+  getExtensionPath: getExtensionPath
 };
 
 // log('HostScript initialized');

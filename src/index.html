@@ -88,7 +88,15 @@
           <div class="custom-select-dropdown" id="templateSelectDropdown"></div>
         </div>
         <textarea id="templateInput" rows="4" placeholder='例如：x="{x}" y="{y}" w="{width}" h="{height}"'></textarea>
-        <div class="template-hint" id="templateHint"></div>
+        <div class="hint-collapsible" data-hint-key="tab1-vars">
+          <div class="hint-header">
+            <span class="hint-toggle-icon">▼</span>
+            <span>模板变量提示</span>
+          </div>
+          <div class="hint-body">
+            <div class="template-hint" id="templateHint"></div>
+          </div>
+        </div>
       </div>
       <div class="row actions action-group">
         <button class="btn btn-primary" id="btnFetchLayers">获取选中图层信息</button>
@@ -165,7 +173,15 @@
           <div class="custom-select-dropdown" id="tplOutTemplateSelectDropdown"></div>
         </div>
         <textarea id="tplOutTemplateInput" rows="4" placeholder='例如：&#10;<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />&#10;<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />'></textarea>
-        <div class="template-hint" id="tplOutTemplateHint"></div>
+        <div class="hint-collapsible" data-hint-key="tab2-vars">
+          <div class="hint-header">
+            <span class="hint-toggle-icon">▼</span>
+            <span>模板变量提示</span>
+          </div>
+          <div class="hint-body">
+            <div class="template-hint" id="tplOutTemplateHint"></div>
+          </div>
+        </div>
       </div>
       <div class="row actions action-group">
         <button class="btn btn-primary" id="tplOutBtnFetchLayers">获取选中图层信息</button>
@@ -329,8 +345,34 @@
             </select>
           </div>
         </div>
+        <div class="row">
+          <label>输出选项</label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="xmlIncludeRotation" checked>
+            <span>输出 rotation 属性</span>
+          </label>
+        </div>
         <div class="row actions action-group">
           <button class="btn btn-primary" id="btnGenerateXML">生成 XML 并复制</button>
+        </div>
+      </div>
+
+      <!-- 常用变量 -->
+      <div class="section card">
+        <div class="hint-collapsible" data-hint-key="tab4-vars">
+          <div class="hint-header">
+            <span class="hint-toggle-icon">▼</span>
+            <span>常用变量</span>
+          </div>
+          <div class="hint-body">
+            <div class="xml-vars-panel" id="xmlVarsPanel">
+              <div class="xml-vars-list" id="xmlVarsList"></div>
+              <div class="xml-vars-actions">
+                <button class="btn btn-sm" id="btnAddXmlVar">+ 添加变量</button>
+                <button class="btn btn-sm" id="btnResetXmlVars">恢复默认</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

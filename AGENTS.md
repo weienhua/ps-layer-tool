@@ -57,7 +57,11 @@ $.HostScript = {
   collectGroupLayersForExport,
   exportSingleLayer,
   exportLayerInfoXML,
-  generateXMLTemplate
+  generateXMLTemplate,
+  readFile,
+  writeFile,
+  listFiles,
+  getExtensionPath
 };
 ```
 
@@ -75,11 +79,17 @@ $.HostScript = {
 
 **数学表达式**: 模板中支持对数字类型变量进行数学运算（`+` `-` `*` `/` `%` 和括号）。可用字段：`i`, `x`, `y`, `width`, `height`, `rotation`, `centerX`, `centerY`, `fontSize`。示例：`{i+1}`, `{width*2}`, `{(i+1)*100}`。字符串字段不可参与计算。内部实现：`MathExpr` 递归下降解析器。
 
+**支持的函数**: `round(x)`, `round(x,n)`, `ceil(x)`, `floor(x)`, `int(x)`, `abs(x)`, `min(a,b)`, `max(a,b)`, `rand()`, `pow(x,y)`, `sqrt(x)`。支持嵌套，如 `{int(rand()*10)}`。默认数值输出保留 2 位小数。
+
 动画表达式支持: `#loop` 变量、`sin`/`cos`/`abs`/`round` 函数、基本算术运算。
 
-用户预设存储在 `localStorage`:
-- 图层信息: `layerTool.presets.v1`
-- 模板输出: `layerTool.templateOutputPresets.v1`
+**预设持久化存储**（本地文件 + localStorage 双重备份）:
+- 图层信息: `dist/lib/presets/tab1/default.json` + `layerTool.presets.v1`
+- 模板输出: `dist/lib/presets/tab2/default.json` + `layerTool.templateOutputPresets.v1`
+- XML 模板配置: `dist/lib/presets/tab4/default.json` + `layerTool.xmlConfig.v1`
+- 折叠面板状态: `layerTool.hintStates.v1`（仅 localStorage）
+
+加载优先级：本地文件 > localStorage > 默认值。安装/卸载脚本自动备份和恢复 `dist/lib/presets/` 目录。
 
 均支持拖拽排序。
 
@@ -89,7 +99,7 @@ $.HostScript = {
 
 导出功能支持：选中图层/选中图层组/全部图层，PNG/JPG/BMP 格式，可选保留文件夹层级和导出 XML。
 
-XML 模板功能支持三种数据类型（百分比/温度/步数），根据图层位置自动计算偏移量生成 `lt()`/`ge()` 条件表达式。温度类型自动处理符号位对齐反转。
+XML 模板功能支持三种数据类型（百分比/温度/步数），根据图层位置自动计算偏移量生成 `lt()`/`ge()` 条件表达式。温度类型自动处理符号位对齐反转。支持输出 rotation 属性（默认勾选，仅 rotation ≠ 0 时输出）。内置常用变量管理，支持自定义变量。
 
 ## 添加新功能步骤
 
