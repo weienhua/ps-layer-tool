@@ -201,7 +201,9 @@ function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => number): an
     return getNormalLayerInfo(layerDesc, s2t);
   }
   var soMore = layerDesc.getObjectValue(s2t("smartObjectMore"));
-  if (!soMore.hasKey(s2t("size")) || !soMore.hasKey(s2t("transform"))) {
+  var hasSize = soMore.hasKey(s2t("size"));
+  var hasTransform = soMore.hasKey(s2t("transform"));
+  if (!hasSize || !hasTransform) {
     return getNormalLayerInfo(layerDesc, s2t);
   }
   var size = soMore.getObjectValue(s2t("size"));
