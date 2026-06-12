@@ -971,6 +971,10 @@ textarea {
   background: var(--border);
 }
 
+.xml-var-item > * + * {
+  margin-left: 6px;
+}
+
 .xml-var-item .var-name {
   color: var(--primary);
   font-family: Consolas, Monaco, monospace;

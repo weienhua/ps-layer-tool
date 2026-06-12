@@ -840,23 +840,32 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       var offsetLtH = 10;
       var offsetLtV = 10;
       if (numCount >= 2) {
-        offsetLtH = Math.round(Math.abs(numLayers[1].x - numLayers[0].x));
-        offsetLtV = Math.round(Math.abs(numLayers[1].y - numLayers[0].y));
+        offsetLtH = Math.round(numLayers[1].x - numLayers[0].x);
+        offsetLtV = Math.round(numLayers[1].y - numLayers[0].y);
       } else if (numCount >= 1) {
-        offsetLtH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
-        offsetLtV = Math.round(Math.abs(numLayers[0].y - signLayer.y));
+        offsetLtH = Math.round(numLayers[0].x - signLayer.x);
+        offsetLtV = Math.round(numLayers[0].y - signLayer.y);
       }
       // offsetGe: x 用符号层到第一个数字层的间距，y 与 offsetLt 保持一致
-      var offsetGeH = Math.round(Math.abs(numLayers[0].x - signLayer.x));
+      var offsetGeH = Math.round(numLayers[0].x - signLayer.x);
       var offsetGeV = offsetLtV;
 
       var absVn = "abs(" + vn + ")";
 
-      // 符号位：lt 条件对齐系数取反，ge 条件正常
+      // 辅助函数：根据 offset 符号生成正确的偏移项
+      // offset > 0: "-offset*factor*cond"
+      // offset < 0: "+|offset|*factor*cond"
+      var offsetTerm = function(offset: number, factor: string, cond: string): string {
+        if (offset === 0) return "";
+        if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
+        return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
+      };
+
+      // 符号位：lt 条件对齐系数取反且偏移量符号与数值位相反，ge 条件使用固定负号
       var signAhInv = String(1 - ahNum);
       var signAvInv = String(1 - avNum);
-      var signXExpr = signLayer.x + "+" + offsetLtH + "*" + signAhInv + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
-      var signYExpr = signLayer.y + "+" + offsetLtV + "*" + signAvInv + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
+      var signXExpr = String(signLayer.x) + offsetTerm(-offsetLtH, signAhInv, "lt(" + absVn + ",10)") + "-" + Math.abs(offsetGeH) + "*" + ah + "*ge(" + vn + ",0)";
+      var signYExpr = String(signLayer.y) + offsetTerm(-offsetLtV, signAvInv, "lt(" + absVn + ",10)") + "-" + Math.abs(offsetGeV) + "*" + av + "*ge(" + vn + ",0)";
       xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '" src="' + signSrc + '"';
       if (signLayer.rotation !== undefined && signLayer.rotation !== 0) {
         xml += ' rotation="' + signLayer.rotation + '"';
@@ -870,8 +879,8 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var nBaseY = nLayer.y;
         var nSrc = (nLayer.path || "") + cleanDigitName(nLayer.name || "") + ".png";
 
-        var nxExpr = String(nBaseX) + "-" + offsetLtH + "*" + ah + "*lt(" + absVn + ",10)" + "-" + offsetGeH + "*" + ah + "*ge(" + vn + ",0)";
-        var nyExpr = String(nBaseY) + "-" + offsetLtV + "*" + av + "*lt(" + absVn + ",10)" + "-" + offsetGeV + "*" + av + "*ge(" + vn + ",0)";
+        var nxExpr = String(nBaseX) + offsetTerm(offsetLtH, ah, "lt(" + absVn + ",10)") + offsetTerm(offsetGeH, ah, "ge(" + vn + ",0)");
+        var nyExpr = String(nBaseY) + offsetTerm(offsetLtV, av, "lt(" + absVn + ",10)") + offsetTerm(offsetGeV, av, "ge(" + vn + ",0)");
 
         xml += '<Image x="' + nxExpr + '" y="' + nyExpr + '" src="' + nSrc + '"';
         if (nLayer.rotation !== undefined && nLayer.rotation !== 0) {
@@ -899,18 +908,25 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       var pctOffsetsV: number[] = [];
       for (var oi = 0; oi < pctOffset.length; oi++) {
         if (oi + 1 < count) {
-          pctOffsetsH.push(Math.round(Math.abs(layers[oi + 1].x - layers[oi].x)));
-          pctOffsetsV.push(Math.round(Math.abs(layers[oi + 1].y - layers[oi].y)));
+          pctOffsetsH.push(Math.round(layers[oi + 1].x - layers[oi].x));
+          pctOffsetsV.push(Math.round(layers[oi + 1].y - layers[oi].y));
         }
       }
+
+      // 辅助函数：根据 offset 符号生成正确的偏移项
+      var pctOffsetTerm = function(offset: number, factor: string, cond: string): string {
+        if (offset === 0) return "";
+        if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
+        return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
+      };
 
       for (var pi = 0; pi < count; pi++) {
         var pLayer = layers[pi];
         var pxExpr = String(pLayer.x);
         var pyExpr = String(pLayer.y);
         for (var pj = 0; pj < pctOffsetsH.length; pj++) {
-          pxExpr = pxExpr + "-" + pctOffsetsH[pj] + "*" + ah + "*lt(" + vn + "," + pctOffset[pj] + ")";
-          pyExpr = pyExpr + "-" + pctOffsetsV[pj] + "*" + av + "*lt(" + vn + "," + pctOffset[pj] + ")";
+          pxExpr = pxExpr + pctOffsetTerm(pctOffsetsH[pj], ah, "lt(" + vn + "," + pctOffset[pj] + ")");
+          pyExpr = pyExpr + pctOffsetTerm(pctOffsetsV[pj], av, "lt(" + vn + "," + pctOffset[pj] + ")");
         }
         var pCleanName = cleanDigitName(pLayer.name || "");
         var pSrcPath = (pLayer.path || "") + pCleanName + ".png";
@@ -947,18 +963,25 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       var stepsOffsetsV: number[] = [];
       for (var soi = 0; soi < stepsOffset.length; soi++) {
         if (soi + 1 < count) {
-          stepsOffsetsH.push(Math.round(Math.abs(layers[soi + 1].x - layers[soi].x)));
-          stepsOffsetsV.push(Math.round(Math.abs(layers[soi + 1].y - layers[soi].y)));
+          stepsOffsetsH.push(Math.round(layers[soi + 1].x - layers[soi].x));
+          stepsOffsetsV.push(Math.round(layers[soi + 1].y - layers[soi].y));
         }
       }
+
+      // 辅助函数：根据 offset 符号生成正确的偏移项
+      var stepsOffsetTerm = function(offset: number, factor: string, cond: string): string {
+        if (offset === 0) return "";
+        if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
+        return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
+      };
 
       for (var sti = 0; sti < count; sti++) {
         var stLayer = layers[sti];
         var stxExpr = String(stLayer.x);
         var styExpr = String(stLayer.y);
         for (var stj = 0; stj < stepsOffsetsH.length; stj++) {
-          stxExpr = stxExpr + "-" + stepsOffsetsH[stj] + "*" + ah + "*lt(" + vn + "," + stepsOffset[stj] + ")";
-          styExpr = styExpr + "-" + stepsOffsetsV[stj] + "*" + av + "*lt(" + vn + "," + stepsOffset[stj] + ")";
+          stxExpr = stxExpr + stepsOffsetTerm(stepsOffsetsH[stj], ah, "lt(" + vn + "," + stepsOffset[stj] + ")");
+          styExpr = styExpr + stepsOffsetTerm(stepsOffsetsV[stj], av, "lt(" + vn + "," + stepsOffset[stj] + ")");
         }
         var stSrcPath = (stLayer.path || "") + cleanDigitName(stLayer.name || "") + ".png";
         var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
