@@ -1280,6 +1280,21 @@ class LayerToolUI {
 
     container.addEventListener("click", (e) => {
       var target = e.target as HTMLElement;
+      var toggleBtn = target.closest("button[data-action='toggle-collapse']") as HTMLButtonElement;
+      if (toggleBtn) {
+        e.stopPropagation();
+        toggleBtn.blur();
+        var toggleId = toggleBtn.dataset.id;
+        if (toggleId) {
+          var item = toggleBtn.closest(".preset-item") as HTMLElement;
+          if (item) {
+            item.classList.toggle("collapsed");
+            var isCollapsed = item.classList.contains("collapsed");
+            this.savePresetCollapseState(toggleId, isCollapsed);
+          }
+        }
+        return;
+      }
       var deleteBtn = target.closest("button[data-action='delete']") as HTMLButtonElement;
       if (deleteBtn) {
         e.stopPropagation();
@@ -1572,14 +1587,18 @@ class LayerToolUI {
       return;
     }
     const idx = this.presets.findIndex((p) => p.name === config.name);
+    const isNew = idx < 0;
     const preset: PresetConfig = {
       ...config,
-      id: idx >= 0 ? this.presets[idx].id : String(Date.now())
+      id: isNew ? String(Date.now()) : this.presets[idx].id
     };
     if (idx >= 0) {
       this.presets[idx] = preset;
     } else {
       this.presets.push(preset);
+    }
+    if (isNew) {
+      this.savePresetCollapseState(preset.id, true);
     }
     await this.persistPresets();
     this.renderPresetList();
@@ -1787,12 +1806,17 @@ class LayerToolUI {
       this.presetList.innerHTML = '<div class="empty-state">暂无预设</div>';
       return;
     }
+    var collapseStates = this.loadPresetCollapseStates();
     this.presetList.innerHTML = this.presets.map((preset) => {
+      var collapsed = collapseStates[preset.id] === true ? " collapsed" : "";
       return `
-        <div class="preset-item" data-id="${preset.id}" draggable="true">
-          <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
+        <div class="preset-item${collapsed}" data-id="${preset.id}" draggable="true">
           <div class="preset-main">
-            <span class="preset-name">${this.escapeHtml(preset.name)}</span>
+            <div class="preset-main-left">
+              <button class="preset-toggle" data-action="toggle-collapse" data-id="${preset.id}" aria-label="折叠/展开">▼</button>
+              <span class="preset-name">${this.escapeHtml(preset.name)}</span>
+            </div>
+            <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
           </div>
           <div class="preset-meta">
             <div class="preset-anchor-grid">${this.getAnchorGridHtml(preset.anchor)}</div>
@@ -2675,14 +2699,18 @@ class LayerToolUI {
       return;
     }
     const idx = this.tplOutPresets.findIndex((p) => p.name === config.name);
+    const isNew = idx < 0;
     const preset: TemplateOutputPresetConfig = {
       ...config,
-      id: idx >= 0 ? this.tplOutPresets[idx].id : String(Date.now())
+      id: isNew ? String(Date.now()) : this.tplOutPresets[idx].id
     };
     if (idx >= 0) {
       this.tplOutPresets[idx] = preset;
     } else {
       this.tplOutPresets.push(preset);
+    }
+    if (isNew) {
+      this.savePresetCollapseState(preset.id, true);
     }
     await this.persistTemplateOutputPresets();
     this.renderTemplateOutputPresetList();
@@ -2719,12 +2747,17 @@ class LayerToolUI {
       this.tplOutPresetList.innerHTML = '<div class="empty-state">暂无预设</div>';
       return;
     }
+    var collapseStates = this.loadPresetCollapseStates();
     this.tplOutPresetList.innerHTML = this.tplOutPresets.map((preset) => {
+      var collapsed = collapseStates[preset.id] === true ? " collapsed" : "";
       return `
-        <div class="preset-item" data-id="${preset.id}" draggable="true">
-          <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
+        <div class="preset-item${collapsed}" data-id="${preset.id}" draggable="true">
           <div class="preset-main">
-            <span class="preset-name">${this.escapeHtml(preset.name)}</span>
+            <div class="preset-main-left">
+              <button class="preset-toggle" data-action="toggle-collapse" data-id="${preset.id}" aria-label="折叠/展开">▼</button>
+              <span class="preset-name">${this.escapeHtml(preset.name)}</span>
+            </div>
+            <button class="preset-delete" data-action="delete" data-id="${preset.id}" aria-label="删除预设">×</button>
           </div>
           <div class="preset-meta">
             <div class="preset-anchor-grid">${this.getAnchorGridHtml(preset.anchor)}</div>
@@ -2934,7 +2967,7 @@ class LayerToolUI {
   }
 
   /**
-   * 初始化折叠面板：绑定点击事件，恢复保存的折叠状态
+   * 初始化折叠面板：绑定点击/hover事件，恢复保存的折叠状态
    */
   private initHintCollapsible(): void {
     var collapsibles = document.querySelectorAll(".hint-collapsible");
@@ -2946,16 +2979,91 @@ class LayerToolUI {
       if (!header) continue;
 
       // 恢复折叠状态（默认展开）
-      if (key && states[key] === false) {
+      var isExpanded = states[key] !== false;
+      if (isExpanded) {
+        el.classList.add("expanded");
+        el.classList.remove("collapsed");
+      } else {
         el.classList.add("collapsed");
+        el.classList.remove("expanded");
       }
+
+      // 标记是否为手动展开（通过点击）
+      (el as any)._manualExpanded = isExpanded;
+
+      // hover 延迟计时器
+      var hoverTimer: number | null = null;
 
       // 绑定点击事件
       (function(self: LayerToolUI, element: HTMLElement, hintKey: string) {
         header!.addEventListener("click", function() {
-          element.classList.toggle("collapsed");
-          var isExpanded = !element.classList.contains("collapsed");
-          self.saveHintState(hintKey, isExpanded);
+          // 清除 hover 计时器
+          var timer = (element as any)._hoverTimer as number | null;
+          if (timer) {
+            clearTimeout(timer);
+            (element as any)._hoverTimer = null;
+          }
+          // 清除延迟展开计时器
+          var expandTimer = (element as any)._expandTimer as number | null;
+          if (expandTimer) {
+            clearTimeout(expandTimer);
+            (element as any)._expandTimer = null;
+          }
+
+          var wasExpanded = element.classList.contains("expanded");
+          if (wasExpanded) {
+            // 手动收起
+            element.classList.remove("expanded");
+            element.classList.add("collapsed");
+            (element as any)._manualExpanded = false;
+            self.saveHintState(hintKey, false);
+          } else {
+            // 手动展开
+            element.classList.remove("collapsed");
+            element.classList.add("expanded");
+            (element as any)._manualExpanded = true;
+            self.saveHintState(hintKey, true);
+          }
+        });
+      })(this, el, key);
+
+      // 绑定 hover 事件（mouseenter / mouseleave）
+      (function(self: LayerToolUI, element: HTMLElement, hintKey: string) {
+        element.addEventListener("mouseenter", function() {
+          // 如果是手动展开状态，hover 不做任何事
+          if ((element as any)._manualExpanded) return;
+
+          // 清除之前的收起计时器
+          var timer = (element as any)._hoverTimer as number | null;
+          if (timer) {
+            clearTimeout(timer);
+            (element as any)._hoverTimer = null;
+          }
+
+          // 延迟 500ms 展开
+          (element as any)._expandTimer = window.setTimeout(function() {
+            element.classList.remove("collapsed");
+            element.classList.add("expanded");
+            (element as any)._expandTimer = null;
+          }, 500);
+        });
+
+        element.addEventListener("mouseleave", function() {
+          // 如果是手动展开状态，hover 不做任何事
+          if ((element as any)._manualExpanded) return;
+
+          // 清除展开计时器（如果还在等待展开）
+          var expandTimer = (element as any)._expandTimer as number | null;
+          if (expandTimer) {
+            clearTimeout(expandTimer);
+            (element as any)._expandTimer = null;
+          }
+
+          // 立即收起
+          var timer = (element as any)._hoverTimer as number | null;
+          if (timer) clearTimeout(timer);
+          element.classList.remove("expanded");
+          element.classList.add("collapsed");
         });
       })(this, el, key);
     }
@@ -2983,6 +3091,31 @@ class LayerToolUI {
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
+    }
+  }
+
+  /**
+   * 加载预设卡片折叠状态
+   */
+  private loadPresetCollapseStates(): Record<string, boolean> {
+    try {
+      var raw = localStorage.getItem("layerTool.presetCollapseStates.v1");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * 保存预设卡片折叠状态
+   */
+  private savePresetCollapseState(presetId: string, collapsed: boolean): void {
+    try {
+      var states = this.loadPresetCollapseStates();
+      states[presetId] = collapsed;
+      localStorage.setItem("layerTool.presetCollapseStates.v1", JSON.stringify(states));
+    } catch (e) {
+      // 忽略存储错误
     }
   }
 
