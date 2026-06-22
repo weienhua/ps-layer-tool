@@ -1007,6 +1007,13 @@ textarea {
   cursor: pointer;
 }
 
+/* 输出选项组（多个复选框） */
+.output-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 /* XML 变量面板 */
 .xml-vars-panel {
   padding: 0;

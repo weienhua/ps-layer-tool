@@ -346,11 +346,12 @@ export class PSBridge {
    * @param format 导出格式
    * @param groupPath 图层组路径
    * @param includeHidden 是否包含不可见图层
+   * @param trimTransparent 是否裁剪透明像素
    */
-  async exportSingleLayer(layerId: number, exportPath: string, format: ExportFormat, groupPath: string, includeHidden: boolean): Promise<PSResult<ExportSingleResult>> {
+  async exportSingleLayer(layerId: number, exportPath: string, format: ExportFormat, groupPath: string, includeHidden: boolean, trimTransparent: boolean = true): Promise<PSResult<ExportSingleResult>> {
     const safePath = this.escapeForSingleQuotedString(exportPath);
     const safeGroup = this.escapeForSingleQuotedString(groupPath);
-    return this.evalScript<ExportSingleResult>(`$.HostScript.exportSingleLayer(${layerId}, '${safePath}', '${format}', '${safeGroup}', ${includeHidden})`);
+    return this.evalScript<ExportSingleResult>(`$.HostScript.exportSingleLayer(${layerId}, '${safePath}', '${format}', '${safeGroup}', ${includeHidden}, ${trimTransparent})`);
   }
 
   /**
@@ -385,11 +386,13 @@ export class PSBridge {
    * @param alignH 水平对齐系数
    * @param alignV 垂直对齐系数
    * @param layersJson 图层数据 JSON
+   * @param outputSize 是否输出图片宽高属性
    */
-  async generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string): Promise<PSResult<string>> {
+  async generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string, outputSize?: string): Promise<PSResult<string>> {
     const safeVar = this.escapeForSingleQuotedString(variableName);
     const safeJson = this.escapeForSingleQuotedString(layersJson);
-    return this.evalScript<string>(`$.HostScript.generateXMLTemplate('${safeVar}', '${dataType}', ${alignH}, ${alignV}, '${safeJson}')`);
+    const sizeParam = outputSize ? `'${outputSize}'` : "'false'";
+    return this.evalScript<string>(`$.HostScript.generateXMLTemplate('${safeVar}', '${dataType}', ${alignH}, ${alignV}, '${safeJson}', ${sizeParam})`);
   }
 
   /**

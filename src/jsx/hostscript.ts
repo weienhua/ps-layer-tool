@@ -639,9 +639,10 @@ function collectGroupLayersForExport(includeHidden: boolean): string {
  * @param format 导出格式
  * @param groupPath 图层组路径
  * @param includeHidden 是否包含不可见图层
+ * @param trimTransparent 是否裁剪透明像素
  * @returns JSON 字符串包含裁剪后的位置和尺寸
  */
-function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean): string {
+function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean, trimTransparent: boolean): string {
   var originalDoc = Document.activeDocument();
   if (!originalDoc) return "__NO_DOCUMENT__";
   var newDoc: any = null;
@@ -672,9 +673,11 @@ function exportSingleLayer(layerId: number, exportPath: string, format: string, 
 
     // 创建新文档（非破坏性）
     newDoc = Document.fromSelectedLayers();
-    
+
     // 裁剪透明像素
-    newDoc.trim();
+    if (trimTransparent) {
+      newDoc.trim();
+    }
 
     // JPG 格式：填充白色背景（使用 Action Manager 确保兼容性）
     if (format === "JPEG") {
@@ -786,9 +789,10 @@ function exportLayerInfoXML(exportPath: string, layersJson: string): string {
  * @param alignH 水平对齐系数：1（左）| 0.5（中）| 0（右）
  * @param alignV 垂直对齐系数：1（上）| 0.5（中）| 0（下）
  * @param layersJson 图层数据 JSON 字符串
+ * @param outputSize 是否输出图片宽高属性 ("true"/"false")
  * @returns XML 字符串
  */
-function generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string): string {
+function generateXMLTemplate(variableName: string, dataType: string, alignH: number, alignV: number, layersJson: string, outputSize?: string): string {
   try {
     var data = JSON.parse(layersJson);
     var layers = data.layers;
@@ -818,6 +822,18 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
     var ah = String(ahNum);
     var av = String(avNum);
+
+    /** 是否输出图片宽高属性 */
+    var shouldOutputSize = (outputSize === "true");
+
+    /** 生成宽高属性字符串 */
+    var sizeAttrs = function(layer: any): string {
+      if (!shouldOutputSize) return "";
+      var w = Math.round(layer.width || 0);
+      var h = Math.round(layer.height || 0);
+      if (w > 0 && h > 0) return ' w="' + w + '" h="' + h + '"';
+      return "";
+    };
 
     if (dataType === "temperature") {
       // 温度类型：至少需要 2 个图层（符号位 + 至少 1 个数字位）
@@ -866,7 +882,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
       var signAvInv = String(1 - avNum);
       var signXExpr = String(signLayer.x) + offsetTerm(-offsetLtH, signAhInv, "lt(" + absVn + ",10)") + "-" + Math.abs(offsetGeH) + "*" + ah + "*ge(" + vn + ",0)";
       var signYExpr = String(signLayer.y) + offsetTerm(-offsetLtV, signAvInv, "lt(" + absVn + ",10)") + "-" + Math.abs(offsetGeV) + "*" + av + "*ge(" + vn + ",0)";
-      xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '" src="' + signSrc + '"';
+      xml += '<Image x="' + signXExpr + '" y="' + signYExpr + '"';
+      xml += sizeAttrs(signLayer);
+      xml += ' src="' + signSrc + '"';
       if (signLayer.rotation !== undefined && signLayer.rotation !== 0) {
         xml += ' rotation="' + signLayer.rotation + '"';
       }
@@ -882,7 +900,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var nxExpr = String(nBaseX) + offsetTerm(offsetLtH, ah, "lt(" + absVn + ",10)") + offsetTerm(offsetGeH, ah, "ge(" + vn + ",0)");
         var nyExpr = String(nBaseY) + offsetTerm(offsetLtV, av, "lt(" + absVn + ",10)") + offsetTerm(offsetGeV, av, "ge(" + vn + ",0)");
 
-        xml += '<Image x="' + nxExpr + '" y="' + nyExpr + '" src="' + nSrc + '"';
+        xml += '<Image x="' + nxExpr + '" y="' + nyExpr + '"';
+        xml += sizeAttrs(nLayer);
+        xml += ' src="' + nSrc + '"';
         if (nLayer.rotation !== undefined && nLayer.rotation !== 0) {
           xml += ' rotation="' + nLayer.rotation + '"';
         }
@@ -930,7 +950,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         }
         var pCleanName = cleanDigitName(pLayer.name || "");
         var pSrcPath = (pLayer.path || "") + pCleanName + ".png";
-        xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '" src="' + pSrcPath + '"';
+        xml += '<Image x="' + pxExpr + '" y="' + pyExpr + '"';
+        xml += sizeAttrs(pLayer);
+        xml += ' src="' + pSrcPath + '"';
         if (pLayer.rotation !== undefined && pLayer.rotation !== 0) {
           xml += ' rotation="' + pLayer.rotation + '"';
         }
@@ -987,7 +1009,9 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
         var stSrcid = vn + "/" + stepsSrcid[sti] + "%10";
         var stVis = stepsSrcid[sti];
         if (sti === count - 1) { stVis = 0; }
-        xml += '<Image x="' + stxExpr + '" y="' + styExpr + '" src="' + stSrcPath + '"';
+        xml += '<Image x="' + stxExpr + '" y="' + styExpr + '"';
+        xml += sizeAttrs(stLayer);
+        xml += ' src="' + stSrcPath + '"';
         if (stLayer.rotation !== undefined && stLayer.rotation !== 0) {
           xml += ' rotation="' + stLayer.rotation + '"';
         }

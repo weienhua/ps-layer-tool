@@ -257,6 +257,7 @@ interface XmlVariable {
 interface XmlTemplateConfig {
   vars: XmlVariable[];
   includeRotation: boolean;
+  outputSize: boolean;
 }
 
 /**
@@ -310,6 +311,10 @@ class LayerToolUI {
   private cbExportHidden = document.getElementById("cbExportHidden") as HTMLInputElement;
   private cbExportXML = document.getElementById("cbExportXML") as HTMLInputElement;
   private cbFolderHierarchy = document.getElementById("cbFolderHierarchy") as HTMLInputElement;
+  private cbTrimTransparent = document.getElementById("cbTrimTransparent") as HTMLInputElement;
+
+  /** Tab3 导出设置 localStorage key */
+  private static readonly EXPORT_SETTINGS_KEY = "layerTool.exportSettings.v1";
   private btnExportSelected = document.getElementById("btnExportSelected") as HTMLButtonElement;
   private btnExportGroup = document.getElementById("btnExportGroup") as HTMLButtonElement;
   private btnExportAll = document.getElementById("btnExportAll") as HTMLButtonElement;
@@ -345,6 +350,7 @@ class LayerToolUI {
   private xmlPositionAnchorSelect = document.getElementById("xmlPositionAnchorSelect") as HTMLSelectElement;
   private xmlSortSelect = document.getElementById("xmlSortSelect") as HTMLSelectElement;
   private xmlIncludeRotation = document.getElementById("xmlIncludeRotation") as HTMLInputElement;
+  private xmlOutputSize = document.getElementById("xmlOutputSize") as HTMLInputElement;
   private btnGenerateXML = document.getElementById("btnGenerateXML") as HTMLButtonElement;
   private btnCopyXML = document.getElementById("btnCopyXML") as HTMLButtonElement;
   private xmlOutput = document.getElementById("xmlOutput") as HTMLTextAreaElement;
@@ -404,9 +410,10 @@ class LayerToolUI {
       this.setTplOutAnchor("topLeft");
       this.initHintCollapsible();
       this.initSectionCollapsible();
-      // 加载 Tab4 配置（变量列表 + rotation 设置）
+      // 加载 Tab4 配置（变量列表 + rotation 设置 + 宽高输出）
       await this.loadXmlConfigAsync();
       this.xmlIncludeRotation.checked = this.getXmlIncludeRotation();
+      this.xmlOutputSize.checked = this.getXmlOutputSize();
       this.renderXmlVarsList();
     });
   }
@@ -714,6 +721,14 @@ class LayerToolUI {
       void this.handleExportAll();
     });
 
+    // 加载 Tab3 导出设置
+    this.loadExportSettings();
+    this.exportFormat.addEventListener("change", () => this.saveExportSettings());
+    this.cbExportHidden.addEventListener("change", () => this.saveExportSettings());
+    this.cbExportXML.addEventListener("change", () => this.saveExportSettings());
+    this.cbFolderHierarchy.addEventListener("change", () => this.saveExportSettings());
+    this.cbTrimTransparent.addEventListener("change", () => this.saveExportSettings());
+
     // XML 模板 Tab 事件
     this.xmlDatatypeGroup.querySelectorAll(".xml-datatype-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -902,6 +917,11 @@ class LayerToolUI {
     this.xmlIncludeRotation.addEventListener("change", () => {
       void this.saveXmlIncludeRotation(this.xmlIncludeRotation.checked);
     });
+
+    // 图片宽高输出设置变化时保存
+    this.xmlOutputSize.addEventListener("change", () => {
+      void this.saveXmlOutputSize(this.xmlOutputSize.checked);
+    });
   }
 
   /**
@@ -998,7 +1018,8 @@ class LayerToolUI {
    */
   private xmlConfig: XmlTemplateConfig = {
     vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
-    includeRotation: true
+    includeRotation: true,
+    outputSize: false
   };
 
   /**
@@ -1032,9 +1053,15 @@ class LayerToolUI {
 
         const fileResult = await psBridge.readFile(filePath);
         if (fileResult.success && fileResult.data) {
-          const parsed = JSON.parse(fileResult.data) as XmlTemplateConfig;
+          // readFile 返回的 JSON 已被 parseResult 自动解析
+          const parsed = fileResult.data as unknown as XmlTemplateConfig;
           if (parsed && Array.isArray(parsed.vars)) {
-            this.xmlConfig = parsed;
+            // 确保新增字段有默认值
+            this.xmlConfig = {
+              vars: parsed.vars,
+              includeRotation: parsed.includeRotation !== undefined ? parsed.includeRotation : true,
+              outputSize: parsed.outputSize !== undefined ? parsed.outputSize : false
+            };
             // 同步到 localStorage 作为备份
             this.persistXmlConfigToLocalStorage();
             return;
@@ -1046,7 +1073,12 @@ class LayerToolUI {
         if (localRaw) {
           const parsed = JSON.parse(localRaw) as XmlTemplateConfig;
           if (parsed && Array.isArray(parsed.vars)) {
-            this.xmlConfig = parsed;
+            // 确保新增字段有默认值
+            this.xmlConfig = {
+              vars: parsed.vars,
+              includeRotation: parsed.includeRotation !== undefined ? parsed.includeRotation : true,
+              outputSize: parsed.outputSize !== undefined ? parsed.outputSize : false
+            };
             // 迁移到本地文件
             await this.persistXmlConfigToFile();
             console.log("已将 Tab4 localStorage 配置迁移到本地文件");
@@ -1060,7 +1092,8 @@ class LayerToolUI {
         if (oldVarsRaw || oldRotationRaw) {
           this.xmlConfig = {
             vars: oldVarsRaw ? JSON.parse(oldVarsRaw) : LayerToolUI.DEFAULT_XML_VARS.slice(),
-            includeRotation: oldRotationRaw === null || oldRotationRaw === undefined ? true : oldRotationRaw === "true"
+            includeRotation: oldRotationRaw === null || oldRotationRaw === undefined ? true : oldRotationRaw === "true",
+            outputSize: false
           };
           await this.persistXmlConfigToFile();
           // 清理旧格式
@@ -1073,7 +1106,8 @@ class LayerToolUI {
         // 4. 使用默认配置，保存到文件
         this.xmlConfig = {
           vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
-          includeRotation: true
+          includeRotation: true,
+          outputSize: false
         };
         await this.persistXmlConfigToFile();
         return;
@@ -1085,7 +1119,8 @@ class LayerToolUI {
     // 回退：使用默认配置
     this.xmlConfig = {
       vars: LayerToolUI.DEFAULT_XML_VARS.slice(),
-      includeRotation: true
+      includeRotation: true,
+      outputSize: false
     };
   }
 
@@ -1159,6 +1194,21 @@ class LayerToolUI {
    */
   private async saveXmlIncludeRotation(include: boolean): Promise<void> {
     this.xmlConfig.includeRotation = include;
+    await this.persistXmlConfig();
+  }
+
+  /**
+   * 获取图片宽高输出设置
+   */
+  private getXmlOutputSize(): boolean {
+    return this.xmlConfig.outputSize;
+  }
+
+  /**
+   * 保存图片宽高输出设置
+   */
+  private async saveXmlOutputSize(outputSize: boolean): Promise<void> {
+    this.xmlConfig.outputSize = outputSize;
     await this.persistXmlConfig();
   }
 
@@ -1994,8 +2044,9 @@ class LayerToolUI {
 
     const coeffs = this.getAnchorCoefficients(this.xmlAnchor);
     const layersJson = JSON.stringify({ layers: positioned });
+    const outputSize = this.xmlOutputSize.checked ? "true" : "false";
     const xmlResult = await psBridge.generateXMLTemplate(
-      varName, this.xmlDatatype, coeffs.alignH, coeffs.alignV, layersJson
+      varName, this.xmlDatatype, coeffs.alignH, coeffs.alignV, layersJson, outputSize
     );
 
     if (!xmlResult.success || !xmlResult.data) {
@@ -2218,8 +2269,46 @@ class LayerToolUI {
       format: this.exportFormat.value as "PNGFormat" | "JPEG" | "bMPFormat",
       includeHidden: this.cbExportHidden.checked,
       exportXML: this.cbExportXML.checked,
-      folderHierarchy: this.cbFolderHierarchy.checked
+      folderHierarchy: this.cbFolderHierarchy.checked,
+      trimTransparent: this.cbTrimTransparent.checked
     };
+  }
+
+  /**
+   * 从 localStorage 加载 Tab3 导出设置
+   */
+  private loadExportSettings(): void {
+    try {
+      var raw = localStorage.getItem(LayerToolUI.EXPORT_SETTINGS_KEY);
+      if (raw) {
+        var settings = JSON.parse(raw);
+        if (settings.format) this.exportFormat.value = settings.format;
+        if (settings.includeHidden !== undefined) this.cbExportHidden.checked = settings.includeHidden;
+        if (settings.exportXML !== undefined) this.cbExportXML.checked = settings.exportXML;
+        if (settings.folderHierarchy !== undefined) this.cbFolderHierarchy.checked = settings.folderHierarchy;
+        if (settings.trimTransparent !== undefined) this.cbTrimTransparent.checked = settings.trimTransparent;
+      }
+    } catch (e) {
+      console.warn("加载导出设置失败:", e);
+    }
+  }
+
+  /**
+   * 保存 Tab3 导出设置到 localStorage
+   */
+  private saveExportSettings(): void {
+    try {
+      var settings = {
+        format: this.exportFormat.value,
+        includeHidden: this.cbExportHidden.checked,
+        exportXML: this.cbExportXML.checked,
+        folderHierarchy: this.cbFolderHierarchy.checked,
+        trimTransparent: this.cbTrimTransparent.checked
+      };
+      localStorage.setItem(LayerToolUI.EXPORT_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+      console.warn("保存导出设置失败:", e);
+    }
   }
 
   /**
@@ -2324,7 +2413,7 @@ class LayerToolUI {
         ? layer.groupPath
         : this.computeRelativePath(layer.groupPath, rootGroupPaths);
       const exportResult = await psBridge.exportSingleLayer(
-        layer.id, params.exportPath, params.format, groupPath, params.includeHidden
+        layer.id, params.exportPath, params.format, groupPath, params.includeHidden, params.trimTransparent
       );
       if (exportResult.success && exportResult.data) {
         results.push(exportResult.data);
@@ -2395,7 +2484,7 @@ class LayerToolUI {
         ? layer.groupPath
         : this.computeRelativePath(layer.groupPath, rootGroupPaths);
       const exportResult = await psBridge.exportSingleLayer(
-        layer.id, params.exportPath, params.format, groupPath, params.includeHidden
+        layer.id, params.exportPath, params.format, groupPath, params.includeHidden, params.trimTransparent
       );
       if (exportResult.success && exportResult.data) {
         results.push(exportResult.data);

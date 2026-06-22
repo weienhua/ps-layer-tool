@@ -59,6 +59,54 @@ name:`4位时间srcExp写法（0808）`
 <Image srcExp="'{path[3]}{acname[3]}_'+int(#cur_hour4)+'.png'" x="{x[3]}" y="{y[3]}" />
 ```
 
+name:`8位时间srcid写法（08:08:08）`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" srcid="ifelse(not(#apkg),#hour24/10,eq(#hour12,0),1,#hour12/10)" />
+<Image src="{path[1]}{acname[1]}.png" x="{x[1]}" y="{y[1]}" srcid="ifelse(not(#apkg),#hour24%10,eq(#hour12,0),2,#hour12%10)" />
+<Image src="{path[2]}{acname[2]}.png" x="{x[2]}" y="{y[2]}" />
+<Image src="{path[3]}{acname[3]}.png" x="{x[3]}" y="{y[3]}" srcid="#minute/10" />
+<Image src="{path[4]}{acname[4]}.png" x="{x[4]}" y="{y[4]}" srcid="#minute%10" />
+<Image src="{path[5]}{acname[5]}.png" x="{x[5]}" y="{y[5]}" />
+<Image src="{path[6]}{acname[6]}.png" x="{x[6]}" y="{y[6]}" srcid="#second/10" />
+<Image src="{path[7]}{acname[7]}.png" x="{x[7]}" y="{y[7]}" srcid="#second%10" />
+```
+
+name:`8位时间srcExp写法（08:08:08）`
+
+```
+<Image srcExp="'{path[0]}{acname[0]}_'+int(#cur_hour1)+'.png'" x="{x[0]}" y="{y[0]}" />
+<Image srcExp="'{path[1]}{acname[1]}_'+int(#cur_hour2)+'.png'" x="{x[1]}" y="{y[1]}" />
+<Image srcExp="'{path[2]}{acname[2]}.png'" 					   x="{x[2]}" y="{y[2]}" />
+<Image srcExp="'{path[3]}{acname[3]}_'+int(#cur_hour3)+'.png'" x="{x[3]}" y="{y[3]}" />
+<Image srcExp="'{path[4]}{acname[4]}_'+int(#cur_hour4)+'.png'" x="{x[4]}" y="{y[4]}" />
+<Image srcExp="'{path[5]}{acname[5]}.png'" 					   x="{x[5]}" y="{y[5]}" />
+<Image srcExp="'{path[6]}{acname[6]}_'+int(#cur_hour5)+'.png'" x="{x[6]}" y="{y[6]}" />
+<Image srcExp="'{path[7]}{acname[7]}_'+int(#cur_hour6)+'.png'" x="{x[7]}" y="{y[7]}" />
+```
+
+name:`6位时间srcid写法（080808）`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" srcid="ifelse(not(#apkg),#hour24/10,eq(#hour12,0),1,#hour12/10)" />
+<Image src="{path[1]}{acname[1]}.png" x="{x[1]}" y="{y[1]}" srcid="ifelse(not(#apkg),#hour24%10,eq(#hour12,0),2,#hour12%10)" />
+<Image src="{path[2]}{acname[2]}.png" x="{x[2]}" y="{y[2]}" srcid="#minute/10" />
+<Image src="{path[3]}{acname[3]}.png" x="{x[3]}" y="{y[3]}" srcid="#minute%10" />
+<Image src="{path[4]}{acname[4]}.png" x="{x[4]}" y="{y[4]}" srcid="#second/10" />
+<Image src="{path[5]}{acname[5]}.png" x="{x[5]}" y="{y[5]}" srcid="#second%10" />
+```
+
+name:`6位时间srcExp写法（080808）`
+
+```
+<Image srcExp="'{path[0]}{acname[0]}_'+int(#cur_hour1)+'.png'" x="{x[0]}" y="{y[0]}" />
+<Image srcExp="'{path[1]}{acname[1]}_'+int(#cur_hour2)+'.png'" x="{x[1]}" y="{y[1]}" />
+<Image srcExp="'{path[2]}{acname[2]}_'+int(#cur_hour3)+'.png'" x="{x[2]}" y="{y[2]}" />
+<Image srcExp="'{path[3]}{acname[3]}_'+int(#cur_hour4)+'.png'" x="{x[3]}" y="{y[3]}" />
+<Image srcExp="'{path[4]}{acname[4]}_'+int(#cur_hour5)+'.png'" x="{x[4]}" y="{y[4]}" />
+<Image srcExp="'{path[5]}{acname[5]}_'+int(#cur_hour6)+'.png'" x="{x[5]}" y="{y[5]}" />
+```
+
 name:`7位日期srcid写法（03月21日星期六）`
 
 ```

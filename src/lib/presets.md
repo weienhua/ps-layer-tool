@@ -11,8 +11,18 @@ x="{x}" y="{y}" w="{width}" h="{height}"
 <Image src="{path}{acname}.png" x="{x}" y="{y}" />
 ```
 ```
+<Image srcExp="'{path}{acname}.png'" x="{x}" y="{y}" />
+```
+
+```
 <Image src="{path}{acname}.png" x="{x}" y="{y}" w="{width}" h="{height}" scaleType="fill"/>
 ```
+```
+<Image srcExp="'{path}{acname}.png'" x="{x}" y="{y}" w="{width}" h="{height}" scaleType="fill"/>
+```
+
+
+
 ```
 <Image src="{path}{acname}.png" x="{centerX}" y="{centerY}" w="{width}{scaleAnim}" h="{height}{scaleAnim}" align="center" alignV="center" scaleType="fill"/>
 ```

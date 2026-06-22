@@ -276,6 +276,12 @@
               <span>保留文件夹层级</span>
             </label>
           </div>
+          <div class="row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cbTrimTransparent" checked>
+              <span>裁剪透明像素</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -396,10 +402,16 @@
         </div>
         <div class="row">
           <label>输出选项</label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="xmlIncludeRotation" checked>
-            <span>输出 rotation 属性</span>
-          </label>
+          <div class="output-options-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="xmlIncludeRotation" checked>
+              <span>输出 rotation 属性</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="xmlOutputSize">
+              <span>输出图片宽高</span>
+            </label>
+          </div>
         </div>
         <div class="row actions action-group">
           <button class="btn btn-primary" id="btnGenerateXML">生成 XML 并复制</button>
