@@ -40,5 +40,8 @@ module.exports = (env, argv) => {
     ],
     mode: mode,
     devtool: isProduction ? false : 'source-map',
+    optimization: {
+      minimize: false,
+    },
   };
 };

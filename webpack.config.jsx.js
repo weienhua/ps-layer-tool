@@ -35,6 +35,9 @@ module.exports = (env, argv) => {
       filename: 'hostscript.js',
       path: path.resolve(__dirname, 'dist/jsx')
       // 不配置 library，依赖代码中的 $ = $ || {} 手动暴露全局变量
-    }
+    },
+    optimization: {
+      minimize: false,
+    },
   };
 };
