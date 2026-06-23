@@ -870,9 +870,8 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
       // 辅助函数：根据 offset 符号生成正确的偏移项
       // offset > 0: "-offset*factor*cond"
-      // offset < 0: "+|offset|*factor*cond"
+      // offset <= 0: "+|offset|*factor*cond"
       var offsetTerm = function(offset: number, factor: string, cond: string): string {
-        if (offset === 0) return "";
         if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
         return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
       };
@@ -935,7 +934,6 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
       // 辅助函数：根据 offset 符号生成正确的偏移项
       var pctOffsetTerm = function(offset: number, factor: string, cond: string): string {
-        if (offset === 0) return "";
         if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
         return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
       };
@@ -992,7 +990,6 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
 
       // 辅助函数：根据 offset 符号生成正确的偏移项
       var stepsOffsetTerm = function(offset: number, factor: string, cond: string): string {
-        if (offset === 0) return "";
         if (offset > 0) return "-" + offset + "*" + factor + "*" + cond;
         return "+" + Math.abs(offset) + "*" + factor + "*" + cond;
       };
