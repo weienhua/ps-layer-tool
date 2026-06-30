@@ -49,7 +49,7 @@
 
 ## 技术栈
 
-- **面板侧**: TypeScript + webpack → ES6
+- **面板侧**: Vue 3 SFC + TypeScript + webpack(vue-loader) → ES6
 - **宿主侧**: TypeScript + photoshop-script-api + webpack → ES3 (ExtendScript)
 - **通信**: CEP `evalScript` 桥接
 - **CEP 版本**: 9.0+
@@ -59,28 +59,51 @@
 
 ```
 ├── CSXS/
-│   └── manifest.xml          # CEP 扩展清单
+│   └── manifest.xml              # CEP 扩展清单
 ├── src/
-│   ├── jsx/
-│   │   ├── hostscript.ts     # 宿主脚本入口
-│   │   └── ps-api/           # photoshop-script-api 源代码（vendored）
-│   ├── lib/
-│   │   ├── CSInterface.js    # Adobe 官方 CEP 库（v9.4.0）
-│   │   ├── presets.md        # 图层信息内置模板预设（7 条）
-│   │   └── template.md       # 模板输出预定义模板
+│   ├── main.ts                   # Vue 入口
+│   ├── App.vue                   # 根组件
+│   ├── components/               # Vue SFC 组件（15 个）
+│   │   ├── TabBar.vue            # Tab 导航栏
+│   │   ├── LayerInfoTab.vue      # Tab1：图层信息
+│   │   ├── TemplateOutputTab.vue # Tab2：模板输出
+│   │   ├── LayerExportTab.vue    # Tab3：图层处理
+│   │   ├── XmlTemplateTab.vue    # Tab4：XML 模板
+│   │   ├── AnchorGrid.vue        # 锚点网格选择器
+│   │   ├── CustomSelect.vue      # 自定义下拉
+│   │   ├── PresetList.vue        # 预设列表 + 拖拽
+│   │   ├── Modal.vue             # 通用弹窗
+│   │   ├── Toast.vue             # Toast 提示
+│   │   ├── DebugPanel.vue        # 调试面板
+│   │   ├── StatusBar.vue         # 状态栏
+│   │   ├── DocInfo.vue           # 文档信息
+│   │   ├── HintCollapsible.vue   # 可折叠提示
+│   │   └── SectionCollapsible.vue # 可折叠区域
+│   ├── composables/              # Vue 组合式函数
+│   │   ├── usePreset.ts          # 预设管理
+│   │   └── useToast.ts           # Toast
 │   ├── types/
-│   │   └── cep-panel.d.ts    # CEP 面板类型声明
-│   ├── bridge.ts             # PS 通信桥接层
-│   ├── index.ts              # 面板 UI 控制器
-│   ├── index.html            # 面板 HTML 模板
-│   └── style.css             # 面板样式（暗色主题）
+│   │   ├── index.ts              # 共享类型
+│   │   └── cep-panel.d.ts        # CEP 面板类型声明
+│   ├── utils.ts                  # MathExpr、模板引擎、工具函数
+│   ├── vue-shims.d.ts            # Vue SFC 类型声明
+│   ├── jsx/
+│   │   ├── hostscript.ts         # 宿主脚本入口
+│   │   └── ps-api/               # photoshop-script-api（vendored）
+│   ├── lib/
+│   │   ├── CSInterface.js        # Adobe 官方 CEP 库（v9.4.0）
+│   │   ├── presets.md            # 图层信息内置模板预设（7 条）
+│   │   └── template.md           # 模板输出预定义模板
+│   ├── bridge.ts                 # PS 通信桥接层
+│   ├── index.html                # 面板 HTML 模板
+│   └── style.css                 # 全局基础样式（暗色主题）
 ├── doc/
-│   ├── Windows.png           # Windows 安装示意图
-│   └── csxs.reg/             # Windows 注册表文件（调试模式）
-├── test.jsx                  # 遗留 ExtendScript 测试脚本
-├── dist/                     # 构建产物
-├── webpack.config.js         # 面板 webpack 配置
-├── webpack.config.jsx.js     # 宿主脚本 webpack 配置
+│   ├── Windows.png               # Windows 安装示意图
+│   └── csxs.reg/                 # Windows 注册表文件（调试模式）
+├── test.jsx                      # 遗留 ExtendScript 测试脚本
+├── dist/                         # 构建产物
+├── webpack.config.js             # 面板 webpack 配置（vue-loader）
+├── webpack.config.jsx.js         # 宿主脚本 webpack 配置
 └── package.json
 ```
 
@@ -247,6 +270,7 @@ git push origin master --tags
 npm run build              # 完整构建（开发模式，显示调试面板）
 npm run build:jsx          # 仅构建宿主脚本
 npm run build:panel        # 仅构建面板（开发模式）
+npm run build:panel:prod   # 面板生产模式构建
 npm run dev                # 同时启动面板 + 宿主 watch
 npm run dev:panel          # 仅面板 watch
 npm run dev:jsx            # 仅宿主 watch
@@ -337,9 +361,12 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
    }
    ```
 
-3. **UI 层** (`src/index.ts`):
-   ```typescript
+3. **Vue 组件** (`src/components/`):
+   ```vue
+   <script setup lang="ts">
+   import { psBridge } from "../bridge";
    const result = await psBridge.myNewFunction('test');
+   </script>
    ```
 
 4. 重新构建: `npm run build`

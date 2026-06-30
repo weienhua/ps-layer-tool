@@ -1,0 +1,20 @@
+/** 锚点类型 */
+export type AnchorType =
+  | "topLeft" | "topCenter" | "topRight"
+  | "middleLeft" | "center" | "middleRight"
+  | "bottomLeft" | "bottomCenter" | "bottomRight";
+
+/** 排序类型 */
+export type SortType = "xAsc" | "yAsc" | "psOrderBottomToTop";
+
+/** Tab ID */
+export type TabId = "layerInfo" | "templateOutput" | "layerExport" | "xmlTemplate";
+
+/** 预设卡片数据（用于 PresetList 组件） */
+export interface PresetCardData {
+  id: string;
+  name: string;
+  anchor: string;
+  sortBy: string;
+  template: string;
+}

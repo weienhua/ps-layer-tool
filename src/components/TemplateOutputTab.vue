@@ -1,0 +1,298 @@
+<template>
+  <div>
+    <SectionCollapsible sectionKey="tab2-preset-form" title="预设配置">
+      <div class="row">
+        <label>预设名</label>
+        <input type="text" v-model="presetName" placeholder="例如：模板输出预设" />
+      </div>
+      <div class="row">
+        <label>位置锚点</label>
+        <AnchorGrid v-model="anchor" />
+      </div>
+      <div class="row">
+        <label>排序方式</label>
+        <select v-model="sortBy">
+          <option value="xAsc">按 X 升序</option>
+          <option value="yAsc">按 Y 升序</option>
+          <option value="psOrderBottomToTop">按PS图层顺序</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>输出模板</label>
+        <CustomSelect :options="selectOptions" :modelValue="tplSelectValue" @update:modelValue="handleTplSelectChange" />
+        <textarea v-model="templateInput" rows="4" placeholder='例如：&#10;<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />'></textarea>
+        <HintCollapsible hintKey="tab2-vars" title="模板变量提示">
+          <div class="template-hint">
+            <span v-for="v in HINT_VARS" :key="v.key" class="hint-item">
+              <span class="hint-var">{{ '{' + v.key + '}' }}</span>
+              <span class="hint-desc">{{ v.desc }}</span>
+            </span>
+            <div class="hint-rules">
+              <strong>表达式规则：</strong>仅数字字段可用（x[i], y[i], width[i], height[i], rotation[i], centerX[i], centerY[i], gapX[i], gapY[i], fontSize[i]），
+              支持 <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> 和括号。
+              示例：<code>{x[0]+1}</code> <code>{width[0]*2}</code> <code>{(i[0]+1)*100}</code>。
+              可跨图层计算，如 <code>{x[0]+x[1]}</code>。字符串字段（name, path 等）不可参与计算。
+            </div>
+            <div class="hint-rules">
+              <strong>支持的函数：</strong>
+              <code>round(x)</code> 四舍五入 · <code>round(x,n)</code> 保留n位小数 · <code>ceil(x)</code> 向上取整 ·
+              <code>floor(x)</code> 向下取整 · <code>int(x)</code> 取整数部分 · <code>abs(x)</code> 绝对值 ·
+              <code>min(a,b)</code> 最小值 · <code>max(a,b)</code> 最大值 · <code>rand()</code> 随机数(0-1) ·
+              <code>pow(x,y)</code> x的y次方 · <code>sqrt(x)</code> 平方根
+              <br />示例：<code>{round(width[0]/2)}</code> <code>{int(rand()*10)}</code> <code>{max(x[0],y[0])}</code>
+            </div>
+          </div>
+        </HintCollapsible>
+      </div>
+      <div class="row actions action-group">
+        <button class="btn btn-primary" @click="processOutput">获取选中图层信息</button>
+        <button class="btn" @click="handleSavePreset">保存预设</button>
+      </div>
+    </SectionCollapsible>
+
+    <SectionCollapsible sectionKey="tab2-preset-list" title="预设列表">
+      <PresetList :presets="presets" @apply="applyPreset" @delete="handleDelete" @reorder="handleReorder" />
+    </SectionCollapsible>
+
+    <SectionCollapsible sectionKey="tab2-output" title="输出结果">
+      <div class="row actions">
+        <button class="btn" @click="copyOutput">复制输出</button>
+      </div>
+      <textarea v-model="outputText" rows="8" readonly></textarea>
+    </SectionCollapsible>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, inject } from "vue";
+import { psBridge } from "../bridge";
+import AnchorGrid from "./AnchorGrid.vue";
+import CustomSelect from "./CustomSelect.vue";
+import SectionCollapsible from "./SectionCollapsible.vue";
+import HintCollapsible from "./HintCollapsible.vue";
+import PresetList from "./PresetList.vue";
+import type { AnchorType, SortType, PresetCardData } from "../types";
+import { usePreset } from "../composables/usePreset";
+import { applyArrayTemplate, getAnchorXY, sortLayers } from "../utils";
+
+const emit = defineEmits(["status"]);
+const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
+
+interface TplOutPreset extends PresetCardData {
+  anchor: AnchorType;
+  sortBy: SortType;
+}
+
+const HINT_VARS = [
+  { key: "name[i]", desc: "图层名称" }, { key: "acname[i]", desc: "去_数字后缀" },
+  { key: "type[i]", desc: "图层类型" }, { key: "x[i]", desc: "锚点X" },
+  { key: "y[i]", desc: "锚点Y" }, { key: "width[i]", desc: "宽度" },
+  { key: "height[i]", desc: "高度" }, { key: "rotation[i]", desc: "旋转角度" },
+  { key: "centerX[i]", desc: "中心X" }, { key: "centerY[i]", desc: "中心Y" },
+  { key: "path[i]", desc: "图层路径" }, { key: "gapX[i]", desc: "X间距" },
+  { key: "gapY[i]", desc: "Y间距" }, { key: "fontSize[i]", desc: "字体大小" },
+  { key: "fontColor[i]", desc: "字体颜色" }, { key: "text[i]", desc: "文字内容" },
+];
+
+const presetName = ref("");
+const anchor = ref<AnchorType>("topLeft");
+const sortBy = ref<SortType>("xAsc");
+const templateInput = ref("");
+const outputText = ref("");
+const tplSelectValue = ref("0");
+const templateOptions = ref<Array<{ name: string; template: string }>>([]);
+
+const defaultPresets: TplOutPreset[] = [{
+  id: "default", name: "默认", anchor: "topLeft", sortBy: "xAsc",
+  template: '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />\n<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />',
+}];
+
+const { presets, save, remove, reorder } = usePreset<TplOutPreset>(
+  "layerTool.templateOutputPresets.v1", "tab2", defaultPresets
+);
+
+// 加载 template.md
+(async () => {
+  try {
+    const cs = new (window as any).CSInterface();
+    const extPath = cs.getSystemPath("extension");
+    const filePath = extPath + "/dist/lib/template.md";
+    const result = (window as any).cep.fs.readFile(filePath);
+    if (result.err !== 0) return;
+    const raw = result.data as string;
+    const options: Array<{ name: string; template: string }> = [];
+    const lines = raw.split("\n");
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i].replace(/\r$/, "");
+      const nameMatch = /^name:`([^`]*)`$/.exec(line);
+      if (nameMatch) {
+        const name = nameMatch[1];
+        const parts: string[] = [];
+        i++;
+        while (i < lines.length && lines[i].replace(/\r$/, "").trim() === "") i++;
+        if (i < lines.length && lines[i].replace(/\r$/, "").trim() === "```") {
+          i++;
+          while (i < lines.length && lines[i].replace(/\r$/, "").trim() !== "```") {
+            parts.push(lines[i].replace(/\r$/, ""));
+            i++;
+          }
+          i++;
+          const tpl = parts.join("\n").trim();
+          if (tpl) options.push({ name, template: tpl });
+        }
+      } else i++;
+    }
+    templateOptions.value = options;
+    if (options.length > 0) templateInput.value = options[0].template;
+  } catch { /* ignore */ }
+})();
+
+const selectOptions = computed(() => [
+  ...templateOptions.value.map((o, i) => ({ label: o.name, value: String(i) })),
+  { label: "自定义", value: "custom" },
+]);
+
+function handleTplSelectChange(value: string) {
+  tplSelectValue.value = value;
+  if (value === "custom") {
+    templateInput.value = '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />';
+  } else {
+    const idx = parseInt(value, 10);
+    if (idx >= 0 && idx < templateOptions.value.length) {
+      templateInput.value = templateOptions.value[idx].template;
+    }
+  }
+}
+
+async function processOutput() {
+  if (!templateInput.value) { emit("status", "请先输入输出模板", true); showToast("请先输入输出模板", true); return; }
+  const result = await psBridge.getSelectedLayersInfo();
+  if (!result.success || !result.data) { emit("status", `获取图层失败: ${result.error || "未知错误"}`, true); showToast("获取图层失败", true); return; }
+  if (result.data.layers.length === 0) { outputText.value = ""; emit("status", "未选中图层", true); showToast("未选中图层", true); return; }
+
+  const sorted = sortLayers(result.data.layers, sortBy.value);
+  const layerScopes: Record<string, string>[] = [];
+  const numericScopes: Record<string, number>[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const layer = sorted[i];
+    const anchorXY = getAnchorXY(layer, anchor.value);
+    const gapX = i === 0 ? 0 : anchorXY.x - getAnchorXY(sorted[i - 1], anchor.value).x;
+    const gapY = i === 0 ? 0 : anchorXY.y - getAnchorXY(sorted[i - 1], anchor.value).y;
+    layerScopes.push({
+      name: layer.name, acname: layer.acname, type: layer.layerType,
+      x: String(anchorXY.x), y: String(anchorXY.y),
+      width: String(layer.width), height: String(layer.height),
+      rotation: String(layer.rotation), centerX: String(layer.centerX), centerY: String(layer.centerY),
+      path: layer.path || "", text: layer.text?.content || "",
+      fontSize: layer.text?.fontSize != null ? String(layer.text.fontSize) : "",
+      fontColor: layer.text?.fontColor || "", gapX: String(gapX), gapY: String(gapY),
+    });
+    numericScopes.push({
+      i, x: anchorXY.x, y: anchorXY.y, width: layer.width, height: layer.height,
+      rotation: layer.rotation, centerX: layer.centerX, centerY: layer.centerY,
+      gapX, gapY, fontSize: layer.text?.fontSize != null ? layer.text.fontSize : 0,
+    });
+  }
+
+  const output = applyArrayTemplate(templateInput.value, layerScopes, numericScopes);
+  outputText.value = output;
+  const copied = await psBridge.copyText(output);
+  const skipped = result.data.skipped.length;
+  if (copied) {
+    emit("status", `获取成功：${sorted.length} 个图层${skipped ? `，跳过 ${skipped} 个图层组` : ""}，已复制`);
+    showToast(`获取成功：${sorted.length} 个图层${skipped ? `，跳过 ${skipped} 个图层组` : ""}`);
+  } else {
+    emit("status", '已生成输出，但复制到剪贴板失败，请点击"复制输出"重试', true);
+    showToast("复制到剪贴板失败", true);
+  }
+}
+
+async function handleSavePreset() {
+  if (!presetName.value.trim()) { emit("status", "请先输入预设名称", true); return; }
+  const config: TplOutPreset = {
+    id: "", name: presetName.value.trim(), anchor: anchor.value,
+    sortBy: sortBy.value, template: templateInput.value,
+  };
+  await save(config, presetName.value.trim());
+  emit("status", `预设已保存：${presetName.value.trim()}`);
+}
+
+function applyPreset(id: string) {
+  const p = presets.value.find((x: TplOutPreset) => x.id === id);
+  if (!p) return;
+  presetName.value = p.name;
+  anchor.value = p.anchor;
+  sortBy.value = p.sortBy;
+  templateInput.value = p.template;
+  void processOutput();
+}
+
+async function handleDelete(id: string) { await remove(id); emit("status", "预设已删除"); }
+async function handleReorder(fromId: string, toId: string) { await reorder(fromId, toId); emit("status", "预设顺序已更新"); }
+
+async function copyOutput() {
+  if (!outputText.value) { emit("status", "暂无可复制内容", true); return; }
+  const ok = await psBridge.copyText(outputText.value);
+  emit("status", ok ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok);
+}
+</script>
+
+<style scoped>
+.template-hint {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.template-hint > * {
+  margin-right: 10px;
+  margin-bottom: 6px;
+}
+
+.template-hint .hint-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.template-hint .hint-item > * + * {
+  margin-left: 3px;
+}
+
+.template-hint .hint-item:hover {
+  background: var(--border);
+}
+
+.template-hint .hint-var,
+.template-hint .hint-desc {
+  white-space: nowrap;
+}
+
+.template-hint .hint-rules {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.template-hint .hint-rules code {
+  background: var(--bg-card);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+</style>

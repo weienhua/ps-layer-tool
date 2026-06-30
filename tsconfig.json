@@ -12,10 +12,12 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "sourceMap": true,
+    "jsx": "preserve",
     "types": []
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.vue",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
