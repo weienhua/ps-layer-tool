@@ -4,7 +4,7 @@
     <div
       v-for="preset in presets"
       :key="preset.id"
-      :class="['preset-item', { collapsed: collapseStates[preset.id] }]"
+      :class="['preset-item', { collapsed: collapseStates[preset.id] !== false }]"
       :data-id="preset.id"
       draggable="true"
       @click="handleClick(preset.id)"
@@ -67,7 +67,9 @@ function loadCollapseStates(): Record<string, boolean> {
 const collapseStates = ref(loadCollapseStates());
 
 function toggleCollapse(id: string, e: Event) {
-  collapseStates.value = { ...collapseStates.value, [id]: !collapseStates.value[id] };
+  // 默认折叠：undefined/true → 折叠，false → 展开
+  // 点击切换：折叠 → 展开(false)，展开 → 折叠(true)
+  collapseStates.value = { ...collapseStates.value, [id]: collapseStates.value[id] === false };
   localStorage.setItem("layerTool.presetCollapseStates.v1", JSON.stringify(collapseStates.value));
   // 点击后取消焦点
   (e.target as HTMLElement).blur();
