@@ -50,10 +50,6 @@
       </div>
     </SectionCollapsible>
 
-    <SectionCollapsible sectionKey="tab2-preset-list" title="预设列表">
-      <PresetList :presets="presets" @apply="applyPreset" @delete="handleDelete" @reorder="handleReorder" />
-    </SectionCollapsible>
-
     <SectionCollapsible sectionKey="tab2-output" title="输出结果">
       <div class="row actions">
         <button class="btn" @click="copyOutput">复制输出</button>
@@ -70,18 +66,11 @@ import AnchorGrid from "./AnchorGrid.vue";
 import CustomSelect from "./CustomSelect.vue";
 import SectionCollapsible from "./SectionCollapsible.vue";
 import HintCollapsible from "./HintCollapsible.vue";
-import PresetList from "./PresetList.vue";
 import type { AnchorType, SortType, PresetCardData } from "../types";
-import { usePreset } from "../composables/usePreset";
 import { applyArrayTemplate, getAnchorXY, sortLayers } from "../utils";
 
-const emit = defineEmits(["status"]);
+const emit = defineEmits(["status", "save-preset"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
-
-interface TplOutPreset extends PresetCardData {
-  anchor: AnchorType;
-  sortBy: SortType;
-}
 
 const HINT_VARS = [
   { key: "name[i]", desc: "图层名称" }, { key: "acname[i]", desc: "去_数字后缀" },
@@ -101,15 +90,6 @@ const templateInput = ref("");
 const outputText = ref("");
 const tplSelectValue = ref("0");
 const templateOptions = ref<Array<{ name: string; template: string }>>([]);
-
-const defaultPresets: TplOutPreset[] = [{
-  id: "default", name: "默认", anchor: "topLeft", sortBy: "xAsc",
-  template: '<Image src="{path[0]}{name[0]}.png" x="{x[0]}" y="{y[0]}" />\n<Image src="{path[1]}{name[1]}.png" x="{x[1]}" y="{y[1]}" />',
-}];
-
-const { presets, save, remove, reorder } = usePreset<TplOutPreset>(
-  "layerTool.templateOutputPresets.v1", "tab2", defaultPresets
-);
 
 // 加载 template.md
 (async () => {
@@ -208,34 +188,58 @@ async function processOutput() {
   }
 }
 
-async function handleSavePreset() {
+function handleSavePreset() {
   if (!presetName.value.trim()) { emit("status", "请先输入预设名称", true); return; }
-  const config: TplOutPreset = {
+  const config: PresetCardData = {
     id: "", name: presetName.value.trim(), anchor: anchor.value,
-    sortBy: sortBy.value, template: templateInput.value,
+    sortBy: sortBy.value, template: templateInput.value, tab: 'templateOutput',
   };
-  await save(config, presetName.value.trim());
-  emit("status", `预设已保存：${presetName.value.trim()}`);
+  emit("save-preset", config);
 }
 
-function applyPreset(id: string) {
-  const p = presets.value.find((x: TplOutPreset) => x.id === id);
-  if (!p) return;
-  presetName.value = p.name;
-  anchor.value = p.anchor;
-  sortBy.value = p.sortBy;
-  templateInput.value = p.template;
-  void processOutput();
+/**
+ * 应用预设配置（供外部调用）
+ */
+function applyPresetConfig(preset: PresetCardData) {
+  presetName.value = preset.name;
+  anchor.value = preset.anchor as AnchorType;
+  sortBy.value = preset.sortBy as SortType;
+  // 尝试匹配模板预设
+  let matched = false;
+  for (let i = 0; i < templateOptions.value.length; i++) {
+    if (templateOptions.value[i].template === preset.template) {
+      tplSelectValue.value = String(i);
+      templateInput.value = templateOptions.value[i].template;
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) {
+    tplSelectValue.value = "custom";
+    templateInput.value = preset.template;
+  }
 }
 
-async function handleDelete(id: string) { await remove(id); emit("status", "预设已删除"); }
-async function handleReorder(fromId: string, toId: string) { await reorder(fromId, toId); emit("status", "预设顺序已更新"); }
+/**
+ * 应用预设并执行获取（供外部调用）
+ */
+async function applyAndFetch(preset: PresetCardData) {
+  applyPresetConfig(preset);
+  await processOutput();
+}
 
 async function copyOutput() {
   if (!outputText.value) { emit("status", "暂无可复制内容", true); return; }
   const ok = await psBridge.copyText(outputText.value);
   emit("status", ok ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok);
 }
+
+// 暴露方法供父组件调用
+defineExpose({
+  applyPresetConfig,
+  applyAndFetch,
+  processOutput,
+});
 </script>
 
 <style scoped>

@@ -17,4 +17,6 @@ export interface PresetCardData {
   anchor: string;
   sortBy: string;
   template: string;
+  /** 预设来源：layerInfo = 图层信息，templateOutput = 模板输出 */
+  tab: 'layerInfo' | 'templateOutput';
 }
