@@ -97,9 +97,8 @@ $.HostScript = {
 
 动画表达式支持: `#loop` 变量、`sin`/`cos`/`abs`/`round` 函数、基本算术运算。
 
-**预设持久化存储**（本地文件 + localStorage 双重备份）:
-- 图层信息: `dist/lib/presets/tab1/default.json` + `layerTool.presets.v1`
-- 模板输出: `dist/lib/presets/tab2/default.json` + `layerTool.templateOutputPresets.v1`
+**预设持久化存储**（统一存储，本地文件 + localStorage 双重备份）:
+- 统一预设（Tab1+Tab2）: `dist/lib/presets/all/default.json` + `layerTool.presets.all.v1`
 - XML 模板配置: `dist/lib/presets/tab4/default.json` + `layerTool.xmlConfig.v1`
 - 折叠面板状态: `layerTool.hintStates.v1`（仅 localStorage）
 
@@ -109,7 +108,7 @@ $.HostScript = {
 
 ## 面板 UI
 
-面板分四个 Tab：**图层信息**（预设配置 + 图层信息提取）、**模板输出**（数组索引语法模板 + 图层信息格式化）、**图层处理**（图层导出）、**XML 模板**（锁屏主题 XML 代码生成）。
+面板分四个 Tab：**图层信息**（预设配置 + 图层信息提取）、**模板输出**（数组索引语法模板 + 图层信息格式化）、**图层处理**（图层导出）、**XML 模板**（锁屏主题 XML 代码生成）。Tab1 和 Tab2 的预设统一显示在面板底部的**统一预设列表**中，支持筛选按钮（全部/图层信息/模板输出）。
 
 导出功能支持：选中图层/选中图层组/全部图层，PNG/JPG/BMP 格式，可选保留文件夹层级和导出 XML。
 

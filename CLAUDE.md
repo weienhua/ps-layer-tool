@@ -259,15 +259,16 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 ### 预设持久化存储
 
-预设数据同时保存到本地文件和 localStorage，优先级：**本地文件 > localStorage > 默认值**。
+**统一预设管理**：Tab1（图层信息）和 Tab2（模板输出）的预设统一存储，支持筛选按钮（全部/图层信息/模板输出）。点击预设卡片自动切换到对应 Tab 并执行获取。
 
-| Tab | 本地文件路径 | localStorage Key |
-|-----|-------------|------------------|
-| Tab1 图层信息 | `dist/lib/presets/tab1/default.json` | `layerTool.presets.v1` |
-| Tab2 模板输出 | `dist/lib/presets/tab2/default.json` | `layerTool.templateOutputPresets.v1` |
+预设数据统一保存到本地文件和 localStorage，优先级：**本地文件 > localStorage > 默认值**。
+
+| 数据 | 本地文件路径 | localStorage Key |
+|------|-------------|------------------|
+| 统一预设（Tab1+Tab2） | `dist/lib/presets/all/default.json` | `layerTool.presets.all.v1` |
 | Tab4 XML 模板 | `dist/lib/presets/tab4/default.json` | `layerTool.xmlConfig.v1` |
 
-首次启动时自动迁移 localStorage 数据到本地文件。安装/卸载脚本会自动备份和恢复 `dist/lib/presets/` 目录。
+首次启动时自动从旧存储迁移（合并去重，localStorage 优先）。安装/卸载脚本会自动备份和恢复 `dist/lib/presets/` 目录。
 
 ### 模板变量
 
@@ -355,14 +356,8 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 
 #### 交互按钮
 - **获取选中图层信息**：读取 PS 选中图层，按预设格式化并填入输出区域，自动复制到剪贴板
-- **保存预设**：将当前配置保存到 localStorage
+- **保存预设**：将当前配置保存到统一预设列表
 - **复制输出**：将输出区域内容复制到剪贴板（通过宿主脚本 `copyTextToClipboard`）
-
-#### 预设列表
-- 卡片式展示，带 3×3 锚点网格微预览和排序标签
-- 点击卡片应用预设并获取图层信息
-- 支持拖拽排序
-- 悬停显示模板预览
 
 ### Tab 2：模板输出
 
@@ -380,9 +375,6 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 `{name[i]}`, `{acname[i]}`, `{type[i]}`, `{x[i]}`, `{y[i]}`, `{width[i]}`, `{height[i]}`, `{centerX[i]}`, `{centerY[i]}`, `{rotation[i]}`, `{path[i]}`, `{text[i]}`, `{fontSize[i]}`, `{fontColor[i]}`, `{gapX[i]}`, `{gapY[i]}`
 
 其中 `{gapX[i]}` / `{gapY[i]}` 为与前一图层的锚点坐标间距（首个图层为 0）。
-
-#### 预设系统
-独立 localStorage 存储（key: `layerTool.templateOutputPresets.v1`），支持拖拽排序。
 
 ### Tab 3：图层处理（导出）
 
@@ -428,6 +420,29 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **百分比**：最多 3 位数（百位、十位、个位），srcid 阈值 `[100, 10, 1]`，每对相邻数位独立计算偏移量
 - **温度**：第 1 层为符号位（正/负），后续为数值位，符号位对齐系数自动反转（`1 - ahNum`），至少需要 2 个图层
 - **步数**：动态位数（1-5 位），srcid 阈值从 `10^(n-1)` 到 `1`，每对相邻数位独立计算偏移量
+
+### 统一预设列表（Tab1+Tab2 合并）
+
+Tab1（图层信息）和 Tab2（模板输出）的预设统一显示在同一列表中，位于面板底部。
+
+#### 功能特性
+- **筛选按钮**：支持按来源筛选预设（全部/图层信息/模板输出）
+- **标签区分**：预设卡片带彩色标签显示来源（蓝色=图层信息，绿色=模板输出）
+- **数字标识**：折叠状态下显示数字标识（1=图层信息，2=模板输出）
+- **点击执行**：点击预设卡片自动切换到对应 Tab，应用预设配置并获取图层信息
+- **拖拽排序**：Tab1 和 Tab2 预设可交叉排序
+- **预览显示**：悬停卡片显示模板预览（显示在卡片上方，避免抖动）
+
+#### 卡片显示效果
+```
+折叠态：                    展开态：
+┌─────────────────────┐    ┌─────────────────────┐
+│ ▼ 按钮名      1 [×] │    │ ▼ 按钮名        [×] │
+└─────────────────────┘    │   [图层信息]         │
+                           │   ● ● ●  按X升序    │
+                           │   x="{x}" y="{y}"   │
+                           └─────────────────────┘
+```
 
 ### 其他
 - **Toast 提示**：操作反馈提示框（2s 显示 + 0.3s 淡出动画）
