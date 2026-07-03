@@ -87,7 +87,15 @@
 │   ├── utils.ts                  # MathExpr、模板引擎、工具函数
 │   ├── vue-shims.d.ts            # Vue SFC 类型声明
 │   ├── jsx/
-│   │   ├── hostscript.ts         # 宿主脚本入口
+│   │   ├── hostscript.ts         # 宿主脚本入口（import + $.HostScript 注册）
+│   │   ├── modules/              # 宿主脚本模块
+│   │   │   ├── types.d.ts        # 共享类型声明（ActionManager API）
+│   │   │   ├── utils.ts          # 通用工具（log、rgbToHex、roundValue、copyTextToClipboard）
+│   │   │   ├── document.ts       # 文档/图层基础查询
+│   │   │   ├── layerInfo.ts      # 图层详细信息提取
+│   │   │   ├── export.ts         # 图层收集与导出
+│   │   │   ├── xml.ts            # XML 模板生成
+│   │   │   └── fileOps.ts        # 文件系统操作
 │   │   └── ps-api/               # photoshop-script-api（vendored）
 │   ├── lib/
 │   │   ├── CSInterface.js        # Adobe 官方 CEP 库（v9.4.0）
@@ -359,10 +367,10 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 
 ### 添加新功能
 
-1. **宿主脚本** (`src/jsx/hostscript.ts`):
+1. **宿主脚本** (`src/jsx/modules/`):
    ```typescript
-   // 添加全局函数
-   function myNewFunction(param: string): string {
+   // 在对应模块文件中添加函数（如 modules/document.ts）
+   export function myNewFunction(param: string): string {
      try {
        // PS ExtendScript 逻辑
        return JSON.stringify(result);
@@ -370,7 +378,8 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
        return "__ERROR__:" + e;
      }
    }
-   // 在底部注册
+   // 在 hostscript.ts 中导入并注册
+   import { myNewFunction } from "./modules/document";
    $.HostScript.myNewFunction = myNewFunction;
    ```
 
