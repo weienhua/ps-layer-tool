@@ -1,6 +1,7 @@
 /// <reference types="ps-extendscript-types"/>
 // @ts-ignore
 if (typeof Symbol === "undefined") var Symbol = { toStringTag: "Symbol.toStringTag" };
+declare var __DEV__: boolean;
 import "extendscript-es5-shim";
 
 // 导入库的 API
@@ -12,8 +13,8 @@ declare function typeIDToStringID(typeID: number): string;
 declare function stringIDToTypeID(name: string): number;
 declare function charIDToTypeID(name: string): number;
 
-// 调试开关
-const DEBUG = true;
+// 调试开关（开发模式 true，打包 false）
+const DEBUG = __DEV__;
 
 /**
  * 日志函数 - 输出到 ExtendScript 控制台
@@ -27,8 +28,7 @@ function log(msg: string, data?: any): void {
       dataStr = ": " + JSON.stringify(data);
     }
     var logMsg = "[" + timestamp + "] [HostScript] " + msg + dataStr;
-    alert(logMsg);
-    // $.writeln(logMsg);
+    $.writeln(logMsg);
   }
 }
 
@@ -1029,20 +1029,22 @@ function generateXMLTemplate(variableName: string, dataType: string, alignH: num
  * @returns 文件内容字符串，失败返回 __ERROR__:msg
  */
 function readFile(filePath: string): string {
+  // @ts-ignore - ExtendScript File 构造函数
+  var file = new File(filePath);
+  // @ts-ignore - ExtendScript File 属性
+  if (!file.exists) return "__ERROR__:file not found";
+  // @ts-ignore - ExtendScript File 方法
+  var opened = file.open("r");
+  if (!opened) return "__ERROR__:cannot open file";
   try {
-    // @ts-ignore - ExtendScript File 构造函数
-    var file = new File(filePath);
-    // @ts-ignore - ExtendScript File 属性
-    if (!file.exists) return "__ERROR__:file not found";
-    // @ts-ignore - ExtendScript File 方法
-    file.open("r");
     // @ts-ignore - ExtendScript File 方法
     var content = file.read();
-    // @ts-ignore - ExtendScript File 方法
-    file.close();
     return content;
   } catch (e) {
     return "__ERROR__:" + e;
+  } finally {
+    // @ts-ignore - ExtendScript File 方法
+    file.close();
   }
 }
 
@@ -1053,18 +1055,20 @@ function readFile(filePath: string): string {
  * @returns 成功返回 __OK__，失败返回 __ERROR__:msg
  */
 function writeFile(filePath: string, content: string): string {
+  // @ts-ignore - ExtendScript File 构造函数
+  var file = new File(filePath);
+  // @ts-ignore - ExtendScript File 方法
+  var opened = file.open("w");
+  if (!opened) return "__ERROR__:cannot open file for writing";
   try {
-    // @ts-ignore - ExtendScript File 构造函数
-    var file = new File(filePath);
-    // @ts-ignore - ExtendScript File 方法
-    file.open("w");
     // @ts-ignore - ExtendScript File 方法
     file.write(content);
-    // @ts-ignore - ExtendScript File 方法
-    file.close();
     return "__OK__";
   } catch (e) {
     return "__ERROR__:" + e;
+  } finally {
+    // @ts-ignore - ExtendScript File 方法
+    file.close();
   }
 }
 

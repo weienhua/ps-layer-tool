@@ -75,7 +75,7 @@ import CustomSelect from "./CustomSelect.vue";
 import SectionCollapsible from "./SectionCollapsible.vue";
 import HintCollapsible from "./HintCollapsible.vue";
 import type { AnchorType, SortType, PresetCardData } from "../types";
-import { applyTemplate, getAnchorXY, sortLayers } from "../utils";
+import { applyTemplate, getAnchorXY, sortLayers, getExtensionPathSync } from "../utils";
 
 const emit = defineEmits(["status", "save-preset"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
@@ -115,12 +115,12 @@ const templatePresets = ref<string[]>([]);
 // 加载模板预设
 (async () => {
   try {
-    const cs = new (window as any).CSInterface();
-    const extPath = cs.getSystemPath("extension");
+    const extPath = getExtensionPathSync();
+    if (!extPath) return;
     const filePath = extPath + "/dist/lib/presets.md";
-    const result = (window as any).cep.fs.readFile(filePath);
-    if (result.err !== 0) return;
-    const raw = result.data as string;
+    const fileResult = await psBridge.readFile(filePath);
+    if (!fileResult.success || !fileResult.data) return;
+    const raw = fileResult.data as string;
     const blocks = raw.split("```");
     const list: string[] = [];
     for (let bi = 1; bi < blocks.length; bi += 2) {
@@ -248,7 +248,7 @@ async function applyAndFetch(preset: PresetCardData) {
 async function copyOutput() {
   if (!outputText.value) { emit("status", "暂无可复制内容", true); return; }
   const ok = await psBridge.copyText(outputText.value);
-  emit("status", ok ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok);
+  emit("status", ok.success ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok.success);
 }
 
 async function copyVar(varText: string) {

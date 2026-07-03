@@ -231,7 +231,10 @@ function saveConfig() { void persistConfig(); }
       await psBridge.ensureDirectory(dir);
       const fileResult = await psBridge.readFile(filePath);
       if (fileResult.success && fileResult.data) {
-        const parsed = fileResult.data as unknown as XmlTemplateConfig;
+        // parseResult 会自动解析 JSON，data 可能已是对象；也可能 readFile 返回 __ERROR__ 走到这里
+        const parsed = typeof fileResult.data === 'string'
+          ? JSON.parse(fileResult.data) as XmlTemplateConfig
+          : fileResult.data as XmlTemplateConfig;
         if (parsed && Array.isArray(parsed.vars)) {
           xmlVars.value = parsed.vars;
           includeRotation.value = parsed.includeRotation !== undefined ? parsed.includeRotation : true;

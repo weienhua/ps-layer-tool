@@ -67,7 +67,7 @@ import CustomSelect from "./CustomSelect.vue";
 import SectionCollapsible from "./SectionCollapsible.vue";
 import HintCollapsible from "./HintCollapsible.vue";
 import type { AnchorType, SortType, PresetCardData } from "../types";
-import { applyArrayTemplate, getAnchorXY, sortLayers } from "../utils";
+import { applyArrayTemplate, getAnchorXY, sortLayers, getExtensionPathSync } from "../utils";
 
 const emit = defineEmits(["status", "save-preset"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
@@ -94,12 +94,12 @@ const templateOptions = ref<Array<{ name: string; template: string }>>([]);
 // 加载 template.md
 (async () => {
   try {
-    const cs = new (window as any).CSInterface();
-    const extPath = cs.getSystemPath("extension");
+    const extPath = getExtensionPathSync();
+    if (!extPath) return;
     const filePath = extPath + "/dist/lib/template.md";
-    const result = (window as any).cep.fs.readFile(filePath);
-    if (result.err !== 0) return;
-    const raw = result.data as string;
+    const fileResult = await psBridge.readFile(filePath);
+    if (!fileResult.success || !fileResult.data) return;
+    const raw = fileResult.data as string;
     const options: Array<{ name: string; template: string }> = [];
     const lines = raw.split("\n");
     let i = 0;
@@ -179,7 +179,7 @@ async function processOutput() {
   outputText.value = output;
   const copied = await psBridge.copyText(output);
   const skipped = result.data.skipped.length;
-  if (copied) {
+  if (copied.success) {
     emit("status", `获取成功：${sorted.length} 个图层${skipped ? `，跳过 ${skipped} 个图层组` : ""}，已复制`);
     showToast(`获取成功：${sorted.length} 个图层${skipped ? `，跳过 ${skipped} 个图层组` : ""}`);
   } else {
@@ -231,7 +231,7 @@ async function applyAndFetch(preset: PresetCardData) {
 async function copyOutput() {
   if (!outputText.value) { emit("status", "暂无可复制内容", true); return; }
   const ok = await psBridge.copyText(outputText.value);
-  emit("status", ok ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok);
+  emit("status", ok.success ? "复制成功" : "复制失败，请检查 Photoshop 状态", !ok.success);
 }
 
 // 暴露方法供父组件调用

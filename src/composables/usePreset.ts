@@ -41,7 +41,9 @@ export function usePreset() {
         // 尝试从新路径加载
         const fileResult = await psBridge.readFile(filePath);
         if (fileResult.success && fileResult.data) {
-          const parsed = JSON.parse(fileResult.data as string) as PresetCardData[];
+          const parsed: PresetCardData[] = typeof fileResult.data === 'string'
+            ? JSON.parse(fileResult.data)
+            : fileResult.data as PresetCardData[];
           if (Array.isArray(parsed) && parsed.length > 0) {
             presets.value = parsed;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
@@ -118,7 +120,9 @@ export function usePreset() {
         const filePath = extPath + "/dist/lib/presets/" + fileDir + "/default.json";
         const fileResult = await psBridge.readFile(filePath);
         if (fileResult.success && fileResult.data) {
-          const parsed = JSON.parse(fileResult.data as string) as any[];
+          const parsed: any[] = typeof fileResult.data === 'string'
+            ? JSON.parse(fileResult.data)
+            : fileResult.data as any[];
           if (Array.isArray(parsed)) {
             filePresets.push(...parsed);
           }

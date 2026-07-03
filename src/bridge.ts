@@ -234,6 +234,14 @@ export class PSBridge {
       };
     }
 
+    // 检查取消状态
+    if (result === "__CANCEL__") {
+      return {
+        success: false,
+        error: "User cancelled the operation"
+      };
+    }
+
     // 检查成功前缀
     if (result === "__OK__") {
       return { success: true };
