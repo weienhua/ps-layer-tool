@@ -33,6 +33,7 @@ git diff --stat
 使用 Conventional Commits 格式：
 - `<type>: <中文描述>`
 - 描述简洁明了，概括主要变化
+- 不用包裹在@@中
 
 ### 步骤 4: 执行提交
 
