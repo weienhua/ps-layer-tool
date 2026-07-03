@@ -413,10 +413,21 @@ function main() {
     // 检测是否为符号链接或目录联接
     const stat = fs.lstatSync(targetDir);
     if (stat.isSymbolicLink()) {
-      // 链接：只删除链接本身，不备份（源目录内容不受影响）
-      log('检测到目录链接，正在移除链接（源目录内容不受影响）...');
+      // 链接：备份用户文件后删除链接本身
+      log('检测到目录链接，正在备份用户文件并移除链接...');
       hadPresetsDir = fs.existsSync(path.join(targetDir, 'dist', 'lib', 'presets'));
-      fs.rmdirSync(targetDir);
+      // 备份用户文件（通过链接读取源目录）
+      userFileBackups.push(...backupLibKeepFiles(targetDir));
+      if (userFileBackups.length > 0) {
+        log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+      }
+      userDirBackups = backupLibKeepDirs(targetDir);
+      const backedUpDirs = Object.keys(userDirBackups);
+      if (backedUpDirs.length > 0) {
+        log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
+      }
+      // 删除链接本身（不影响源目录）
+      fs.unlinkSync(targetDir);
       log('链接已移除', 'success');
     } else {
       // 真实目录：备份用户文件和目录后删除

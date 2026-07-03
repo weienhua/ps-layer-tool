@@ -167,23 +167,50 @@ function main() {
     return;
   }
 
-  // 3. 备份用户文件和目录后删除插件目录
-  const userFileBackups = backupLibKeepFiles(targetDir);
-  if (userFileBackups.length > 0) {
-    log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
-  }
-  const userDirBackups = backupLibKeepDirs(targetDir);
-  const backedUpDirs = Object.keys(userDirBackups);
-  if (backedUpDirs.length > 0) {
-    log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
-  }
+  // 3. 检测是否为符号链接
+  const stat = fs.lstatSync(targetDir);
+  let userFileBackups = [];
+  let userDirBackups = {};
 
-  try {
-    rmrfSync(targetDir);
-    log('插件文件已删除', 'success');
-  } catch (e) {
-    log(`删除失败: ${e.message}`, 'error');
-    process.exit(1);
+  if (stat.isSymbolicLink()) {
+    // 链接：备份用户文件后删除链接本身
+    log('检测到目录链接，正在备份用户文件并移除链接...');
+    userFileBackups = backupLibKeepFiles(targetDir);
+    if (userFileBackups.length > 0) {
+      log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+    }
+    userDirBackups = backupLibKeepDirs(targetDir);
+    const backedUpDirs = Object.keys(userDirBackups);
+    if (backedUpDirs.length > 0) {
+      log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
+    }
+
+    try {
+      fs.unlinkSync(targetDir);
+      log('链接已移除', 'success');
+    } catch (e) {
+      log(`删除链接失败: ${e.message}`, 'error');
+      process.exit(1);
+    }
+  } else {
+    // 真实目录：备份用户文件和目录后删除
+    userFileBackups = backupLibKeepFiles(targetDir);
+    if (userFileBackups.length > 0) {
+      log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+    }
+    userDirBackups = backupLibKeepDirs(targetDir);
+    const backedUpDirs = Object.keys(userDirBackups);
+    if (backedUpDirs.length > 0) {
+      log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
+    }
+
+    try {
+      rmrfSync(targetDir);
+      log('插件文件已删除', 'success');
+    } catch (e) {
+      log(`删除失败: ${e.message}`, 'error');
+      process.exit(1);
+    }
   }
 
   // 4. 将备份文件和目录保存到插件目录旁边
