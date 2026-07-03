@@ -410,19 +410,30 @@ function main() {
   // 记录用户之前是否有 presets 目录（用于后续判断是否删除安装包中的默认 presets）
   let hadPresetsDir = false;
   if (fs.existsSync(targetDir)) {
-    log('检测到已安装的版本，正在卸载...');
-    userFileBackups.push(...backupLibKeepFiles(targetDir));
-    if (userFileBackups.length > 0) {
-      log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+    // 检测是否为符号链接或目录联接
+    const stat = fs.lstatSync(targetDir);
+    if (stat.isSymbolicLink()) {
+      // 链接：只删除链接本身，不备份（源目录内容不受影响）
+      log('检测到目录链接，正在移除链接（源目录内容不受影响）...');
+      hadPresetsDir = fs.existsSync(path.join(targetDir, 'dist', 'lib', 'presets'));
+      fs.rmdirSync(targetDir);
+      log('链接已移除', 'success');
+    } else {
+      // 真实目录：备份用户文件和目录后删除
+      log('检测到已安装的版本，正在卸载...');
+      userFileBackups.push(...backupLibKeepFiles(targetDir));
+      if (userFileBackups.length > 0) {
+        log(`已备份用户文件: ${userFileBackups.map(b => b.name).join(', ')}`);
+      }
+      userDirBackups = backupLibKeepDirs(targetDir);
+      const backedUpDirs = Object.keys(userDirBackups);
+      if (backedUpDirs.length > 0) {
+        log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
+      }
+      // 检查用户之前是否有 presets 目录
+      hadPresetsDir = userDirBackups.hasOwnProperty('presets');
+      rmrfSync(targetDir);
     }
-    userDirBackups = backupLibKeepDirs(targetDir);
-    const backedUpDirs = Object.keys(userDirBackups);
-    if (backedUpDirs.length > 0) {
-      log(`已备份用户目录: ${backedUpDirs.join(', ')}`);
-    }
-    // 检查用户之前是否有 presets 目录
-    hadPresetsDir = userDirBackups.hasOwnProperty('presets');
-    rmrfSync(targetDir);
   }
 
   // 从卸载备份目录检查是否有 presets 备份（用户可能通过卸载程序卸载过）
