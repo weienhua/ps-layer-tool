@@ -2,11 +2,10 @@ const path = require('path');
 const webpack = require('webpack');
 
 module.exports = (env, argv) => {
-  const mode = argv.mode || 'development';
-  const isDev = mode === 'development';
+  const isDev = argv.mode === 'development';
 
   return {
-    mode,
+    mode: argv.mode || 'production',
     target: ['web', 'es3'],
     entry: './src/jsx/hostscript.ts',
     resolve: {
@@ -26,7 +25,7 @@ module.exports = (env, argv) => {
       }]
     },
     plugins: [
-      new webpack.DefinePlugin({ __DEV__: JSON.stringify(isDev) }),
+      new webpack.DefinePlugin({ __DEV__: true }),
       new webpack.BannerPlugin({
         banner: 'if(typeof Object.defineProperty!=="function")Object.defineProperty=function(o,p,d){if(d&&d.get)o[p]=d.get();else if(d&&d.value!==undefined)o[p]=d.value;return o;};',
         raw: true,

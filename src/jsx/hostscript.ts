@@ -1034,11 +1034,16 @@ function readFile(filePath: string): string {
   // @ts-ignore - ExtendScript File 属性
   if (!file.exists) return "__ERROR__:file not found";
   // @ts-ignore - ExtendScript File 方法
-  var opened = file.open("r");
+  file.encoding = "UTF-8";
+  var opened = file.open("r", "TEXT", "UTF-8");
   if (!opened) return "__ERROR__:cannot open file";
   try {
     // @ts-ignore - ExtendScript File 方法
     var content = file.read();
+    // 去掉 BOM 头（如果存在）
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.substring(1);
+    }
     return content;
   } catch (e) {
     return "__ERROR__:" + e;
@@ -1058,7 +1063,8 @@ function writeFile(filePath: string, content: string): string {
   // @ts-ignore - ExtendScript File 构造函数
   var file = new File(filePath);
   // @ts-ignore - ExtendScript File 方法
-  var opened = file.open("w");
+  file.encoding = "UTF-8";
+  var opened = file.open("w", "TEXT", "UTF-8");
   if (!opened) return "__ERROR__:cannot open file for writing";
   try {
     // @ts-ignore - ExtendScript File 方法
