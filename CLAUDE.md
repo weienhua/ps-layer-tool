@@ -489,6 +489,26 @@ ln -s $(pwd) ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.p
 New-Item -ItemType Junction -Path "$env:APPDATA\Adobe\CEP\extensions\com.layertool.panel" -Target (Get-Location)
 ```
 
+删除链接（仅移除链接，不影响源目录内容）：
+
+```bash
+# macOS
+unlink ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.panel
+
+# Windows（PowerShell，用 cmd /c rmdir 避免误删源目录）
+cmd /c rmdir "$env:APPDATA\Adobe\CEP\extensions\com.layertool.panel"
+```
+
+查看链接状态：
+
+```bash
+# macOS
+ls -la ~/Library/Application\ Support/Adobe/CEP/extensions/ | grep layertool
+
+# Windows（PowerShell）
+Get-Item "$env:APPDATA\Adobe\CEP\extensions\com.layertool.panel" | Select-Object Attributes, LinkType, Target
+```
+
 开启 CEP 调试模式（macOS）：
 ```bash
 defaults write com.adobe.CSXS.9 PlayerDebugMode 1    # PS 2019

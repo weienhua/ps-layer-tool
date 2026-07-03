@@ -158,6 +158,28 @@ New-Item -ItemType Junction `
 ln -s $(pwd) ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.panel
 ```
 
+**删除链接**（仅移除链接，不影响源目录内容）：
+
+```powershell
+# Windows（PowerShell）
+cmd /c rmdir "$env:APPDATA\Adobe\CEP\extensions\com.layertool.panel"
+```
+```bash
+# macOS
+unlink ~/Library/Application\ Support/Adobe/CEP/extensions/com.layertool.panel
+```
+
+**查看链接状态**：
+
+```powershell
+# Windows（PowerShell）
+Get-Item "$env:APPDATA\Adobe\CEP\extensions\com.layertool.panel" | Select-Object Attributes, LinkType, Target
+```
+```bash
+# macOS
+ls -la ~/Library/Application\ Support/Adobe/CEP/extensions/ | grep layertool
+```
+
 #### 3. 启用调试模式
 
 **Windows (注册表)**:
