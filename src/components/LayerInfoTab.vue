@@ -210,6 +210,7 @@ function handleSavePreset() {
   const config: PresetCardData = {
     id: "", name: presetName.value.trim(), anchor: anchor.value,
     sortBy: sortBy.value, template: templateInput.value, tab: 'layerInfo',
+    scaleAnim: scaleAnim.value, rotateAnim: rotateAnim.value,
   };
   emit("save-preset", config);
 }
@@ -221,6 +222,8 @@ function applyPresetConfig(preset: PresetCardData) {
   presetName.value = preset.name;
   anchor.value = preset.anchor as AnchorType;
   sortBy.value = preset.sortBy as SortType;
+  scaleAnim.value = preset.scaleAnim || "";
+  rotateAnim.value = preset.rotateAnim || "";
   // 尝试匹配模板预设
   let matched = false;
   for (let i = 0; i < templatePresets.value.length; i++) {

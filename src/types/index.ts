@@ -17,6 +17,10 @@ export interface PresetCardData {
   anchor: string;
   sortBy: string;
   template: string;
+  /** 缩放动画表达式（仅 layerInfo） */
+  scaleAnim?: string;
+  /** 旋转动画表达式（仅 layerInfo） */
+  rotateAnim?: string;
   /** 预设来源：layerInfo = 图层信息，templateOutput = 模板输出 */
   tab: 'layerInfo' | 'templateOutput';
 }
