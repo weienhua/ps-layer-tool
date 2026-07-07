@@ -127,6 +127,7 @@ Promise<PSResult<T>>
 - **CSS**：全局基础样式在 `src/style.css`，组件样式用 `<style scoped>`
 - **模板语法**：Vue 模板中避免使用反引号模板字符串（与 `{{ }}` 冲突），用字符串拼接代替
 - **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
+- **ps-api 优先**：宿主脚本中需要 PS 操作时，优先查阅 `src/jsx/ps-api/API.md` 是否已有封装方法（如 `exportToBMP`、`duplicateToDocument`、`History.saveState` 等），这些方法经过验证可直接使用。仅在 ps-api 无对应方法时才手写 ActionManager 代码
 - **ExtendScript hasKey 缓存**：`hasKey()` 等方法在 `if-else if` 结构中多次调用时可能产生不可预期的行为。必须将结果缓存到变量后再进行条件判断，避免重复调用。示例：
   ```typescript
   // ✗ 错误写法
@@ -220,7 +221,7 @@ $.HostScript = {
 | `collectLayersForExport(includeHidden)` | 收集选中图层的导出信息（不含组） |
 | `collectAllLayersForExport(includeHidden)` | 收集文档全部图层的导出信息 |
 | `collectGroupLayersForExport(includeHidden)` | 收集选中图层组内的所有子图层 |
-| `exportSingleLayer(layerId, exportPath, format, groupPath, includeHidden)` | 导出单个图层为图片文件 |
+| `exportSingleLayer(layerId, exportPath, format, groupPath, includeHidden, trimTransparent)` | 导出单个图层为图片文件 |
 | `exportLayerInfoXML(exportPath, layersJson)` | 导出图层信息 XML（manifest.xml） |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码（百分比/温度/步数） |
 | `readFile(filePath)` | 读取文件内容 |
@@ -396,6 +397,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **导出不可见图层**：复选框
 - **导出图层信息 XML**：复选框，导出 manifest.xml
 - **保留文件夹层级**：复选框，保持 PS 图层组目录结构
+- **裁剪透明像素**：复选框，智能对象导出时裁剪透明边缘（普通图层始终裁剪）
 
 #### 导出操作
 - **导出选中图层**：仅导出选中的非组图层

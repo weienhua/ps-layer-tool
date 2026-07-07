@@ -3,7 +3,7 @@
  * @description 图层收集、导出为图片文件
  */
 
-import { Document, Layer } from "../ps-api/src/index";
+import { Document, Layer, History } from "../ps-api/src/index";
 import { log } from "./utils";
 import { selectLayerByID, getLayerPathByLayer } from "./document";
 
@@ -142,19 +142,55 @@ export function collectGroupLayersForExport(includeHidden: boolean): string {
 }
 
 /**
+ * 检测图层是否为智能对象
+ * @param layerId 图层 ID
+ * @returns 是否为智能对象
+ */
+function isSmartObjectLayer(layerId: number): boolean {
+  var ref = new ActionReference();
+  ref.putProperty(stringIDToTypeID("property"), stringIDToTypeID("layerKind"));
+  ref.putEnumerated(stringIDToTypeID("layer"), stringIDToTypeID("ordinal"), stringIDToTypeID("targetEnum"));
+  var desc = executeActionGet(ref);
+  return desc.getInteger(stringIDToTypeID("layerKind")) === 5;
+}
+
+/**
+ * 构建导出选项（PNG/JPG 通用，BMP 不适用）
+ * @param format 导出格式
+ * @returns ExportOptionsSaveForWeb 实例
+ */
+function buildExportOptions(format: string): ExportOptionsSaveForWeb {
+  var options = new ExportOptionsSaveForWeb();
+  if (format === "JPEG") {
+    options.format = SaveDocumentType.JPEG;
+    options.quality = 100;
+    options.transparency = false;
+  } else {
+    options.format = SaveDocumentType.PNG;
+    options.PNG8 = false;
+    options.quality = 100;
+    options.transparency = true;
+  }
+  return options;
+}
+
+/**
  * 导出单个图层
+ * - 智能对象：打开源文档 → trimTransparent ? trim() : 按原始尺寸导出
+ * - 普通图层：创建新文档 → 复制粘贴图层内容 → 始终裁剪到内容边界
  * @param layerId 图层 ID
  * @param exportPath 导出路径
  * @param format 导出格式
  * @param groupPath 图层组路径
  * @param includeHidden 是否包含不可见图层
- * @param trimTransparent 是否裁剪透明像素
- * @returns JSON 字符串包含裁剪后的位置和尺寸
+ * @param trimTransparent 是否裁剪透明像素（仅对智能对象生效）
+ * @returns JSON 字符串包含位置和尺寸
  */
 export function exportSingleLayer(layerId: number, exportPath: string, format: string, groupPath: string, includeHidden: boolean, trimTransparent: boolean): string {
   var originalDoc = Document.activeDocument();
   if (!originalDoc) return "__NO_DOCUMENT__";
-  var newDoc: any = null;
+  // @ts-ignore - ExtendScript document id
+  var originalDocId = app.activeDocument.id;
   var wasHidden = false;
 
   try {
@@ -162,7 +198,7 @@ export function exportSingleLayer(layerId: number, exportPath: string, format: s
     selectLayerByID(layerId);
     var targetLayer = app.activeDocument.activeLayer;
 
-    // 跳过图层组（无法直接导出）
+    // 跳过图层组
     if (targetLayer.typename === "LayerSet") {
       return JSON.stringify({ skipped: true, reason: "group" });
     }
@@ -174,81 +210,197 @@ export function exportSingleLayer(layerId: number, exportPath: string, format: s
       targetLayer.visible = true;
     }
 
-    // 在切换文档前，记录原始位置和图层名（避免 stale reference）
-    var originalBounds = app.activeDocument.activeLayer.bounds;
-    var origX = Math.round(originalBounds[0].as("px"));
-    var origY = Math.round(originalBounds[1].as("px"));
+    // 记录图层信息
     var layerName = targetLayer.name;
-
-    // 创建新文档（非破坏性）
-    newDoc = Document.fromSelectedLayers();
-
-    // 裁剪透明像素
-    if (trimTransparent) {
-      newDoc.trim();
-    }
-
-    // JPG 格式：填充白色背景（使用 Action Manager 确保兼容性）
-    if (format === "JPEG") {
-      var flatDesc = new ActionDescriptor();
-      executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
-      // log('exportSingleLayer called:填充白色成功');
-    }
-
-    // 获取裁剪后尺寸
-    var w = Math.round(newDoc.size().width);
-    var h = Math.round(newDoc.size().height);
-
-    // trim 后内容从 (0,0) 开始，加上原文档中的原始偏移
-    var x = origX;
-    var y = origY;
-
-    // 构建文件名和路径
     var ext = getLayerExtension(format);
     var cleanName = layerName.replace(/\.[^.]+$/, "");
     var subDir = exportPath + "/" + groupPath;
-    // @ts-ignore - ExtendScript Folder 构造函数
+    // @ts-ignore - ExtendScript Folder
     var folder = new Folder(subDir);
-    // @ts-ignore - ExtendScript Folder 属性和方法
+    // @ts-ignore - ExtendScript Folder
     if (!folder.exists) folder.create();
-    var fullPath = subDir + cleanName + ext;
 
-    // 保存图片
-    if (format === "bMPFormat") {
-      // BMP 不支持 exportToWeb，使用 saveAs
-      newDoc.saveAs(fullPath, format as any, true);
-    } else {
-      var options = new ExportOptionsSaveForWeb();
-      if (format === "PNGFormat") {
-        options.format = SaveDocumentType.PNG;
-        options.PNG8 = false;
-        options.quality = 100;
-        options.transparency = true;
-      } else {
-        options.format = SaveDocumentType.JPEG;
-        options.quality = 100;
-        options.transparency = false;
+    // 检测是否智能对象
+    var smartObj = isSmartObjectLayer(layerId);
+    var w: number;
+    var h: number;
+    var origX: number;
+    var origY: number;
+
+    if (smartObj) {
+      // === 智能对象：尝试打开源文档导出 ===
+      var bounds = targetLayer.bounds;
+      origX = Math.round(bounds[0].as("px"));
+      origY = Math.round(bounds[1].as("px"));
+
+      var openedSource = false;
+      var smartDoc: any = null;
+
+      try {
+        var convertDesc = new ActionDescriptor();
+        executeAction(stringIDToTypeID("placedLayerEditContents"), convertDesc, DialogModes.NO);
+        smartDoc = Document.activeDocument();
+        openedSource = (smartDoc !== originalDoc);
+      } catch (openErr) {
+        // 打开源文档失败，回退到 fromSelectedLayers
+        openedSource = false;
       }
-      // log('exportSingleLayer called:', String(cleanName + ext));
-      // log('exportSingleLayer called:', String(options.format));
-      newDoc.exportToWeb(subDir, cleanName + ext, options);
+
+      if (openedSource && smartDoc) {
+        // 源文档打开成功
+        var history = new History();
+
+        if (trimTransparent) {
+          // 保存历史状态 → 裁剪 → 导出 → 恢复历史状态
+          history.saveState();
+          smartDoc.trim();
+        }
+
+        w = Math.round(smartDoc.size().width);
+        h = Math.round(smartDoc.size().height);
+
+        if (format === "bMPFormat") {
+          smartDoc.exportToBMP(subDir, cleanName + ext);
+        } else {
+          var options = buildExportOptions(format);
+          smartDoc.exportToWeb(subDir, cleanName + ext, options);
+        }
+
+        if (trimTransparent) {
+          history.restoreState();
+        }
+
+        // @ts-ignore - SaveOptions.DONOTSAVECHANGES
+        app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+        originalDoc.active();
+
+      } else {
+        // 源文档打开失败，按普通图层方式处理
+        var bw = Math.round(bounds[2].as("px")) - origX;
+        var bh = Math.round(bounds[3].as("px")) - origY;
+
+        // 创建新文档（图层 bounds + 100px 边距）
+        // @ts-ignore - ExtendScript
+        app.documents.add(bw + 100, bh + 100, 72, cleanName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+        var fallbackDocName = app.activeDocument.name;
+
+        // 回到原文档，选中目标图层
+        originalDoc.active();
+        selectLayerByID(layerId);
+
+        // 跨文档复制图层
+        var fallbackLayer = new Layer(layerId);
+        fallbackLayer.duplicateToDocument(fallbackDocName);
+
+        // 切到新文档
+        var switchDesc = new ActionDescriptor();
+        var switchRef = new ActionReference();
+        switchRef.putName(charIDToTypeID("Dcmn"), fallbackDocName);
+        switchDesc.putReference(charIDToTypeID("null"), switchRef);
+        executeAction(charIDToTypeID("slct"), switchDesc, DialogModes.NO);
+
+        // 裁剪到内容边界
+        // @ts-ignore - ExtendScript trim
+        app.activeDocument.trim(TrimType.TRANSPARENT);
+
+        var docSize = Document.activeDocument().size();
+        w = Math.round(docSize.width);
+        h = Math.round(docSize.height);
+
+        // JPG 填充白色背景
+        if (format === "JPEG") {
+          var flatDesc = new ActionDescriptor();
+          executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
+        }
+
+        // 导出
+        if (format === "bMPFormat") {
+          Document.activeDocument().exportToBMP(subDir, cleanName + ext);
+        } else {
+          var options = buildExportOptions(format);
+          Document.activeDocument().exportToWeb(subDir, cleanName + ext, options);
+        }
+
+        // @ts-ignore - SaveOptions.DONOTSAVECHANGES
+        app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+        originalDoc.active();
+      }
+
+    } else {
+      // === 普通图层：duplicateToDocument 跨文档复制 ===
+      var bounds = targetLayer.bounds;
+      origX = Math.round(bounds[0].as("px"));
+      origY = Math.round(bounds[1].as("px"));
+      var bw = Math.round(bounds[2].as("px")) - origX;
+      var bh = Math.round(bounds[3].as("px")) - origY;
+
+      // 创建新文档（图层 bounds + 100px 边距）
+      // @ts-ignore - ExtendScript
+      app.documents.add(bw + 100, bh + 100, 72, cleanName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+      var newDocName = app.activeDocument.name;
+
+      // 回到原文档，选中目标图层
+      originalDoc.active();
+      selectLayerByID(layerId);
+
+      // 跨文档复制图层
+      var layerObj = new Layer(layerId);
+      layerObj.duplicateToDocument(newDocName);
+
+      // 切到新文档
+      var switchDesc = new ActionDescriptor();
+      var switchRef = new ActionReference();
+      switchRef.putName(charIDToTypeID("Dcmn"), newDocName);
+      switchDesc.putReference(charIDToTypeID("null"), switchRef);
+      executeAction(charIDToTypeID("slct"), switchDesc, DialogModes.NO);
+
+      var newDoc = Document.activeDocument();
+
+      // 裁剪到内容边界（自动去掉多余透明区域）
+      // @ts-ignore - ExtendScript trim
+      newDoc.trim(TrimType.TRANSPARENT);
+
+      var docSize = newDoc.size();
+      w = Math.round(docSize.width);
+      h = Math.round(docSize.height);
+      // JPG 填充白色背景
+      if (format === "JPEG") {
+        var flatDesc = new ActionDescriptor();
+        executeAction(stringIDToTypeID("flattenImage"), flatDesc, DialogModes.NO);
+      }
+
+      // 导出
+      if (format === "bMPFormat") {
+        newDoc.exportToBMP(subDir, cleanName + ext);
+      } else {
+        var options = buildExportOptions(format);
+        newDoc.exportToWeb(subDir, cleanName + ext, options);
+      }
+
+      // @ts-ignore - SaveOptions.DONOTSAVECHANGES
+      app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+      originalDoc.active();
     }
-    // log('exportSingleLayer called:保存成功');
 
     return JSON.stringify({
       name: cleanName + ext,
-      x: x, y: y, w: w, h: h,
+      x: origX, y: origY, w: w, h: h,
       filePath: groupPath + cleanName + ext
     });
+
   } catch (e) {
     log("exportSingleLayer error", String(e));
     return "__ERROR__:" + e;
   } finally {
-    // 确保关闭新文档并切回原始文档
+    // 如果当前不在原文档，关闭活动文档后切回
     try {
-      if (newDoc) newDoc.close(false);
+      // @ts-ignore - ExtendScript document id
+      if (app.documents.length > 0 && app.activeDocument.id !== originalDocId) {
+        // @ts-ignore - SaveOptions.DONOTSAVECHANGES
+        app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+      }
     } catch (closeErr) {
-      log("exportSingleLayer close error", String(closeErr));
+      log("exportSingleLayer cleanup close error", String(closeErr));
     }
     try {
       originalDoc.active();

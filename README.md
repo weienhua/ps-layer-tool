@@ -419,7 +419,7 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | `collectLayersForExport(includeHidden)` | 收集选中图层导出信息 | `{ layers[], selectedGroupPaths[] }` |
 | `collectAllLayersForExport(includeHidden)` | 收集全部图层导出信息 | `{ layers[] }` |
 | `collectGroupLayersForExport(includeHidden)` | 收集组内子图层 | `{ layers[], selectedGroupPaths[] }` |
-| `exportSingleLayer(id, path, format, groupPath, includeHidden)` | 导出单个图层 | `{ name, x, y, w, h, filePath }` |
+| `exportSingleLayer(id, path, format, groupPath, includeHidden, trimTransparent)` | 导出单个图层 | `{ name, x, y, w, h, filePath }` |
 | `exportLayerInfoXML(path, json)` | 导出图层信息 XML | `__OK__` |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | 生成 XML 模板代码 | XML 字符串 |
 | `readFile(filePath)` | 读取文件内容 | `{ content }` |
@@ -443,7 +443,7 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | `collectLayersForExport(includeHidden)` | `$.HostScript.collectLayersForExport(...)` |
 | `collectAllLayersForExport(includeHidden)` | `$.HostScript.collectAllLayersForExport(...)` |
 | `collectGroupLayersForExport(includeHidden)` | `$.HostScript.collectGroupLayersForExport(...)` |
-| `exportSingleLayer(id, path, format, groupPath, includeHidden)` | `$.HostScript.exportSingleLayer(...)` |
+| `exportSingleLayer(id, path, format, groupPath, includeHidden, trimTransparent)` | `$.HostScript.exportSingleLayer(...)` |
 | `exportLayerInfoXML(path, json)` | `$.HostScript.exportLayerInfoXML(...)` |
 | `generateXMLTemplate(variableName, dataType, alignH, alignV, layersJson)` | `$.HostScript.generateXMLTemplate(...)` |
 | `readFile(filePath)` | `$.HostScript.readFile(...)` |

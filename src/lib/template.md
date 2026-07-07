@@ -207,3 +207,197 @@ name:`条形进度条mask`
 </Image>
 ```
 
+name:`sd透明度`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" alpha="ifelse(eq(#battery_state,1)+eq(#battery_state,3),155+100*sin(#loop/1000%2*#pai),100)"/>
+```
+
+name:`11位生日弹窗2000.08.08`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" />
+<Image src="{path[1]}{acname[1]}.png" x="{x[1]}" y="{y[1]}" srcid="#rq_1" alpha="ifelse(ge(#rqnum,1),255,100)"/>
+<Image src="{path[2]}{acname[2]}.png" x="{x[2]}" y="{y[2]}" srcid="#rq_2" alpha="ifelse(ge(#rqnum,2),255,100)"/>
+<Image src="{path[3]}{acname[3]}.png" x="{x[3]}" y="{y[3]}" srcid="#rq_3" alpha="ifelse(ge(#rqnum,3),255,100)"/>
+<Image src="{path[4]}{acname[4]}.png" x="{x[4]}" y="{y[4]}" srcid="#rq_4" alpha="ifelse(ge(#rqnum,4),255,100)"/>
+<Image src="{path[5]}{acname[5]}.png" x="{x[5]}" y="{y[5]}"               alpha="ifelse(ge(#rqnum,4),255,100)"/>
+<Image src="{path[6]}{acname[6]}.png" x="{x[6]}" y="{y[6]}" srcid="#rq_5" alpha="ifelse(ge(#rqnum,5),255,100)"/>
+<Image src="{path[7]}{acname[7]}.png" x="{x[7]}" y="{y[7]}" srcid="#rq_6" alpha="ifelse(ge(#rqnum,6),255,100)"/>
+<Image src="{path[8]}{acname[8]}.png" x="{x[8]}" y="{y[8]}"               alpha="ifelse(ge(#rqnum,6),255,100)"/>
+<Image src="{path[9]}{acname[9]}.png" x="{x[9]}" y="{y[9]}" srcid="#rq_7" alpha="ifelse(ge(#rqnum,7),255,100)"/>
+<Image src="{path[10]}{acname[10]}.png" x="{x[10]}" y="{y[10]}" srcid="#rq_8" alpha="ifelse(ge(#rqnum,8),255,100)"/>
+```
+
+name:`9位生日弹窗2000.08.08`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" />
+<Image src="{path[1]}{acname[1]}.png" x="{x[1]}" y="{y[1]}" srcid="#rq_1" alpha="ifelse(ge(#rqnum,1),255,100)"/>
+<Image src="{path[2]}{acname[2]}.png" x="{x[2]}" y="{y[2]}" srcid="#rq_2" alpha="ifelse(ge(#rqnum,2),255,100)"/>
+<Image src="{path[3]}{acname[3]}.png" x="{x[3]}" y="{y[3]}" srcid="#rq_3" alpha="ifelse(ge(#rqnum,3),255,100)"/>
+<Image src="{path[4]}{acname[4]}.png" x="{x[4]}" y="{y[4]}" srcid="#rq_4" alpha="ifelse(ge(#rqnum,4),255,100)"/>
+<Image src="{path[5]}{acname[5]}.png" x="{x[5]}" y="{y[5]}" srcid="#rq_5" alpha="ifelse(ge(#rqnum,5),255,100)"/>
+<Image src="{path[6]}{acname[6]}.png" x="{x[6]}" y="{y[6]}" srcid="#rq_6" alpha="ifelse(ge(#rqnum,6),255,100)"/>
+<Image src="{path[7]}{acname[7]}.png" x="{x[7]}" y="{y[7]}" srcid="#rq_7" alpha="ifelse(ge(#rqnum,7),255,100)"/>
+<Image src="{path[8]}{acname[8]}.png" x="{x[8]}" y="{y[8]}" srcid="#rq_8" alpha="ifelse(ge(#rqnum,8),255,100)"/>
+```
+
+name:`4位生日弹窗08.08`
+
+```
+<Image src="{path[0]}{acname[0]}.png" x="{x[0]}" y="{y[0]}" />
+<Image src="{path[1]}{acname[1]}.png" x="{x[1]}" y="{y[1]}" srcid="#rq_5" alpha="ifelse(ge(#rqnum,5),255,100)"/>
+<Image src="{path[2]}{acname[2]}.png" x="{x[2]}" y="{y[2]}" srcid="#rq_6" alpha="ifelse(ge(#rqnum,6),255,100)"/>
+<Image src="{path[3]}{acname[3]}.png" x="{x[3]}" y="{y[3]}" srcid="#rq_7" alpha="ifelse(ge(#rqnum,7),255,100)"/>
+<Image src="{path[4]}{acname[4]}.png" x="{x[4]}" y="{y[4]}" srcid="#rq_8" alpha="ifelse(ge(#rqnum,8),255,100)"/>
+```
+
+name:`生日弹窗按钮 1,2,4`
+
+```
+<!-- 需要创建3个矩形，分别框选弹窗1,2,4三个数字获取顺序是1,2,4三个顺序。 -->
+<!-- 1-0 -->
+<Button x="{x[0]}+{gapX[1]}*0" y="{y[0]}+{gapY[2]}*0" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="1" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*1" y="{y[0]}+{gapY[2]}*0" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="2" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*2" y="{y[0]}+{gapY[2]}*0" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="3" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*0" y="{y[0]}+{gapY[2]}*1" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="4" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*1" y="{y[0]}+{gapY[2]}*1" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="5" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*2" y="{y[0]}+{gapY[2]}*1" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="6" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*0" y="{y[0]}+{gapY[2]}*2" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="7" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*1" y="{y[0]}+{gapY[2]}*2" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="8" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*2" y="{y[0]}+{gapY[2]}*2" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="9" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+<Button x="{x[0]}+{gapX[1]}*1" y="{y[0]}+{gapY[2]}*3" w="{width[0]}" h="{height[0]}">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="sjsznum" expression="0" condition="#click*eq(#srk_al,255)" />
+			<VariableCommand name="sjsjsz" expression="not(#sjsjsz)" condition="#click*eq(#srk_al,255)" />
+		</Trigger>
+	</Triggers>
+</Button>
+
+<!-- 确认 -->
+<Button x="{x[0]}+{gapX[1]}*2" y="{y[0]}+{gapY[2]}*3" w="{width[0]}" h="{height[0]}" visibility="eq(#srk_al,255)">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="rq_nian" expression="#rq_1*1000+#rq_2*100+#rq_3*10+#rq_4" condition="#click"/>
+			<VariableCommand name="rq_yue" expression="#rq_5*10+#rq_6" condition="#click"/>
+			<VariableCommand name="rq_rq" expression="#rq_7*10+#rq_8" condition="#click"/>
+			<!-- 输入年份是否闰年 -->
+			<VariableCommand name="rq_leap" expression="eq((#rq_nian%4),0)*ne((#rq_nian%100),0)+eq((#rq_nian%400),0)" condition="#click"/>
+			<!-- 输入月份的天数 -->
+			<VariableCommand name="rq_month_days" expression="ifelse(eq(#rq_yue,2),#rq_leap+28,eq(#rq_yue,4)+eq(#rq_yue,6)+eq(#rq_yue,9)+eq(#rq_yue,11),30,31)" condition="#click"/>
+			<!-- 考试和放假应该在今天之后 -->
+			<VariableCommand name="rqNotright1" expression="(eq(#sjid,2)+eq(#sjid,4))*lt(#rq_nian*10000+#rq_yue*100+#rq_rq,#nian*10000+(#yue+1)*100+#rq)"/>
+			<!-- 在一起应该在今天之前 -->
+			<VariableCommand name="rqNotright2" expression="eq(#sjid,3)*gt(#rq_nian*10000+#rq_yue*100+#rq_rq,#nian*10000+(#yue+1)*100+#rq)"/>
+			<!-- 判断日期是否正确 -->
+			<VariableCommand name="rqright" expression="ifelse(ne(#rqnum,8),0,gt(#rq_yue,12)+eq(#rq_yue,0)+gt(#rq_rq,#rq_month_days)+eq(#rq_rq,0),0,1)"/>
+			<!-- 生日 -->
+			<VariableCommand name="sj1n" expression="#rq_nian" condition="eq(#sjid,1)*#rqright"/>
+			<VariableCommand name="sj1y" expression="#rq_yue" condition="eq(#sjid,1)*#rqright"/>
+			<VariableCommand name="sj1r" expression="#rq_rq" condition="eq(#sjid,1)*#rqright"/>
+			
+			<!-- 考试 -->
+			<VariableCommand name="sj2n" expression="#rq_nian" condition="eq(#sjid,2)*#rqright"/>
+			<VariableCommand name="sj2y" expression="#rq_yue" condition="eq(#sjid,2)*#rqright"/>
+			<VariableCommand name="sj2r" expression="#rq_rq" condition="eq(#sjid,2)*#rqright"/>
+			
+			<!-- 在一起 -->
+			<VariableCommand name="sj3n" expression="#rq_nian" condition="eq(#sjid,3)*#rqright"/>
+			<VariableCommand name="sj3y" expression="#rq_yue" condition="eq(#sjid,3)*#rqright"/>
+			<VariableCommand name="sj3r" expression="#rq_rq" condition="eq(#sjid,3)*#rqright"/>
+		
+			<!-- 放假 -->
+			<VariableCommand name="sj4n" expression="#rq_nian" condition="eq(#sjid,4)*#rqright"/>
+			<VariableCommand name="sj4y" expression="#rq_yue" condition="eq(#sjid,4)*#rqright"/>
+			<VariableCommand name="sj4r" expression="#rq_rq" condition="eq(#sjid,4)*#rqright"/>
+			
+			<VariableCommand name="rqnum" expression="8" condition="not(#rqright)*#click"/>
+		
+			<VariableCommand name="time_srk" expression="#loop" condition="#click"/>
+			<VariableCommand name="srk" expression="0" condition="#click"/>
+		</Trigger>
+	</Triggers>
+</Button>
+<!-- 删除 -->
+<Button x="{x[0]}+{gapX[1]}*0" y="{y[0]}+{gapY[2]}*3" w="{width[0]}" h="{height[0]}" visibility="eq(#srk_al,255)">
+	<Triggers>
+		<Trigger action="up">
+			<VariableCommand name="rq_1" condition="eq(#rqnum,1)*#click" expression="0"/>
+			<VariableCommand name="rq_2" condition="eq(#rqnum,2)*#click" expression="0"/>
+			<VariableCommand name="rq_3" condition="eq(#rqnum,3)*#click" expression="0"/>
+			<VariableCommand name="rq_4" condition="eq(#rqnum,4)*#click" expression="0"/>
+			<VariableCommand name="rq_5" condition="eq(#rqnum,5)*#click" expression="0"/>
+			<VariableCommand name="rq_6" condition="eq(#rqnum,6)*#click" expression="0"/>
+			<VariableCommand name="rq_7" condition="eq(#rqnum,7)*#click" expression="0"/>
+			<VariableCommand name="rq_8" condition="eq(#rqnum,8)*#click" expression="0"/>
+			<VariableCommand name="rqnum" expression="#rqnum-1" condition="gt(#rqnum,0)*#click"/>
+		</Trigger>
+	</Triggers>
+</Button>
+```
+
