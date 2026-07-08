@@ -127,7 +127,7 @@ Promise<PSResult<T>>
 - **CSS**：全局基础样式在 `src/style.css`，组件样式用 `<style scoped>`
 - **模板语法**：Vue 模板中避免使用反引号模板字符串（与 `{{ }}` 冲突），用字符串拼接代替
 - **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
-- **ps-api 优先**：宿主脚本中需要 PS 操作时，优先查阅 `src/jsx/ps-api/API.md` 是否已有封装方法（如 `exportToBMP`、`duplicateToDocument`、`History.saveState` 等），这些方法经过验证可直接使用。仅在 ps-api 无对应方法时才手写 ActionManager 代码
+- **ps-api 优先**：宿主脚本中需要 PS 操作时，优先查阅 `src/jsx/ps-api/API.md` 是否已有封装方法（如 `exportToBMP`、`duplicateToDocument`、`History.saveState` 等），这些方法经过验证可直接使用。若 ps-api 无对应方法，再查阅 `psdoc/references/` 中的 ActionManager 脚本示例和 API 文档作为参考。仅在两者都无现成方案时才从零编写 ActionManager 代码
 - **ExtendScript hasKey 缓存**：`hasKey()` 等方法在 `if-else if` 结构中多次调用时可能产生不可预期的行为。必须将结果缓存到变量后再进行条件判断，避免重复调用。示例：
   ```typescript
   // ✗ 错误写法
