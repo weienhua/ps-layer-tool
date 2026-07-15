@@ -8,7 +8,7 @@ export type AnchorType =
 export type SortType = "xAsc" | "yAsc" | "psOrderBottomToTop";
 
 /** Tab ID */
-export type TabId = "layerInfo" | "templateOutput" | "layerExport" | "xmlTemplate";
+export type TabId = "layerInfo" | "templateOutput" | "layerExport" | "xmlTemplate" | "curveFit";
 
 /** 预设卡片数据（用于 PresetList 组件） */
 export interface PresetCardData {

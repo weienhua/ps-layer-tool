@@ -1,5 +1,5 @@
 <template>
-  <div class="container" @click="handleContainerClick">
+  <div ref="containerRef" class="container" @click="handleContainerClick">
     <div class="header card">
       <h1>图层处理工具</h1>
       <DocInfo />
@@ -21,6 +21,7 @@
     />
     <LayerExportTab v-if="activeTab === 'layerExport'" @status="handleStatus" />
     <XmlTemplateTab v-if="activeTab === 'xmlTemplate'" @status="handleStatus" />
+    <CurveFitTab v-if="activeTab === 'curveFit'" />
 
     <!-- 统一预设列表 -->
     <SectionCollapsible sectionKey="unified-preset-list" title="预设列表">
@@ -39,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide, watch } from "vue";
+import { ref, provide, watch, computed, onMounted, onUnmounted } from "vue";
 import type { TabId, PresetCardData } from "./types";
 import TabBar from "./components/TabBar.vue";
 import DocInfo from "./components/DocInfo.vue";
@@ -52,13 +53,14 @@ import LayerInfoTab from "./components/LayerInfoTab.vue";
 import TemplateOutputTab from "./components/TemplateOutputTab.vue";
 import LayerExportTab from "./components/LayerExportTab.vue";
 import XmlTemplateTab from "./components/XmlTemplateTab.vue";
+import CurveFitTab from "./components/CurveFitTab.vue";
 import { usePreset } from "./composables/usePreset";
 
 // Tab 管理
 const activeTab = ref<TabId>((() => {
   try {
     const saved = localStorage.getItem("layerTool.activeTab.v1");
-    if (saved && ["layerInfo", "templateOutput", "layerExport", "xmlTemplate"].indexOf(saved) >= 0) {
+    if (saved && ["layerInfo", "templateOutput", "layerExport", "xmlTemplate", "curveFit"].indexOf(saved) >= 0) {
       return saved as TabId;
     }
   } catch { /* ignore */ }
@@ -79,6 +81,12 @@ const templateOutputTabRef = ref<InstanceType<typeof TemplateOutputTab> | null>(
 // 状态管理
 const statusMsg = ref("就绪");
 const statusError = ref(false);
+
+// 响应式紧凑模式（容器宽度 < 360px 时启用简写标签）
+const containerRef = ref<HTMLElement | null>(null);
+const uiCompact = ref(false);
+let compactObserver: ResizeObserver | null = null;
+provide("uiCompact", computed(() => uiCompact.value));
 
 function handleStatus(msg: string, isError = false) {
   statusMsg.value = msg;
@@ -144,6 +152,20 @@ async function handlePresetReorder(fromId: string, toId: string) {
   await reorder(fromId, toId);
   handleStatus("预设顺序已更新");
 }
+
+onMounted(() => {
+  if (containerRef.value) {
+    compactObserver = new ResizeObserver(function () {
+      uiCompact.value = (containerRef.value as HTMLElement).clientWidth < 360;
+    });
+    compactObserver.observe(containerRef.value);
+    uiCompact.value = containerRef.value.clientWidth < 360;
+  }
+});
+
+onUnmounted(() => {
+  if (compactObserver) { compactObserver.disconnect(); compactObserver = null; }
+});
 </script>
 
 <style scoped>

@@ -42,6 +42,14 @@
 - **非破坏性导出**：自动保存/恢复历史状态，不影响文档
 - **进度显示**：实时导出进度和结果列表
 
+### 曲线拟合
+- **手绘模式**：Canvas 自由手绘曲线，自动拟合为数学解析式
+- **表达式模式**：输入表达式生成曲线，拖拽变形后重新拟合
+- **组合拟合**：多项式 + 三角函数 + 指数可自由组合
+- **形态分类**：自动推荐最佳基函数组合
+- **精度控制**：可调节表达式小数位数
+- **纯面板侧**：不依赖 PS 宿主交互
+
 ### 其他
 - **Toast 提示**：操作反馈动画提示
 - **调试面板**：内置可收起的通信日志查看器（含耗时显示）
@@ -62,12 +70,14 @@
 ├── src/
 │   ├── main.ts                   # Vue 入口
 │   ├── App.vue                   # 根组件
-│   ├── components/               # Vue SFC 组件（15 个）
+│   ├── components/               # Vue SFC 组件（17 个）
 │   │   ├── TabBar.vue            # Tab 导航栏
 │   │   ├── LayerInfoTab.vue      # Tab1：图层信息
 │   │   ├── TemplateOutputTab.vue # Tab2：模板输出
 │   │   ├── LayerExportTab.vue    # Tab3：图层处理
 │   │   ├── XmlTemplateTab.vue    # Tab4：XML 模板
+│   │   ├── CurveFitTab.vue       # Tab5：曲线拟合
+│   │   ├── FunctionCanvas.vue    # Canvas 画布（手绘 + 变形）
 │   │   ├── AnchorGrid.vue        # 锚点网格选择器
 │   │   ├── CustomSelect.vue      # 自定义下拉
 │   │   ├── UnifiedPresetList.vue # 统一预设列表（Tab1+Tab2合并）
@@ -80,7 +90,11 @@
 │   │   └── SectionCollapsible.vue # 可折叠区域
 │   ├── composables/              # Vue 组合式函数
 │   │   ├── usePreset.ts          # 预设管理
-│   │   └── useToast.ts           # Toast
+│   │   ├── useToast.ts           # Toast
+│   │   └── useCurveFit.ts        # 曲线拟合状态管理
+│   ├── algo/                     # 曲线拟合算法
+│   │   ├── curveFit.ts           # 多项式/三角/指数拟合
+│   │   └── functionClassify.ts   # 形态分类器
 │   ├── types/
 │   │   ├── index.ts              # 共享类型
 │   │   └── cep-panel.d.ts        # CEP 面板类型声明

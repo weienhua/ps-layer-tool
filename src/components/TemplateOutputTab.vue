@@ -105,7 +105,14 @@ const templateOptions = ref<Array<{ name: string; template: string }>>([]);
     let i = 0;
     while (i < lines.length) {
       const line = lines[i].replace(/\r$/, "");
-      const nameMatch = /^name:`([^`]*)`$/.exec(line);
+      let nameMatch = /^name:`([^`]*)`$/.exec(line);
+      if (!nameMatch) {
+        const headingMatch = /^#{1,6}\s+(.+?)\s*$/.exec(line);
+        if (headingMatch) {
+          // 从标题内容中尝试提取 name:`...` 格式
+          nameMatch = /name:`([^`]*)`/.exec(headingMatch[1]) || headingMatch;
+        }
+      }
       if (nameMatch) {
         const name = nameMatch[1];
         const parts: string[] = [];

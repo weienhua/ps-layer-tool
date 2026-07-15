@@ -21,6 +21,7 @@
     "src/types/**/*.d.ts"
   ],
   "exclude": [
-    "src/jsx/**/*"
+    "src/jsx/**/*",
+    "src/algo/*.test.ts"
   ]
 }

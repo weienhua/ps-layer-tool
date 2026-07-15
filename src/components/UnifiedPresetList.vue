@@ -9,11 +9,11 @@
       <button
         :class="['filter-btn', { active: activeFilter === 'layerInfo' }]"
         @click="activeFilter = 'layerInfo'"
-      >图层信息</button>
+      >{{ filterCompact ? '图层' : '图层信息' }}</button>
       <button
         :class="['filter-btn', { active: activeFilter === 'templateOutput' }]"
         @click="activeFilter = 'templateOutput'"
-      >模板输出</button>
+      >{{ filterCompact ? '模板' : '模板输出' }}</button>
     </div>
 
     <!-- 预设列表 -->
@@ -43,7 +43,7 @@
           </div>
         </div>
         <div class="preset-meta">
-          <span :class="['tab-badge', preset.tab]">{{ preset.tab === 'layerInfo' ? '图层信息' : '模板输出' }}</span>
+          <span :class="['tab-badge', preset.tab]">{{ preset.tab === 'layerInfo' ? (filterCompact ? '图层' : '图层信息') : (filterCompact ? '模板' : '模板输出') }}</span>
           <div class="preset-anchor-grid">
             <button
               v-for="a in anchorCells"
@@ -62,13 +62,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, inject } from "vue";
 import type { SortType, PresetCardData } from "../types";
 
 const props = defineProps<{ presets: PresetCardData[] }>();
 const emit = defineEmits(["apply", "delete", "reorder"]);
 
 const activeFilter = ref<'all' | 'layerInfo' | 'templateOutput'>('all');
+const filterCompact = inject("uiCompact", computed(() => false));
 
 const filteredPresets = computed(() => {
   if (activeFilter.value === 'all') return props.presets;
@@ -139,6 +140,8 @@ function onDrop(e: Event) {
     emit("reorder", draggedId, targetId);
   }
 }
+
+
 </script>
 
 <style scoped>
