@@ -845,6 +845,85 @@ function formatNumber(n: number, precision: number): string {
 }
 
 // ============================================================================
+// 表达式重新格式化（自定义变量名、展开幂次）
+// ============================================================================
+
+/**
+ * 将拟合表达式格式化为目标系统可用形式
+ *
+ * 转换规则（按顺序）：
+ * 1. 去掉 "y = " 前缀
+ * 2. e^(expr) → pow(2.718, expr)
+ * 3. 隐式乘法显式化：2.3x → 2.3*x, 0.8sin → 0.8*sin
+ * 4. 展开幂次：x^N → x*x*...*x（N 个 x 用 * 连接）
+ * 5. 替换变量名：x → 自定义变量名
+ *
+ * @param expression 拟合引擎生成的原始表达式（如 "y = 2.3x^2 + 1.7x + 0.5"）
+ * @param variableName 自定义自变量名（如 "cur_listan"、"#cur_aa"）
+ * @returns 格式化后的表达式字符串
+ */
+export function reformatExpression(expression: string, variableName: string): string {
+  // 1. 去掉 "y = " 前缀
+  var s = expression.replace(/^y\s*=\s*/, "");
+
+  // 2. e^(expr) → pow(2.718, expr)
+  s = replaceEWithPow(s);
+
+  // 3. 隐式乘法显式化：数字后跟字母 → 数字*字母
+  //    如 2.3x → 2.3*x, 0.8sin → 0.8*sin, 1.5pow → 1.5*pow
+  s = s.replace(/(\d+(?:\.\d+)?)([a-z]+)/g, "$1*$2");
+
+  // 4. 展开幂次：x^N → x*x*...*x
+  s = s.replace(/x\^(\d+)/g, function (_match: string, powerStr: string): string {
+    var power = parseInt(powerStr, 10);
+    if (power <= 1) return "x";
+    var parts: string[] = [];
+    for (var i = 0; i < power; i++) {
+      parts.push("x");
+    }
+    return parts.join("*");
+  });
+
+  // 5. 替换变量名 x → 自定义变量名
+  //    注意：函数名中仅 "exp" 含字母 x，但 e^ 已转为 pow，exp 不会出现
+  //    其他函数名（sin/cos/tan/log/pow/sqrt/abs）均不含 x，可直接全局替换
+  s = s.replace(/x/g, variableName);
+
+  return s;
+}
+
+/**
+ * 替换 e^(expr) 为 pow(2.718, expr)
+ * 处理嵌套括号，如 e^(0.5x) → pow(2.718, 0.5x)
+ */
+function replaceEWithPow(s: string): string {
+  var result = "";
+  var i = 0;
+  while (i < s.length) {
+    // 查找 e^(
+    if (i + 2 < s.length && s[i] === "e" && s[i + 1] === "^" && s[i + 2] === "(") {
+      // 找到匹配的右括号
+      var depth = 1;
+      var j = i + 3;
+      while (j < s.length && depth > 0) {
+        if (s[j] === "(") depth++;
+        else if (s[j] === ")") depth--;
+        j++;
+      }
+      if (depth === 0) {
+        var inner = s.substring(i + 3, j - 1);
+        result += "pow(2.718, " + inner + ")";
+        i = j;
+        continue;
+      }
+    }
+    result += s[i];
+    i++;
+  }
+  return result;
+}
+
+// ============================================================================
 // 曲线生成
 // ============================================================================
 

@@ -431,6 +431,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - 滚轮缩放，Ctrl/左键平移
 - 基函数复选框、阶数滑块、精度设置
 - 配置持久化到 localStorage
+- **表达式格式化**：`reformatExpression(expression, variableName)` — 自定义自变量名，展开 `x^N` → `x*x*…`，`e^()` → `pow(2.718, )`，隐式乘法显式化，去掉 `y = ` 前缀
 
 ### Tab 4：XML 模板
 

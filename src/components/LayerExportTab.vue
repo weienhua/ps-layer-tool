@@ -117,21 +117,24 @@ async function handleBrowse() {
 }
 
 async function doExport(collectFn: () => Promise<any>, isGroup = false) {
-  if (!exportPath.value) { showToast("请先选择导出路径", true); return; }
+  if (!exportPath.value) { emit("status", "请先选择导出路径", true); showToast("请先选择导出路径", true); return; }
   const dirResult = await psBridge.ensureDirectory(exportPath.value);
-  if (!dirResult.success) { showToast("创建导出目录失败: " + dirResult.error, true); return; }
+  if (!dirResult.success) { emit("status", "创建导出目录失败", true); showToast("创建导出目录失败: " + dirResult.error, true); return; }
   const snapshot = await psBridge.saveHistoryState();
-  if (!snapshot.success) { showToast("保存历史状态失败: " + snapshot.error, true); return; }
+  if (!snapshot.success) { emit("status", "保存历史状态失败", true); showToast("保存历史状态失败: " + snapshot.error, true); return; }
 
   const collectResult = await collectFn();
   if (!collectResult.success || !collectResult.data) {
+    emit("status", "收集图层失败", true);
     showToast("收集图层失败: " + collectResult.error, true);
     await psBridge.restoreHistoryState();
     return;
   }
   const layers = collectResult.data.layers;
   if (layers.length === 0) {
-    showToast(isGroup ? "选中的图层组内没有可导出的图层" : "未选中图层（或选中的都是图层组）", true);
+    var emptyMsg = isGroup ? "选中的图层组内没有可导出的图层" : "未选中图层（或选中的都是图层组）";
+    emit("status", emptyMsg, true);
+    showToast(emptyMsg, true);
     await psBridge.restoreHistoryState();
     return;
   }
@@ -156,7 +159,9 @@ async function doExport(collectFn: () => Promise<any>, isGroup = false) {
   await psBridge.restoreHistoryState();
 
   results.value = exportResults.filter((r: any) => !r.skipped);
-  showToast(`已导出 ${exportResults.length} 个文件`);
+  var doneMsg = "已导出 " + exportResults.length + " 个文件";
+  emit("status", doneMsg);
+  showToast(doneMsg);
 }
 </script>
 

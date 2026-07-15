@@ -85,6 +85,24 @@
       <div class="result-r2">R² = {{ state.r2.value.toFixed(4) }}</div>
     </div>
 
+    <!-- 格式化输出 -->
+    <div v-if="state.result.value" class="format-card">
+      <div class="format-header">
+        <label class="format-label">变量名:</label>
+        <input
+          v-model="customVariable"
+          class="format-input"
+          type="text"
+          placeholder="x"
+        />
+      </div>
+      <div class="format-result">
+        <div class="result-title">格式化结果</div>
+        <div class="result-expr">{{ formattedExpression }}</div>
+      </div>
+      <button class="btn btn-primary" @click="onCopyFormatted">复制格式化表达式</button>
+    </div>
+
     <!-- 加载指示 -->
     <div v-if="state.computing.value" class="computing-hint">计算中...</div>
   </div>
@@ -93,19 +111,35 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from "vue";
 import SectionCollapsible from "./SectionCollapsible.vue";
 import FunctionCanvas from "./FunctionCanvas.vue";
 import { useCurveFit } from "../composables/useCurveFit";
 import { useToast } from "../composables/useToast";
 import { psBridge } from "../bridge";
+import { reformatExpression } from "../algo/curveFit";
 import type { Point2D } from "../algo/curveFit";
 
 // ============================================================================
 // 状态管理
 // ============================================================================
 
+const emit = defineEmits(["status"]);
 const state = useCurveFit();
 const showToast = useToast();
+
+// ============================================================================
+// 表达式格式化
+// ============================================================================
+
+/** 自定义自变量名 */
+const customVariable = ref("x");
+
+/** 格式化后的表达式（实时计算） */
+const formattedExpression = computed(() => {
+  if (!state.expression.value) return "";
+  return reformatExpression(state.expression.value, customVariable.value);
+});
 
 // ============================================================================
 // 事件处理
@@ -125,11 +159,13 @@ function onCurveDeformed(index: number, point: Point2D): void {
 function onGenerate(): void {
   var expr = state.expressionInput.value.trim();
   if (!expr) {
+    emit("status", "请输入表达式", true);
     showToast("请输入表达式", true);
     return;
   }
   var success = state.generateFromExpression(expr, -5, 5, 100);
   if (!success) {
+    emit("status", "表达式语法错误", true);
     showToast("表达式语法错误", true);
   }
 }
@@ -156,8 +192,24 @@ async function onCopyExpression(): Promise<void> {
   if (!expr) return;
   var result = await psBridge.copyText(expr);
   if (result.success) {
+    emit("status", "表达式已复制到剪贴板");
     showToast("表达式已复制到剪贴板");
   } else {
+    emit("status", "复制失败", true);
+    showToast("复制失败，请手动复制", true);
+  }
+}
+
+/** 复制格式化后的表达式到剪贴板 */
+async function onCopyFormatted(): Promise<void> {
+  var expr = formattedExpression.value;
+  if (!expr) return;
+  var result = await psBridge.copyText(expr);
+  if (result.success) {
+    emit("status", "格式化表达式已复制到剪贴板");
+    showToast("格式化表达式已复制到剪贴板");
+  } else {
+    emit("status", "复制失败", true);
     showToast("复制失败，请手动复制", true);
   }
 }
@@ -360,6 +412,54 @@ async function onCopyExpression(): Promise<void> {
   font-size: 12px;
   color: var(--text-muted);
   animation: pulse 1s ease-in-out infinite;
+}
+
+.format-card {
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.format-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.format-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.format-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.format-input::placeholder {
+  color: var(--text-muted);
+}
+
+.format-result {
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  min-height: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 @keyframes pulse {

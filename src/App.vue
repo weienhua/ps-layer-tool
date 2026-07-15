@@ -21,7 +21,7 @@
     />
     <LayerExportTab v-if="activeTab === 'layerExport'" @status="handleStatus" />
     <XmlTemplateTab v-if="activeTab === 'xmlTemplate'" @status="handleStatus" />
-    <CurveFitTab v-if="activeTab === 'curveFit'" />
+    <CurveFitTab v-if="activeTab === 'curveFit'" @status="handleStatus" />
 
     <!-- 统一预设列表 -->
     <SectionCollapsible sectionKey="unified-preset-list" title="预设列表">
