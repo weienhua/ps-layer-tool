@@ -1,6 +1,6 @@
 {
   "name": "layer-tool-cep",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Photoshop CEP 图层处理工具插件",
   "scripts": {
     "build": "npm run build:jsx && npm run build:panel",
