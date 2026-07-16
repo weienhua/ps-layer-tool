@@ -95,6 +95,13 @@ function getDataBounds(): { xMin: number; xMax: number; yMin: number; yMax: numb
     if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
   }
   var xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
+  // 裁剪 y 轴范围，避免极端值压扁视图（以 0 为中心，默认显示 ±20）
+  var MAX_Y_RANGE = 20;
+  if (yRange > MAX_Y_RANGE) {
+    yMin = -MAX_Y_RANGE / 2;
+    yMax = MAX_Y_RANGE / 2;
+    yRange = MAX_Y_RANGE;
+  }
   return { xMin: xMin - xRange * 0.1, xMax: xMax + xRange * 0.1, yMin: yMin - yRange * 0.1, yMax: yMax + yRange * 0.1 };
 }
 

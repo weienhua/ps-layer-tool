@@ -2,105 +2,108 @@
   <div>
     <SectionCollapsible sectionKey="tab5-curve-fit" title="曲线拟合">
       <div class="curve-fit-content">
-    <!-- 模式切换 -->
-    <div class="mode-switch">
-      <button :class="['mode-btn', { active: state.mode.value === 'draw' }]" @click="onModeSwitch('draw')">
-        ✏️ 手绘模式
-      </button>
-      <button :class="['mode-btn', { active: state.mode.value === 'expression' }]" @click="onModeSwitch('expression')">
-        📐 表达式模式
-      </button>
-    </div>
+    <!-- 输入区 -->
+    <div class="section-group">
+      <div class="mode-switch">
+        <button :class="['mode-btn', { active: state.mode.value === 'draw' }]" @click="onModeSwitch('draw')">
+          ✏️ 手绘模式
+        </button>
+        <button :class="['mode-btn', { active: state.mode.value === 'expression' }]" @click="onModeSwitch('expression')">
+          📐 表达式模式
+        </button>
+      </div>
 
-    <!-- 表达式输入框（表达式模式下显示） -->
-    <div v-if="state.mode.value === 'expression'" class="expr-row">
-      <label class="expr-label">表达式:</label>
-      <input
-        v-model="state.expressionInput.value"
-        class="expr-input"
-        type="text"
-        placeholder="y = sin(x) + 0.5*x"
-        @keydown.enter="onGenerate"
-      />
-      <button class="btn btn-primary" :disabled="state.computing.value" @click="onGenerate">
-        生成曲线
-      </button>
-    </div>
-
-    <!-- Canvas 画布 -->
-    <FunctionCanvas
-      :rawPoints="state.rawPoints.value"
-      :smoothedPoints="state.smoothedPoints.value"
-      :fitResult="state.result.value"
-      :computing="state.computing.value"
-      :mode="state.mode.value"
-      @drawComplete="onDrawComplete"
-      @curveDeformed="onCurveDeformed"
-    />
-
-    <!-- 形态分类推荐 -->
-    <div v-if="state.classification.value" class="recommendation">
-      💡 推荐：{{ state.classification.value.description }}
-      <button class="btn btn-sm btn-outline" @click="state.applyRecommendation()">应用推荐</button>
-    </div>
-
-    <!-- 基函数复选框 -->
-    <div class="basis-checkboxes">
-      <label class="checkbox-label">
-        <input type="checkbox" v-model="state.config.polyEnabled" @change="onConfigChanged" />
-        多项式
-      </label>
-      <label class="degree-label" v-if="state.config.polyEnabled">
-        阶数: {{ state.config.polyDegree }}
-        <input type="range" min="1" max="5" step="1" v-model.number="state.config.polyDegree" @change="onConfigChanged" class="degree-slider" />
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" v-model="state.config.trigEnabled" @change="onConfigChanged" />
-        三角函数
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" v-model="state.config.expEnabled" @change="onConfigChanged" />
-        指数
-      </label>
-      <label class="precision-label">
-        精度:
-        <input type="number" min="0" max="10" v-model.number="state.config.precision" @change="onConfigChanged" class="precision-input" />
-      </label>
-    </div>
-
-    <!-- 操作按钮 -->
-    <div class="action-row">
-      <button class="btn btn-secondary" @click="onClear">清除画布</button>
-      <button
-        v-if="state.expression.value"
-        class="btn btn-primary"
-        @click="onCopyExpression"
-      >复制表达式</button>
-    </div>
-
-    <!-- 拟合结果 -->
-    <div v-if="state.result.value" class="result-card">
-      <div class="result-title">拟合结果</div>
-      <div class="result-expr">{{ state.expression.value }}</div>
-      <div class="result-r2">R² = {{ state.r2.value.toFixed(4) }}</div>
-    </div>
-
-    <!-- 格式化输出 -->
-    <div v-if="state.result.value" class="format-card">
-      <div class="format-header">
-        <label class="format-label">变量名:</label>
+      <div v-if="state.mode.value === 'expression'" class="expr-row">
+        <label class="expr-label">表达式:</label>
         <input
-          v-model="customVariable"
-          class="format-input"
+          v-model="state.expressionInput.value"
+          class="expr-input"
+          type="text"
+          placeholder="y = sin(x) + 0.5*x"
+          @keydown.enter="onGenerate"
+        />
+        <button class="btn btn-primary" :disabled="state.computing.value" @click="onGenerate">
+          生成曲线
+        </button>
+      </div>
+    </div>
+
+    <!-- 可视化区 -->
+    <div class="section-group">
+      <FunctionCanvas
+        :rawPoints="state.rawPoints.value"
+        :smoothedPoints="state.smoothedPoints.value"
+        :fitResult="state.result.value"
+        :computing="state.computing.value"
+        :mode="state.mode.value"
+        @drawComplete="onDrawComplete"
+        @curveDeformed="onCurveDeformed"
+      />
+
+      <div v-if="state.classification.value" class="recommendation">
+        💡 推荐：{{ state.classification.value.description }}
+        <button class="btn btn-sm btn-outline" @click="state.applyRecommendation()">应用推荐</button>
+      </div>
+    </div>
+
+    <!-- 控制区 -->
+    <div class="section-group">
+      <div class="basis-checkboxes">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="state.config.polyEnabled" @change="onConfigChanged" />
+          多项式
+        </label>
+        <label class="degree-label" v-if="state.config.polyEnabled">
+          阶数: {{ state.config.polyDegree }}
+          <input type="range" min="1" max="5" step="1" v-model.number="state.config.polyDegree" @change="onConfigChanged" class="degree-slider" />
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="state.config.trigEnabled" @change="onConfigChanged" />
+          三角函数
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="state.config.expEnabled" @change="onConfigChanged" />
+          指数
+        </label>
+        <label class="precision-label">
+          精度:
+          <input type="number" min="0" max="10" v-model.number="state.config.precision" @change="onConfigChanged" class="precision-input" />
+        </label>
+      </div>
+
+      <div class="var-name-row">
+        <label class="var-name-label">自变量名:</label>
+        <input
+          v-model="state.variableName.value"
+          class="var-name-input"
           type="text"
           placeholder="x"
         />
       </div>
-      <div class="format-result">
+
+      <div class="action-row">
+        <button class="btn btn-secondary" @click="onClear">清除画布</button>
+        <button
+          v-if="state.expression.value"
+          class="btn btn-primary"
+          @click="onCopyExpression"
+        >复制表达式</button>
+      </div>
+    </div>
+
+    <!-- 输出区 -->
+    <div v-if="state.result.value" class="section-group">
+      <div class="result-card">
+        <div class="result-title">拟合结果</div>
+        <div class="result-expr">{{ state.expression.value }}</div>
+        <div class="result-r2">R² = {{ state.r2.value.toFixed(4) }}</div>
+      </div>
+
+      <div class="format-card">
         <div class="result-title">格式化结果</div>
         <div class="result-expr">{{ formattedExpression }}</div>
+        <button class="btn btn-primary" @click="onCopyFormatted">复制格式化表达式</button>
       </div>
-      <button class="btn btn-primary" @click="onCopyFormatted">复制格式化表达式</button>
     </div>
 
     <!-- 加载指示 -->
@@ -111,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import SectionCollapsible from "./SectionCollapsible.vue";
 import FunctionCanvas from "./FunctionCanvas.vue";
 import { useCurveFit } from "../composables/useCurveFit";
@@ -132,13 +135,10 @@ const showToast = useToast();
 // 表达式格式化
 // ============================================================================
 
-/** 自定义自变量名 */
-const customVariable = ref("x");
-
-/** 格式化后的表达式（实时计算） */
+/** 格式化后的表达式（实时计算，使用统一自变量名） */
 const formattedExpression = computed(() => {
   if (!state.expression.value) return "";
-  return reformatExpression(state.expression.value, customVariable.value);
+  return reformatExpression(state.expression.value, state.variableName.value);
 });
 
 // ============================================================================
@@ -163,7 +163,7 @@ function onGenerate(): void {
     showToast("请输入表达式", true);
     return;
   }
-  var success = state.generateFromExpression(expr, -5, 5, 100);
+  var success = state.generateFromExpression(expr, -10, 10, 200);
   if (!success) {
     emit("status", "表达式语法错误", true);
     showToast("表达式语法错误", true);
@@ -217,15 +217,30 @@ async function onCopyFormatted(): Promise<void> {
 </script>
 
 <style scoped>
+/* 主容器：组间间距（margin 替代 gap，兼容 CEP 旧版 Chromium） */
 .curve-fit-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+}
+.curve-fit-content > * + * {
+  margin-top: 16px;
 }
 
+/* 功能组：组内紧凑 */
+.section-group {
+  display: flex;
+  flex-direction: column;
+}
+.section-group > * + * {
+  margin-top: 8px;
+}
+
+/* 输入区 — 模式切换按钮（水平） */
 .mode-switch {
   display: flex;
-  gap: 8px;
+}
+.mode-switch > * + * {
+  margin-left: 8px;
 }
 
 .mode-btn {
@@ -251,10 +266,13 @@ async function onCopyFormatted(): Promise<void> {
   border-color: var(--primary);
 }
 
+/* 表达式输入行（水平） */
 .expr-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+}
+.expr-row > * + * {
+  margin-left: 8px;
 }
 
 .expr-label {
@@ -279,16 +297,20 @@ async function onCopyFormatted(): Promise<void> {
   color: var(--text-muted);
 }
 
+/* 推荐条（水平） */
 .recommendation {
   display: flex;
   align-items: center;
-  gap: 10px;
   padding: 8px 12px;
   background: rgba(59, 130, 246, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 6px;
   font-size: 13px;
   color: #93c5fd;
+}
+.recommendation > * + * {
+  margin-left: 10px;
+  flex-shrink: 0;
 }
 
 .btn-sm {
@@ -307,28 +329,39 @@ async function onCopyFormatted(): Promise<void> {
   color: #fff;
 }
 
+/* 基函数复选框行（水平，可换行） */
 .basis-checkboxes {
   display: flex;
   align-items: center;
-  gap: 16px;
   flex-wrap: wrap;
+  margin-bottom: -6px;
+}
+.basis-checkboxes > * {
+  margin-right: 16px;
+  margin-bottom: 6px;
 }
 
+/* 复选框标签内间距 */
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 4px;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
 }
+.checkbox-label > * + * {
+  margin-left: 4px;
+}
 
+/* 阶数标签内间距 */
 .degree-label {
   font-size: 13px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 6px;
+}
+.degree-label > * + * {
+  margin-left: 6px;
 }
 
 .degree-slider {
@@ -353,9 +386,12 @@ async function onCopyFormatted(): Promise<void> {
   border: 2px solid #fff;
 }
 
+/* 操作按钮行（水平） */
 .action-row {
   display: flex;
-  gap: 8px;
+}
+.action-row > * + * {
+  margin-left: 8px;
 }
 
 .result-card {
@@ -386,13 +422,16 @@ async function onCopyFormatted(): Promise<void> {
   color: var(--text-secondary);
 }
 
+/* 精度标签内间距 */
 .precision-label {
   font-size: 13px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 4px;
   margin-left: 8px;
+}
+.precision-label > * + * {
+  margin-left: 4px;
 }
 
 .precision-input {
@@ -414,6 +453,7 @@ async function onCopyFormatted(): Promise<void> {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* 格式化卡片（垂直布局） */
 .format-card {
   padding: 12px;
   background: var(--bg-card);
@@ -421,23 +461,28 @@ async function onCopyFormatted(): Promise<void> {
   border-radius: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+}
+.format-card > * + * {
+  margin-top: 10px;
 }
 
-.format-header {
+/* 自变量名输入行（水平） */
+.var-name-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+}
+.var-name-row > * + * {
+  margin-left: 8px;
 }
 
-.format-label {
+.var-name-label {
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.format-input {
-  flex: 1;
+.var-name-input {
+  width: 120px;
   height: 28px;
   padding: 0 8px;
   background: var(--bg-input);
@@ -448,18 +493,8 @@ async function onCopyFormatted(): Promise<void> {
   font-family: monospace;
 }
 
-.format-input::placeholder {
+.var-name-input::placeholder {
   color: var(--text-muted);
-}
-
-.format-result {
-  padding: 8px 10px;
-  background: var(--bg-input);
-  border-radius: 4px;
-  min-height: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 @keyframes pulse {

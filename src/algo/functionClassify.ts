@@ -114,7 +114,7 @@ export function classifyCurve(points: Point2D[]): ClassifyResult {
   var periodicScore = 0;
 
   // 自相关检测
-  var acf = computeACF(yVals, Math.floor(n / 2));
+  var acf = computeACF(yVals, Math.floor(n * 0.8));
   if (acf.length > 2) {
     // 找 lag=0 之后的第一个显著峰值
     var peakFound = false;
@@ -169,8 +169,10 @@ export function classifyCurve(points: Point2D[]): ClassifyResult {
   var confExp = 0;
   var recDegree = 2;
 
-  // 多项式置信度：拐点多/非单调/非周期 → 多项式
-  if (!isPeriodic && !isMonotonic) {
+  // 多项式置信度：周期函数主要由三角函数拟合，多项式仅低置信度辅助
+  if (isPeriodic) {
+    confPoly = 0.1; // 周期函数不需要多项式
+  } else if (!isMonotonic) {
     confPoly = Math.min(1, (inflectionCount + 1) * 0.3);
   } else if (isMonotonic && growthRate !== "exponential") {
     confPoly = 0.9;
@@ -179,7 +181,9 @@ export function classifyCurve(points: Point2D[]): ClassifyResult {
   }
 
   // 推荐阶数
-  if (isMonotonic && growthRate === "linear") {
+  if (isPeriodic) {
+    recDegree = 1; // 周期函数不推荐高次多项式
+  } else if (isMonotonic && growthRate === "linear") {
     recDegree = 1; // 直线
   } else if (inflectionCount === 0) {
     recDegree = 2; // 抛物线型
@@ -219,7 +223,7 @@ export function classifyCurve(points: Point2D[]): ClassifyResult {
 
   // 生成描述
   var descParts: string[] = [];
-  descParts.push("多项式(" + recDegree + "阶)");
+  if (config.polyEnabled) descParts.push("多项式(" + recDegree + "阶)");
   if (config.trigEnabled) descParts.push("三角函数");
   if (config.expEnabled) descParts.push("指数");
 
@@ -270,7 +274,7 @@ function computeACF(values: number[], maxLag: number): number[] {
     for (var k = 0; k < n - lag; k++) {
       cov += (values[k] - meanVal) * (values[k + lag] - meanVal);
     }
-    result.push(cov / variance);
+    result.push(cov / variance * n / (n - lag));
   }
   return result;
 }

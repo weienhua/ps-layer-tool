@@ -117,7 +117,7 @@ function autocorrelation(y: number[], maxLag?: number): number[] {
     for (var k = 0; k < n - lag; k++) {
       cov += (y[k] - meanY) * (y[k + lag] - meanY);
     }
-    result.push(cov / variance);
+    result.push(cov / variance * n / (n - lag));
   }
   return result;
 }
@@ -254,29 +254,70 @@ export function polyEval(coeffs: number[], x: number): number {
  */
 function detectFrequency(y: number[], xMin: number, xMax: number): number {
   var n = y.length;
-  if (n < 4) return 2 * Math.PI / (xMax - xMin); // 默认一个周期
+  if (n < 4) return 2 * Math.PI / (xMax - xMin);
 
-  var acf = autocorrelation(y, Math.floor(n / 2));
+  var xSpan = xMax - xMin;
+  var dx = xSpan / (n - 1);
+  var bestOmega = 2 * Math.PI / xSpan; // 默认：1 个周期
+  var bestSSE = Infinity;
 
-  // 找自相关函数的第一个峰值（跳过 lag=0）
-  var peakLag = 0;
-  var peakVal = -Infinity;
-  for (var lag = 1; lag < acf.length - 1; lag++) {
-    if (acf[lag] > acf[lag - 1] && acf[lag] > acf[lag + 1] && acf[lag] > peakVal) {
-      peakVal = acf[lag];
-      peakLag = lag;
+  // 网格搜索：尝试 0.5 ~ 10 个周期的候选频率
+  var periodStep = 0.5;
+  for (var periods = 0.5; periods <= 10; periods += periodStep) {
+    var omega = 2 * Math.PI * periods / xSpan;
+
+    // 3×3 最小二乘拟合：y = A·sin(ωx) + B·cos(ωx) + d
+    var sumSin2 = 0, sumCos2 = 0, sumSinCos = 0;
+    var sumSin = 0, sumCos = 0, sumY = 0;
+    var sumYSin = 0, sumYCos = 0;
+
+    for (var i = 0; i < n; i++) {
+      var x = xMin + i * dx;
+      var s = Math.sin(omega * x);
+      var c = Math.cos(omega * x);
+      var yi = y[i];
+      sumSin2 += s * s;
+      sumCos2 += c * c;
+      sumSinCos += s * c;
+      sumSin += s;
+      sumCos += c;
+      sumY += yi;
+      sumYSin += yi * s;
+      sumYCos += yi * c;
+    }
+
+    // 解 3×3 正规方程（Cramer 法则）
+    var det = sumSin2 * (sumCos2 * n - sumCos * sumCos)
+            - sumSinCos * (sumSinCos * n - sumCos * sumSin)
+            + sumSin * (sumSinCos * sumCos - sumCos2 * sumSin);
+    if (Math.abs(det) < 1e-12) continue;
+
+    var A = (sumYSin * (sumCos2 * n - sumCos * sumCos)
+           - sumSinCos * (sumYCos * n - sumCos * sumY)
+           + sumSin * (sumYCos * sumCos - sumCos2 * sumY)) / det;
+    var B = (sumSin2 * (sumYCos * n - sumCos * sumY)
+           - sumYSin * (sumSinCos * n - sumCos * sumSin)
+           + sumSin * (sumSinCos * sumY - sumYCos * sumSin)) / det;
+    var D = (sumSin2 * (sumCos2 * sumY - sumYCos * sumCos)
+           - sumSinCos * (sumSinCos * sumY - sumYCos * sumSin)
+           + sumYSin * (sumSinCos * sumCos - sumCos2 * sumSin)) / det;
+
+    // 计算 SSE（残差平方和）
+    var sse = 0;
+    for (var j = 0; j < n; j++) {
+      var xj = xMin + j * dx;
+      var pred = A * Math.sin(omega * xj) + B * Math.cos(omega * xj) + D;
+      var err = y[j] - pred;
+      sse += err * err;
+    }
+
+    if (sse < bestSSE) {
+      bestSSE = sse;
+      bestOmega = omega;
     }
   }
 
-  // 如果没有明显峰值，可能是非周期信号
-  if (peakLag < 2 || peakVal < 0.3) {
-    return 2 * Math.PI / (xMax - xMin);
-  }
-
-  // lag 对应的时间周期
-  var xSpan = xMax - xMin;
-  var periodInX = (peakLag / n) * xSpan;
-  return 2 * Math.PI / periodInX;
+  return bestOmega;
 }
 
 /**
@@ -287,7 +328,7 @@ function detectFrequency(y: number[], xMin: number, xMax: number): number {
  * @param points 采样点
  * @returns { amplitude, frequency, phase, offset }
  */
-export function trigFit(points: Point2D[]): {
+export function trigFit(points: Point2D[], fixedOmega?: number): {
   amplitude: number;
   frequency: number;
   phase: number;
@@ -302,8 +343,12 @@ export function trigFit(points: Point2D[]): {
   var yVals: number[] = [];
   for (var i = 0; i < n; i++) yVals.push(points[i].y);
 
-  // 检测频率
-  result.frequency = detectFrequency(yVals, range.min, range.max);
+  // 检测频率（如果已提供则跳过检测）
+  if (fixedOmega !== undefined && fixedOmega > 0) {
+    result.frequency = fixedOmega;
+  } else {
+    result.frequency = detectFrequency(yVals, range.min, range.max);
+  }
 
   // 用 sin(ωx) + cos(ωx) 基函数做线性最小二乘
   // 模型：y = A·sin(ωx) + B·cos(ωx) + d
@@ -511,7 +556,10 @@ export function combinedFit(points: Point2D[], config: FitConfig): FitResult {
       for (var i5 = 0; i5 < n; i5++) {
         trigPts.push({ x: points[i5].x, y: residuals[i5] });
       }
-      var trigResult = trigFit(trigPts);
+      // 首次检测频率，后续迭代锁定频率只重拟幅度/相位
+      var trigResult = params.trigDetected
+        ? trigFit(trigPts, params.trigFrequency)
+        : trigFit(trigPts);
       if (trigResult.amplitude > 1e-6) {
         params.trigAmplitude = trigResult.amplitude;
         params.trigFrequency = trigResult.frequency;
@@ -866,14 +914,19 @@ export function reformatExpression(expression: string, variableName: string): st
   // 1. 去掉 "y = " 前缀
   var s = expression.replace(/^y\s*=\s*/, "");
 
-  // 2. e^(expr) → pow(2.718, expr)
+  // 2. 如果变量名不是 x，先临时替换为 x，以便后续正则统一处理
+  if (variableName !== "x") {
+    s = s.split(variableName).join("x");
+  }
+
+  // 3. e^(expr) → pow(2.718, expr)
   s = replaceEWithPow(s);
 
-  // 3. 隐式乘法显式化：数字后跟字母 → 数字*字母
+  // 4. 隐式乘法显式化：数字后跟字母 → 数字*字母
   //    如 2.3x → 2.3*x, 0.8sin → 0.8*sin, 1.5pow → 1.5*pow
   s = s.replace(/(\d+(?:\.\d+)?)([a-z]+)/g, "$1*$2");
 
-  // 4. 展开幂次：x^N → x*x*...*x
+  // 5. 展开幂次：x^N → x*x*...*x
   s = s.replace(/x\^(\d+)/g, function (_match: string, powerStr: string): string {
     var power = parseInt(powerStr, 10);
     if (power <= 1) return "x";
@@ -884,10 +937,12 @@ export function reformatExpression(expression: string, variableName: string): st
     return parts.join("*");
   });
 
-  // 5. 替换变量名 x → 自定义变量名
+  // 6. 替换变量名 x → 自定义变量名
   //    注意：函数名中仅 "exp" 含字母 x，但 e^ 已转为 pow，exp 不会出现
   //    其他函数名（sin/cos/tan/log/pow/sqrt/abs）均不含 x，可直接全局替换
-  s = s.replace(/x/g, variableName);
+  if (variableName !== "x") {
+    s = s.split("x").join(variableName);
+  }
 
   return s;
 }

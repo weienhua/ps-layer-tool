@@ -431,6 +431,10 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - 滚轮缩放，Ctrl/左键平移
 - 基函数复选框、阶数滑块、精度设置
 - 配置持久化到 localStorage
+- **自变量名**：统一设置自变量名，拟合结果始终用 `x` 显示，格式化结果替换为自定义变量名
+- **表达式模式**：输入表达式时自动检测变量名（含 `#` 前缀）并填入自变量名输入框
+- **频率检测**：网格搜索候选频率，最小二乘选最优，适配 sin/cos/sin(2x) 等各类单频函数
+- **视图裁剪**：y 轴范围超过 ±10 时自动裁剪，避免极端值压扁曲线
 - **表达式格式化**：`reformatExpression(expression, variableName)` — 自定义自变量名，展开 `x^N` → `x*x*…`，`e^()` → `pow(2.718, )`，隐式乘法显式化，去掉 `y = ` 前缀
 
 ### Tab 4：XML 模板

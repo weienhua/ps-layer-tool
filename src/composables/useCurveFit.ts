@@ -68,6 +68,7 @@ export function useCurveFit() {
   const mode = ref<FitMode>("draw");
   const expressionInput = ref("");
   const computing = ref(false);
+  const variableName = ref("x");
 
   // ===== 持久化：从 localStorage 恢复配置和模式 =====
   var STORAGE_KEY = "layerTool.curveFitConfig.v1";
@@ -79,11 +80,12 @@ export function useCurveFit() {
     if (typeof saved.expEnabled === "boolean") config.expEnabled = saved.expEnabled;
     if (typeof saved.precision === "number") config.precision = saved.precision;
     if (saved.mode === "draw" || saved.mode === "expression") mode.value = saved.mode;
+    if (typeof saved.variableName === "string" && saved.variableName.length > 0) variableName.value = saved.variableName;
   }
 
   // 监听配置变化，自动保存
   watch(
-    () => ({ ...config, mode: mode.value }),
+    () => ({ ...config, mode: mode.value, variableName: variableName.value }),
     function (val) {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch (e) { /* ignore */ }
     },
@@ -145,14 +147,17 @@ export function useCurveFit() {
     // 实际上直接用 Function 构造求值函数
     try {
       // 构建求值函数（受限的 math 环境）
-      var evalFn = compileExpression(cleanExpr);
-      if (!evalFn) return false;
+      var compiled = compileExpression(cleanExpr);
+      if (!compiled.fn) return false;
+
+      // 自动填入检测到的变量名
+      variableName.value = compiled.varName;
 
       var points: Point2D[] = [];
       var step = (xMax - xMin) / (count - 1);
       for (var i = 0; i < count; i++) {
         var x = xMin + i * step;
-        var y = evalFn(x);
+        var y = compiled.fn(x);
         if (isNaN(y) || !isFinite(y)) return false;
         points.push({ x: x, y: y });
       }
@@ -266,6 +271,7 @@ export function useCurveFit() {
     mode,
     expressionInput,
     computing,
+    variableName,
     // 计算属性
     hasPoints,
     expression,
@@ -287,18 +293,71 @@ export function useCurveFit() {
 // 表达式求值辅助
 // ============================================================================
 
+/** 合法 JS 标识符正则 */
+var VALID_ID_RE = /^[a-zA-Z_$][\w$]*$/;
+
+/** 已知数学函数名（用于排除，不作为变量名） */
+var KNOWN_FUNCTIONS: Record<string, boolean> = {
+  sin: true, cos: true, tan: true,
+  abs: true, sqrt: true, pow: true, exp: true, log: true, log10: true,
+  round: true, ceil: true, floor: true,
+  PI: true, E: true,
+};
+
 /**
- * 将数学表达式字符串编译为可调用的函数
+ * 从表达式中检测独立变量名（支持 # 前缀，如 #cur_listan）
+ * 排除已知数学函数名，取出现频率最高的标识符作为变量名
+ */
+function detectVariable(expr: string): string {
+  var ids = expr.match(/#?[a-zA-Z_]\w*/g);
+  if (!ids || ids.length === 0) return "x";
+
+  var freq: Record<string, number> = {};
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    if (!KNOWN_FUNCTIONS[id]) {
+      freq[id] = (freq[id] || 0) + 1;
+    }
+  }
+
+  var keys = Object.keys(freq);
+  if (keys.length === 0) return "x";
+
+  // 取出现次数最多的
+  var best = keys[0];
+  for (var k = 1; k < keys.length; k++) {
+    if (freq[keys[k]] > freq[best]) best = keys[k];
+  }
+  return best;
+}
+
+/** 全局字符串替换（ES3 兼容，split + join） */
+function replaceAll(str: string, search: string, replacement: string): string {
+  return str.split(search).join(replacement);
+}
+
+/**
+ * 将数学表达式字符串编译为可调用的函数，并返回检测到的变量名
  *
  * 支持的数学语法：
  * - x^N → pow(x, N)
  * - 隐式乘法：2x → 2*x, x(x+1) → x*(x+1), 2sin(x) → 2*sin(x)
  * - sin/cos/tan/sqrt/abs/exp/log/round/ceil/floor/pow
  * - e^(expr) → exp(expr)
+ * - 自动检测变量名（支持 # 前缀）
  */
-function compileExpression(rawExpr: string): ((x: number) => number) | null {
+function compileExpression(rawExpr: string): { fn: ((x: number) => number) | null; varName: string } {
   try {
-    var jsExpr = mathToJS(rawExpr);
+    // 1. 检测原始变量名
+    var varName = detectVariable(rawExpr);
+
+    // 2. 归一化：将变量名替换为 x（mathToJS 只处理 x）
+    var normalized = rawExpr;
+    if (varName !== "x") {
+      normalized = replaceAll(rawExpr, varName, "x");
+    }
+
+    var jsExpr = mathToJS(normalized);
     var body = [
       "'use strict';",
       "var sin = Math.sin, cos = Math.cos, tan = Math.tan,",
@@ -311,9 +370,9 @@ function compileExpression(rawExpr: string): ((x: number) => number) | null {
     var fn = new Function("x", body) as (x: number) => number;
     // 测试调用
     fn(0);
-    return fn;
+    return { fn: fn, varName: varName };
   } catch (e) {
-    return null;
+    return { fn: null, varName: "x" };
   }
 }
 
