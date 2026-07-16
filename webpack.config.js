@@ -21,6 +21,7 @@ module.exports = (env, argv) => {
             loader: 'ts-loader',
             options: {
               appendTsSuffixTo: [/\.vue$/],
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,

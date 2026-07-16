@@ -96,7 +96,7 @@
       <div class="result-card">
         <div class="result-title">拟合结果</div>
         <div class="result-expr">{{ state.expression.value }}</div>
-        <div class="result-r2">R² = {{ state.r2.value.toFixed(4) }}</div>
+        <div class="result-r2">R² = {{ r2Text }}</div>
       </div>
 
       <div class="format-card">
@@ -139,6 +139,12 @@ const showToast = useToast();
 const formattedExpression = computed(() => {
   if (!state.expression.value) return "";
   return reformatExpression(state.expression.value, state.variableName.value);
+});
+
+/** R² 格式化字符串 */
+const r2Text = computed(() => {
+  var r2 = state.r2.value;
+  return r2 != null ? r2.toFixed(4) : "0.0000";
 });
 
 // ============================================================================
@@ -191,7 +197,7 @@ async function onCopyExpression(): Promise<void> {
   var expr = state.expression.value;
   if (!expr) return;
   var result = await psBridge.copyText(expr);
-  if (result.success) {
+  if (result && result.success) {
     emit("status", "表达式已复制到剪贴板");
     showToast("表达式已复制到剪贴板");
   } else {
@@ -205,7 +211,7 @@ async function onCopyFormatted(): Promise<void> {
   var expr = formattedExpression.value;
   if (!expr) return;
   var result = await psBridge.copyText(expr);
-  if (result.success) {
+  if (result && result.success) {
     emit("status", "格式化表达式已复制到剪贴板");
     showToast("格式化表达式已复制到剪贴板");
   } else {

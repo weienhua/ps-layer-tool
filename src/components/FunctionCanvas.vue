@@ -248,8 +248,9 @@ function handlePan(e: MouseEvent): void {
   renderAll();
 }
 
-function onWheel(e: WheelEvent): void {
-  var newScale = viewScale.value * (e.deltaY > 0 ? 0.85 : 1.15);
+function onWheel(e: Event): void {
+  var we = e as WheelEvent;
+  var newScale = viewScale.value * (we.deltaY > 0 ? 0.85 : 1.15);
   if (newScale < 0.1) newScale = 0.1; if (newScale > 20) newScale = 20;
   var oldBounds = getViewBounds();
   viewScale.value = newScale;
