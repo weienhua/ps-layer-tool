@@ -1,5 +1,5 @@
 <template>
-  <div class="unified-preset-list">
+  <div :class="['unified-preset-list', { 'no-preview': !showPreview }]">
     <!-- 筛选按钮 -->
     <div class="filter-bar">
       <button
@@ -14,6 +14,13 @@
         :class="['filter-btn', { active: activeFilter === 'templateOutput' }]"
         @click="activeFilter = 'templateOutput'"
       >{{ filterCompact ? '模板' : '模板输出' }}</button>
+      <div class="preview-toggle">
+        <span class="preview-label">预览</span>
+        <label class="switch">
+          <input type="checkbox" :checked="showPreview" @change="togglePreview" />
+          <span class="slider" />
+        </label>
+      </div>
     </div>
 
     <!-- 预设列表 -->
@@ -101,6 +108,23 @@ function toggleCollapse(id: string, e: Event) {
   collapseStates.value = { ...collapseStates.value, [id]: collapseStates.value[id] === false };
   localStorage.setItem("layerTool.presetCollapseStates.v1", JSON.stringify(collapseStates.value));
   (e.target as HTMLElement).blur();
+}
+
+const PREVIEW_STORAGE_KEY = "layerTool.presetPreviewEnabled.v1";
+
+function loadPreviewEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(PREVIEW_STORAGE_KEY);
+    if (raw === null) return true;
+    return raw === "true";
+  } catch { return true; }
+}
+
+const showPreview = ref(loadPreviewEnabled());
+
+function togglePreview() {
+  showPreview.value = !showPreview.value;
+  localStorage.setItem(PREVIEW_STORAGE_KEY, String(showPreview.value));
 }
 
 function handleClick(preset: PresetCardData) {
@@ -456,5 +480,71 @@ function onDrop(e: Event) {
 .preset-item:hover .preset-template-preview,
 .preset-item:focus-within .preset-template-preview {
   display: block;
+}
+
+.unified-preset-list.no-preview .preset-item:hover .preset-template-preview,
+.unified-preset-list.no-preview .preset-item:focus-within .preset-template-preview {
+  display: none;
+}
+
+.preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.preview-toggle > * + * {
+  margin-left: 8px;
+}
+
+.preview-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #444;
+  transition: .2s;
+  border-radius: 18px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #0d6efd;
+}
+
+input:checked + .slider:before {
+  transform: translateX(14px);
 }
 </style>

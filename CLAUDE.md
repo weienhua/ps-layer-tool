@@ -131,6 +131,7 @@ Promise<PSResult<T>>
 - **注释**：TS 代码使用 JSDoc + 中文描述，函数、类、接口必须有注释
 - **Vue 组件**：使用 `<script setup lang="ts">` 组合式 API，共享类型从 `src/types/index.ts` 导入
 - **CSS**：全局基础样式在 `src/style.css`，组件样式用 `<style scoped>`
+- **CSS flex 间距**：避免使用 `gap`（Vue scoped styles + CEP Chromium 环境下兼容性差），改用 `margin` + 兄弟选择器：`.parent > * + * { margin-left: Npx; }`
 - **模板语法**：Vue 模板中避免使用反引号模板字符串（与 `{{ }}` 冲突），用字符串拼接代替
 - **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
 - **ps-api 优先**：宿主脚本中需要 PS 操作时，优先查阅 `src/jsx/ps-api/API.md` 是否已有封装方法（如 `exportToBMP`、`duplicateToDocument`、`History.saveState` 等），这些方法经过验证可直接使用。若 ps-api 无对应方法，再查阅 `psdoc/references/` 中的 ActionManager 脚本示例和 API 文档作为参考。仅在两者都无现成方案时才从零编写 ActionManager 代码
