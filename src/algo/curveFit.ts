@@ -647,6 +647,11 @@ export function combinedFit(points: Point2D[], config: FitConfig): FitResult {
     }
   }
 
+  // --- 修剪可忽略的高次多项式项（自动降阶） ---
+  if (config.polyEnabled && params.polyCoeffs.length > 1) {
+    params.polyCoeffs = trimNegligiblePolyTerms(points, params, config);
+  }
+
   var finalR2 = computeR2(points, params, config);
   var expr = formatExpression(params, config);
   var curvePts = generateCurvePoints(params, config, xMin, xMax, 200);
@@ -808,6 +813,84 @@ export function rSquared(points: Point2D[], fn: (x: number) => number): number {
 }
 
 // ============================================================================
+// 多项式阶数自动降阶
+// ============================================================================
+
+/**
+ * 修剪多项式系数组中可忽略的高次项
+ *
+ * 从最高次项开始逐次检查，若最高次项对拟合质量无实质贡献则降阶。
+ * 判定条件（两级过滤）：
+ *   1. 系数绝对值 < 1e-7（绝对微小），或相对前一项系数比例 < 0.001（贡献 < 0.1%）
+ *   2. 降阶后 R² 下降 < 1e-6（无实质拟合损失）
+ *
+ * 仅满足条件 1 才进入条件 2 的 R² 验证；条件 2 失败则立即停止继续降阶。
+ *
+ * @param points  原始采样点
+ * @param params  当前拟合参数（含多项式系数，trig/exp 部分保持不变）
+ * @param config  拟合配置
+ * @returns 降阶后的多项式系数数组
+ */
+function trimNegligiblePolyTerms(
+  points: Point2D[],
+  params: FitParams,
+  config: FitConfig
+): number[] {
+  var coeffs = params.polyCoeffs;
+  if (coeffs.length <= 1) return coeffs;
+
+  var currentR2 = computeR2(points, params, config);
+
+  // 从最高次项向低次检查
+  for (var d = coeffs.length - 1; d >= 1; d--) {
+    var leadingAbs = Math.abs(coeffs[d]);
+    var prevAbs = Math.abs(coeffs[d - 1]);
+
+    // 判定是否需要检查降阶
+    var isNegligible =
+      leadingAbs < 1e-7 ||
+      (prevAbs > 1e-10 && leadingAbs / prevAbs < 0.001);
+
+    if (!isNegligible) break;
+
+    // 重新拟合降阶后的多项式（以原始 y 为目标）
+    var reducedCoeffs = polyFit(points, d);
+
+    // 构建降阶后的测试参数
+    var testParams: FitParams = {
+      polyCoeffs: reducedCoeffs,
+      trigAmplitude: params.trigDetected ? params.trigAmplitude : 0,
+      trigFrequency: params.trigDetected ? params.trigFrequency : 0,
+      trigPhase: params.trigDetected ? params.trigPhase : 0,
+      trigOffset: params.trigDetected ? params.trigOffset : 0,
+      expA: params.expDetected ? params.expA : 0,
+      expB: params.expDetected ? params.expB : 0,
+      expC: params.expDetected ? params.expC : 0,
+      trigDetected: params.trigDetected,
+      expDetected: params.expDetected,
+    };
+    var testConfig: FitConfig = {
+      polyEnabled: true,
+      polyDegree: d,
+      trigEnabled: config.trigEnabled && params.trigDetected,
+      expEnabled: config.expEnabled && params.expDetected,
+      precision: config.precision,
+    };
+    var reducedR2 = computeR2(points, testParams, testConfig);
+
+    if (currentR2 - reducedR2 < 1e-6) {
+      // 降阶安全：R² 无实质下降，采纳降阶结果
+      coeffs = reducedCoeffs;
+    } else {
+      // R² 明显下降，停止降阶
+      break;
+    }
+  }
+
+  return coeffs;
+}
+
+// ============================================================================
 // 表达式格式化
 // ============================================================================
 
@@ -874,13 +957,16 @@ function formatPolyTerm(coeff: number, degree: number, precision: number): strin
   if (Math.abs(coeff) < 1e-10) return "";
   var sign = coeff < 0 ? "-" : "";
   var absVal = Math.abs(coeff);
-  if (degree === 0) return sign + formatNumber(absVal, precision);
+  var formatted = formatNumber(absVal, precision);
+  // 精度范围内为零则跳过，避免出现 "0x^2" 等噪声项
+  if (formatted === "0") return "";
+  if (degree === 0) return sign + formatted;
   if (degree === 1) {
     if (Math.abs(absVal - 1) < 1e-10) return sign + "x";
-    return sign + formatNumber(absVal, precision) + "x";
+    return sign + formatted + "x";
   }
   if (Math.abs(absVal - 1) < 1e-10) return sign + "x^" + degree;
-  return sign + formatNumber(absVal, precision) + "x^" + degree;
+  return sign + formatted + "x^" + degree;
 }
 
 /** 格式化数字（保留合理小数位） */

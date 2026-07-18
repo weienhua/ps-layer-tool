@@ -120,9 +120,21 @@ export function useCurveFit() {
     var sampled = points.length > 200 ? sampleCurve(smoothed, 200) : smoothed;
     smoothedPoints.value = sampled;
 
-    // 形态分类推荐（仅提示，不自动应用）
+    // 形态分类推荐
     var cls = classifyCurve(sampled);
     classification.value = cls;
+
+    // 自动应用高置信度线性推荐（仅当配置为出厂默认值时）
+    // 避免用户手绘直线后仍需手动点击"应用推荐"按钮
+    var isDefaultConfig =
+      config.polyEnabled === true &&
+      config.polyDegree === 2 &&
+      config.trigEnabled === false &&
+      config.expEnabled === false;
+
+    if (isDefaultConfig && cls.confidence.polynomial > 0.8 && cls.recommendedDegree === 1) {
+      config.polyDegree = 1;
+    }
 
     // 使用用户当前配置执行拟合
     runFit(sampled);
