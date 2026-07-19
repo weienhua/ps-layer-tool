@@ -576,3 +576,9 @@ Windows 调试模式：编辑注册表 `HKCU\Software\Adobe\CSXS.11\PlayerDebugM
 | 宿主类型报错（找不到 `app`） | ps-extendscript-types 未引入 | 确认 `tsconfig.jsx.json` 中 `types: ["ps-extendscript-types"]` |
 | 修改 JSX 后不生效 | PS 缓存旧脚本 | 重启 PS 或重新加载扩展 |
 | 面板白屏 | HTML/JS 加载失败 | 打开 `http://localhost:8088` 检查控制台错误 |
+
+## 会话交接约定
+
+每次新 session 开始时，先读取 `handoffs/` 目录下最新的交接文档（按日期排序取最新），了解上次会话的上下文、进行中的工作和下一步计划。
+
+交接文档命名格式：`YYYY-MM-DD-<简短描述>.md`，模板见 `handoffs/TEMPLATE.md`。
