@@ -128,19 +128,38 @@ Promise<PSResult<T>>
 ## 代码规范
 
 - **上传github**：根据项目代码修改编写commit，不用包裹在@@中
+
 - **注释**：TS 代码使用 JSDoc + 中文描述，函数、类、接口必须有注释
+
 - **Vue 组件**：使用 `<script setup lang="ts">` 组合式 API，共享类型从 `src/types/index.ts` 导入
+
 - **CSS**：全局基础样式在 `src/style.css`，组件样式用 `<style scoped>`
+
 - **CSS flex 间距**：避免使用 `gap`（Vue scoped styles + CEP Chromium 环境下兼容性差），改用 `margin` + 兄弟选择器：`.parent > * + * { margin-left: Npx; }`
+
 - **模板语法**：Vue 模板中避免使用反引号模板字符串（与 `{{ }}` 冲突），用字符串拼接代替
+
 - **宿主脚本**：`src/jsx/hostscript.ts` 中避免使用三元运算符，改用 `if/else`（ExtendScript 兼容性）
+
 - **ps-api 优先**：宿主脚本中需要 PS 操作时，优先查阅 `src/jsx/ps-api/API.md` 是否已有封装方法（如 `exportToBMP`、`duplicateToDocument`、`History.saveState` 等），这些方法经过验证可直接使用。若 ps-api 无对应方法，再查阅 `psdoc/references/` 中的 ActionManager 脚本示例和 API 文档作为参考。仅在两者都无现成方案时才从零编写 ActionManager 代码
+
+- **ps-api 导入统一入口**：所有 ps-api 类（`Document`、`Layer`、`Text`、`SolidColor` 等）必须从 `src/jsx/ps-api/src/index.ts` 统一导入，**禁止**从 `src/jsx/ps-api/src/lib/` 子路径单独导入。单独导入会导致 webpack 模块路径解析不一致，引发整个 hostscript 运行时 `EvalScript error`。
+
+  ```typescript
+  // ✓ 正确写法
+  import { Document, Layer, Text, SolidColor } from "../ps-api/src/index";
+  
+  // ✗ 错误写法 — 会导致 webpack 模块冲突，hostscript 全部报错
+  import { Document } from "../ps-api/src/lib/Document";
+  import { Layer } from "../ps-api/src/lib/Layer";
+  ```
+
 - **ExtendScript hasKey 缓存**：`hasKey()` 等方法在 `if-else if` 结构中多次调用时可能产生不可预期的行为。必须将结果缓存到变量后再进行条件判断，避免重复调用。示例：
   ```typescript
   // ✗ 错误写法
   if (obj.hasKey(s2t("red"))) { ... }
   else if (obj.hasKey(s2t("redFloat"))) { ... }
-
+  
   // ✓ 正确写法
   var hasRed = obj.hasKey(s2t("red"));
   var hasRedFloat = obj.hasKey(s2t("redFloat"));
