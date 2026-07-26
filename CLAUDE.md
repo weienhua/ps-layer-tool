@@ -598,6 +598,20 @@ Windows 调试模式：编辑注册表 `HKCU\Software\Adobe\CSXS.11\PlayerDebugM
 
 ## 会话交接约定
 
+使用 `/handoff` skill 在 session 结束时自动生成交接文档。文档保存在 `handoffs/` 目录中，结构遵循 `handoffs/TEMPLATE.md`。
+
 每次新 session 开始时，先读取 `handoffs/` 目录下最新的交接文档（按日期排序取最新），了解上次会话的上下文、进行中的工作和下一步计划。
 
-交接文档命名格式：`YYYY-MM-DD-<简短描述>.md`，模板见 `handoffs/TEMPLATE.md`。
+## Agent skills
+
+### Issue tracker
+
+本仓库使用 GitHub Issues 管理 issue。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用 mattpocock/skills 默认分诊标签词汇。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文布局。详见 `docs/agents/domain.md`。
