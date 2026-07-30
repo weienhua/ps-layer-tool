@@ -12,7 +12,7 @@ const { execSync } = require('child_process');
 
 
 const EXTENSION_ID = 'com.layertool.panel';
-const CSXS_VERSIONS = [6, 7, 8, 9, 10, 11];
+const CSXS_VERSIONS = [6, 7, 8, 9, 10, 11, 12];
 // 安装时需要保留的用户文件（相对于 lib/ 目录）
 const LIB_KEEP_FILES = ['presets.md', 'template.md'];
 // 安装时需要保留的用户目录（相对于 dist/lib/ 目录，与 template.md 同级）
