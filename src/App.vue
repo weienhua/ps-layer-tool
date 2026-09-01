@@ -88,6 +88,23 @@ const uiCompact = ref(false);
 let compactObserver: ResizeObserver | null = null;
 provide("uiCompact", computed(() => uiCompact.value));
 
+// 相对画板坐标开关（Tab1/2 共用，持久化到 localStorage）
+const RELATIVE_TO_ARTBOARD_KEY = "layerTool.relativeToArtboard.v1";
+function loadRelativeToArtboard(): boolean {
+  try {
+    const raw = localStorage.getItem(RELATIVE_TO_ARTBOARD_KEY);
+    if (raw === null) return false;
+    return raw === "true";
+  } catch { return false; }
+}
+const relativeToArtboard = ref(loadRelativeToArtboard());
+function setRelativeToArtboard(v: boolean) {
+  relativeToArtboard.value = v;
+  try { localStorage.setItem(RELATIVE_TO_ARTBOARD_KEY, String(v)); } catch { /* ignore */ }
+}
+provide("relativeToArtboard", computed(() => relativeToArtboard.value));
+provide("setRelativeToArtboard", setRelativeToArtboard);
+
 function handleStatus(msg: string, isError = false) {
   statusMsg.value = msg;
   statusError.value = isError;

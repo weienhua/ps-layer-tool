@@ -124,6 +124,41 @@ export function getLayerPathByLayer(layer: any): string {
 }
 
 /**
+ * 查找图层所属画板及其原点偏移
+ * @description 沿 parentLayerID 链向上查找，命中含 artboard 描述符的祖先图层，
+ * 读取 artboard.artboardRect 的 left/top 作为画板在文档坐标系中的原点偏移
+ * @param layerId 图层 ID
+ * @returns 画板信息对象 { id, dx, dy }，图层不在任何画板内返回 null
+ */
+export function getArtboardOffset(layerId: number): any {
+  var s2t = stringIDToTypeID;
+  var curId = layerId;
+  var guard = 0;
+  while (guard < 200) {
+    guard++;
+    var pid = getParentLayerId(curId);
+    if (pid < 0) return null;
+    var ref = new ActionReference();
+    ref.putIdentifier(app.charIDToTypeID("Lyr "), pid);
+    var desc = app.executeActionGet(ref);
+    if (desc.hasKey(s2t("artboard"))) {
+      var dx = 0;
+      var dy = 0;
+      var artboardObj = desc.getObjectValue(s2t("artboard"));
+      var hasRect = artboardObj.hasKey(s2t("artboardRect"));
+      if (hasRect) {
+        var rect = artboardObj.getObjectValue(s2t("artboardRect"));
+        dx = rect.getUnitDoubleValue(s2t("left"));
+        dy = rect.getUnitDoubleValue(s2t("top"));
+      }
+      return { id: pid, dx: dx, dy: dy };
+    }
+    curId = pid;
+  }
+  return null;
+}
+
+/**
  * 根据图层 ID 获取图层路径
  * @param layerId 图层 ID
  * @returns 图层路径字符串

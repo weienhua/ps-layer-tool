@@ -71,6 +71,8 @@ import { applyArrayTemplate, getAnchorXY, sortLayers, getExtensionPathSync } fro
 
 const emit = defineEmits(["status", "save-preset"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
+// 相对画板坐标开关（由 App.vue 提供，Tab1/2 共用）
+const relativeToArtboard = inject("relativeToArtboard", computed(() => false));
 
 const HINT_VARS = [
   { key: "name[i]", desc: "图层名称" }, { key: "acname[i]", desc: "去_数字后缀" },
@@ -154,7 +156,7 @@ function handleTplSelectChange(value: string) {
 
 async function processOutput() {
   if (!templateInput.value) { emit("status", "请先输入输出模板", true); showToast("请先输入输出模板", true); return; }
-  const result = await psBridge.getSelectedLayersInfo();
+  const result = await psBridge.getSelectedLayersInfo(relativeToArtboard.value);
   if (!result.success || !result.data) { emit("status", `获取图层失败: ${result.error || "未知错误"}`, true); showToast("获取图层失败", true); return; }
   if (result.data.layers.length === 0) { outputText.value = ""; emit("status", "未选中图层", true); showToast("未选中图层", true); return; }
 

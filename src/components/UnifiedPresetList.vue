@@ -21,6 +21,13 @@
           <span class="slider" />
         </label>
       </div>
+      <div class="relative-toggle" title="获取图层信息时自动计算图层相对于画板的位置">
+        <span class="relative-label">相对画板</span>
+        <label class="switch">
+          <input type="checkbox" :checked="relativeToArtboard" @change="onToggleRelative" />
+          <span class="slider" />
+        </label>
+      </div>
     </div>
 
     <!-- 预设列表 -->
@@ -77,6 +84,14 @@ const emit = defineEmits(["apply", "delete", "reorder"]);
 
 const activeFilter = ref<'all' | 'layerInfo' | 'templateOutput'>('all');
 const filterCompact = inject("uiCompact", computed(() => false));
+
+// 相对画板坐标开关（由 App.vue 提供，Tab1/2 共用）
+const relativeToArtboard = inject("relativeToArtboard", computed(() => false));
+const setRelativeToArtboard = inject<(v: boolean) => void>("setRelativeToArtboard", () => {});
+
+function onToggleRelative(e: Event) {
+  setRelativeToArtboard((e.target as HTMLInputElement).checked);
+}
 
 const filteredPresets = computed(() => {
   if (activeFilter.value === 'all') return props.presets;
@@ -498,6 +513,21 @@ function onDrop(e: Event) {
 }
 
 .preview-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.relative-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.relative-toggle > * + * {
+  margin-left: 8px;
+}
+
+.relative-label {
   font-size: 11px;
   color: var(--text-secondary);
   white-space: nowrap;

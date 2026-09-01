@@ -237,7 +237,7 @@ $.HostScript = {
 |------|------|
 | `getDocumentInfo()` | 获取活动文档名和尺寸 |
 | `getSelectedLayerName()` | 获取当前选中图层名 |
-| `getSelectedLayersInfo()` | 获取所有选中图层的详细信息（坐标、尺寸、旋转、文字信息、路径） |
+| `getSelectedLayersInfo(relativeToArtboard)` | 获取所有选中图层的详细信息（坐标、尺寸、旋转、文字信息、路径）；`relativeToArtboard` 为 true 时坐标（x/y/centerX/centerY）自动换算为相对所属画板左上角的位置 |
 | `copyTextToClipboard(text)` | 复制文本到系统剪贴板 |
 | `getDocumentPath()` | 获取当前文档的文件路径 |
 | `ensureDirectory(dirPath)` | 确保目录存在，不存在则创建 |
@@ -375,6 +375,7 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **模板输出预设**：`localStorage` key `layerTool.templateOutputPresets.v1`，本地文件 `dist/lib/presets/tab2/default.json`
 - **XML 模板配置**：`localStorage` key `layerTool.xmlConfig.v1`，本地文件 `dist/lib/presets/tab4/default.json`
 - **折叠面板状态**：`localStorage` key `layerTool.hintStates.v1`（仅 localStorage，不持久化到文件）
+- **相对画板坐标开关**：`localStorage` key `layerTool.relativeToArtboard.v1`（仅 localStorage，Tab1/2 共用）
 
 支持保存/加载/删除预设、拖拽排序（HTML5 Drag and Drop API）、预设卡片带 3×3 锚点网格微预览。
 
@@ -466,6 +467,8 @@ vendored 自 [photoshop-script-api](https://github.com/emptykid/photoshop-script
 - **排序方式**：按 X 升序 / 按 Y 升序 / 按 PS 图层顺序
 - **对齐方式**：3×3 网格可视化选择器 + 下拉选择器（控制 `lt()`/`ge()` 表达式中的对齐系数）
 - **输出 rotation 属性**：复选框，默认勾选，勾选后在每个 Image 标签上输出 `rotation` 属性（仅当 rotation ≠ 0 时）
+- **输出图片宽高**：复选框，默认不勾选，勾选后在每个 Image 标签上输出 `w`/`h` 属性（宽高 > 0 时）
+- **相对画板坐标**：复选框，默认不勾选，勾选后获取图层信息时将坐标（x/y/centerX/centerY）换算为相对所属画板左上角的位置（多画板文档）
 
 #### 常用变量管理
 - **变量列表**：显示所有可用的 XML 变量（内置 + 自定义），点击可选择变量名填入输入框
@@ -495,6 +498,7 @@ Tab1（图层信息）和 Tab2（模板输出）的预设统一显示在同一�
 - **点击执行**：点击预设卡片自动切换到对应 Tab，应用预设配置并获取图层信息
 - **拖拽排序**：Tab1 和 Tab2 预设可交叉排序
 - **预览显示**：悬停卡片显示模板预览（显示在卡片上方，避免抖动）
+- **相对画板开关**：筛选栏提供"相对画板"开关，打开时获取图层信息自动将坐标（x/y/centerX/centerY）换算为相对所属画板左上角的位置（关闭时为文档绝对坐标），Tab1/2 共用并持久化（`layerTool.relativeToArtboard.v1`）
 
 #### 卡片显示效果
 ```

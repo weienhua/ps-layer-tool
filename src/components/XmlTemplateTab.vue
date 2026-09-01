@@ -43,6 +43,10 @@
             <input type="checkbox" v-model="outputSize" @change="saveConfig" />
             <span>输出图片宽高</span>
           </label>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="relativeToArtboard" @change="saveConfig" />
+            <span>相对画板坐标</span>
+          </label>
         </div>
       </div>
       <div class="row actions action-group">
@@ -123,7 +127,7 @@ const emit = defineEmits(["status"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
 
 interface XmlVariable { name: string; desc: string; builtin: boolean; }
-interface XmlTemplateConfig { vars: XmlVariable[]; includeRotation: boolean; outputSize: boolean; }
+interface XmlTemplateConfig { vars: XmlVariable[]; includeRotation: boolean; outputSize: boolean; relativeToArtboard?: boolean; }
 
 const CONFIG_KEY = "layerTool.xmlConfig.v1";
 
@@ -161,6 +165,7 @@ const sortBy = ref<SortType>("xAsc");
 const alignAnchor = ref<AnchorType>("topLeft");
 const includeRotation = ref(true);
 const outputSize = ref(false);
+const relativeToArtboard = ref(false);
 const xmlOutput = ref("");
 const xmlVars = ref<XmlVariable[]>(DEFAULT_VARS.map(v => ({ ...v })));
 
@@ -207,7 +212,12 @@ function showAddVarModal() {
 }
 
 async function persistConfig() {
-  const config: XmlTemplateConfig = { vars: xmlVars.value, includeRotation: includeRotation.value, outputSize: outputSize.value };
+  const config: XmlTemplateConfig = {
+    vars: xmlVars.value,
+    includeRotation: includeRotation.value,
+    outputSize: outputSize.value,
+    relativeToArtboard: relativeToArtboard.value,
+  };
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
   try {
     const extPath = getExtensionPathSync();
@@ -239,6 +249,7 @@ function saveConfig() { void persistConfig(); }
           xmlVars.value = parsed.vars;
           includeRotation.value = parsed.includeRotation !== undefined ? parsed.includeRotation : true;
           outputSize.value = parsed.outputSize !== undefined ? parsed.outputSize : false;
+          relativeToArtboard.value = parsed.relativeToArtboard !== undefined ? parsed.relativeToArtboard : false;
           localStorage.setItem(CONFIG_KEY, JSON.stringify(parsed));
           return;
         }
@@ -250,6 +261,7 @@ function saveConfig() { void persistConfig(); }
           xmlVars.value = parsed.vars;
           includeRotation.value = parsed.includeRotation !== undefined ? parsed.includeRotation : true;
           outputSize.value = parsed.outputSize !== undefined ? parsed.outputSize : false;
+          relativeToArtboard.value = parsed.relativeToArtboard !== undefined ? parsed.relativeToArtboard : false;
           await persistConfig();
           return;
         }
@@ -263,7 +275,7 @@ function saveConfig() { void persistConfig(); }
 async function handleGenerate() {
   const name = varName.value.trim();
   if (!name) { showToast("请输入变量名", true); return; }
-  const result = await psBridge.getSelectedLayersInfo();
+  const result = await psBridge.getSelectedLayersInfo(relativeToArtboard.value);
   if (!result.success || !result.data) { showToast("获取图层失败: " + (result.error || "未知错误"), true); return; }
   if (result.data.layers.length === 0) { showToast("请先选中图层", true); return; }
 

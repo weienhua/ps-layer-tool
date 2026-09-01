@@ -79,6 +79,8 @@ import { applyTemplate, getAnchorXY, sortLayers, getExtensionPathSync } from "..
 
 const emit = defineEmits(["status", "save-preset"]);
 const showToast = inject<(msg: string, isError?: boolean) => void>("showToast")!;
+// 相对画板坐标开关（由 App.vue 提供，Tab1/2 共用）
+const relativeToArtboard = inject("relativeToArtboard", computed(() => false));
 
 interface LayerInfoPresetConfig {
   id: string;
@@ -178,7 +180,7 @@ async function fetchLayers() {
     sortBy: sortBy.value, scaleAnim: scaleAnim.value, rotateAnim: rotateAnim.value,
     template: templateInput.value,
   };
-  const result = await psBridge.getSelectedLayersInfo();
+  const result = await psBridge.getSelectedLayersInfo(relativeToArtboard.value);
   if (!result.success || !result.data) {
     emit("status", `获取图层失败: ${result.error || "未知错误"}`, true);
     showToast("获取图层失败", true);

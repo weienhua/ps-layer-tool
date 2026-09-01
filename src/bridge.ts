@@ -281,13 +281,11 @@ export class PSBridge {
 
   /**
    * 获取当前选中图层的详细信息
-   */
-  /**
-   * 获取当前选中图层的详细信息
+   * @param relativeToArtboard 是否将坐标换算为相对所属画板左上角的位置
    * @returns Promise 封装的结果
    */
-  async getSelectedLayersInfo(): Promise<PSResult<SelectedLayersInfoResponse>> {
-    return this.evalScript<SelectedLayersInfoResponse>("$.HostScript.getSelectedLayersInfo()");
+  async getSelectedLayersInfo(relativeToArtboard: boolean = false): Promise<PSResult<SelectedLayersInfoResponse>> {
+    return this.evalScript<SelectedLayersInfoResponse>(`$.HostScript.getSelectedLayersInfo(${relativeToArtboard})`);
   }
 
   /**

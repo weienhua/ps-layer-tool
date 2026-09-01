@@ -5,7 +5,7 @@
 
 import { Document } from "../ps-api/src/index";
 import { log, rgbToHex, roundValue } from "./utils";
-import { getSelectedLayerRefs, getLayerPath } from "./document";
+import { getSelectedLayerRefs, getLayerPath, getArtboardOffset } from "./document";
 
 /**
  * 获取普通图层的详细信息
@@ -127,9 +127,10 @@ export function getSmartObjectLayerInfo(layerDesc: any, s2t: (s: string) => numb
 
 /**
  * 获取所有选中图层的详细信息
+ * @param relativeToArtboard 是否将坐标换算为相对所属画板左上角的位置
  * @returns JSON 字符串或状态码
  */
-export function getSelectedLayersInfo(): string {
+export function getSelectedLayersInfo(relativeToArtboard: boolean): string {
   // log("getSelectedLayersInfo called");
   try {
     if (app.documents.length === 0) return "__NO_DOCUMENT__";
@@ -137,6 +138,7 @@ export function getSelectedLayersInfo(): string {
     var refs = getSelectedLayerRefs();
     var layers: any[] = [];
     var skipped: any[] = [];
+    var abOffsetCache: any = {};
     for (var i = 0; i < refs.length; i++) {
       var layerRef = refs[i];
       var layerDesc = executeActionGet(layerRef);
@@ -158,6 +160,22 @@ export function getSelectedLayersInfo(): string {
       var baseInfo = getNormalLayerInfo(layerDesc, s2t);
       if (isSmartObject) {
         baseInfo = getSmartObjectLayerInfo(layerDesc, s2t);
+      }
+      // 相对画板坐标：减去所属画板的文档原点偏移（x/y/centerX/centerY）
+      if (relativeToArtboard) {
+        var abOffset = getArtboardOffset(layerId);
+        if (abOffset) {
+          var abKey = String(abOffset.id);
+          var abRect = abOffsetCache[abKey];
+          if (!abRect) {
+            abRect = { dx: abOffset.dx, dy: abOffset.dy };
+            abOffsetCache[abKey] = abRect;
+          }
+          baseInfo.x = roundValue(baseInfo.x - abRect.dx);
+          baseInfo.y = roundValue(baseInfo.y - abRect.dy);
+          baseInfo.centerX = roundValue(baseInfo.centerX - abRect.dx);
+          baseInfo.centerY = roundValue(baseInfo.centerY - abRect.dy);
+        }
       }
       var layerType = "normal";
       if (isSmartObject) {
