@@ -136,10 +136,11 @@
 下载安装程序，运行即可自动完成安装：
 
 - **Windows**: 下载 `com.layertool.panel-installer.exe`，双击运行
-- **macOS**: 下载 `com.layertool.panel-installer-macos`，右键选择"打开"或使用终端运行：
+- **macOS**: 下载 `com.layertool.panel-installer.sh`（终端运行）或 `com.layertool.panel-installer.command`（Finder 双击）：
   ```bash
-  chmod +x com.layertool.panel-installer-macos
-  ./com.layertool.panel-installer-macos
+  bash com.layertool.panel-installer.sh
+  # 或（脚本已带可执行权限）
+  ./com.layertool.panel-installer.sh
   ```
 
 安装程序会自动：
@@ -148,12 +149,13 @@
 3. 开启调试模式
 4. 保留用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录（如果存在）
 
+> 提示：macOS 下载的脚本若被 Gatekeeper 拦截（提示"无法验证开发者"），可右键 → 打开运行一次，或先执行 `xattr -d com.apple.quarantine` 清除隔离标记后重试。
+
 **卸载方法**：
 - **Windows**: 双击运行 `com.layertool.panel-uninstaller.exe`
-- **macOS**: 右键选择"打开"或使用终端运行：
+- **macOS**: 终端运行 `com.layertool.panel-uninstaller.sh`，或双击 `com.layertool.panel-uninstaller.command`：
   ```bash
-  chmod +x com.layertool.panel-uninstaller-macos
-  ./com.layertool.panel-uninstaller-macos
+  bash com.layertool.panel-uninstaller.sh
   ```
 
 卸载时会自动备份用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录到 `com.layertool.panel_user_files` 目录，下次安装时会自动恢复。
@@ -329,12 +331,12 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | 文件 | 说明 | 平台 |
 |------|------|------|
 | `com.layertool.panel-vX.X.X.zip` | 手动安装包 | 跨平台 |
-| `com.layertool.panel-installer.exe` | Windows 自动安装程序 | Windows |
-| `com.layertool.panel-installer-macos` | macOS 自动安装程序 | macOS |
-| `com.layertool.panel-uninstaller.exe` | Windows 卸载程序 | Windows |
-| `com.layertool.panel-uninstaller-macos` | macOS 卸载程序 | macOS |
+| `com.layertool.panel-installer.exe` | Windows 自动安装程序（pkg 打包） | Windows |
+| `com.layertool.panel-uninstaller.exe` | Windows 卸载程序（pkg 打包） | Windows |
+| `com.layertool.panel-installer.sh` / `.command` | macOS 自动安装脚本（自解压） | macOS |
+| `com.layertool.panel-uninstaller.sh` / `.command` | macOS 卸载脚本 | macOS |
 
-**跨平台打包**：`pkg` 支持交叉编译，可在 macOS 上同时生成 Windows 和 macOS 安装程序。
+**跨平台打包**：Windows 安装程序用 `pkg` 打包；macOS 用自解压 shell 脚本（脚本头部内嵌 base64 插件数据），无需 Node 运行时，`bash` 运行不受 Gatekeeper 签名限制，仅在 macOS 上打包。
 
 ### 模板变量参考
 

@@ -76,6 +76,11 @@ Adobe Photoshop CEP 面板插件，兼容 PS 2019（v20.0）及以上版本。�
 ├── doc/
 │   ├── Windows.png            # Windows 安装示意图
 │   └── csxs.reg/              # Windows 注册表文件（PlayerDebugMode，CSXS 6-11）
+├── scripts/                   # 打包与安装脚本
+│   ├── build-installer.js     # 打包入口（zip + Windows exe + macOS shell 脚本）
+│   ├── templates/             # macOS 自解压安装/卸载脚本模板
+│   ├── install.js / uninstall.js # Windows pkg 安装/卸载逻辑
+│   └── release.js             # 发布辅助脚本
 ├── test.jsx                   # 遗留 ExtendScript 测试脚本（参考用）
 ├── tsconfig.json              # 面板侧：target ES6，jsx: preserve，排除 src/jsx/
 ├── tsconfig.jsx.json          # 宿主侧：target ES3，types: [ps-extendscript-types]
@@ -102,12 +107,12 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 
 `npm run package` 生成：
 - `com.layertool.panel-vX.X.X.zip` — 跨平台手动安装包
-- `com.layertool.panel-installer.exe` — Windows 自动安装程序
-- `com.layertool.panel-installer-macos` — macOS 自动安装程序
-- `com.layertool.panel-uninstaller.exe` — Windows 卸载程序
-- `com.layertool.panel-uninstaller-macos` — macOS 卸载程序
+- `com.layertool.panel-installer.exe` — Windows 自动安装程序（pkg 打包）
+- `com.layertool.panel-uninstaller.exe` — Windows 卸载程序（pkg 打包）
+- `com.layertool.panel-installer.sh` / `.command` — macOS 自动安装脚本（自解压，终端运行或 Finder 双击）
+- `com.layertool.panel-uninstaller.sh` / `.command` — macOS 卸载脚本
 
-`pkg` 支持交叉编译，可在 macOS 上同时生成 Windows 和 macOS 安装程序。
+Windows 安装程序用 `pkg` 打包（`scripts/build-installer.js`）；macOS 用自解压 shell 脚本：头部为 bash 逻辑，`__PAYLOAD_BELOW__` 标记行后内嵌 base64(tar.gz) 插件数据，运行时不依赖 Node，`bash xxx.sh` 不受 Gatekeeper 签名限制。`.command` 为 `.sh` 的逐字节副本（Finder 双击自动打开终端运行）。macOS 脚本仅在 macOS 上打包（依赖 tar/base64），模板位于 `scripts/templates/`。
 
 ## 架构：两个隔离的执行上下文
 

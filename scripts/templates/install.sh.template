@@ -1,0 +1,162 @@
+#!/bin/bash
+# ============================================================
+#  图层处理工具 - macOS 自动安装脚本
+#  版本: __VERSION__
+#  用法:
+#    终端: bash 本文件  或  ./本文件
+#    Finder: 双击 .command 副本（自动打开终端运行）
+# ============================================================
+
+set -u
+set -o pipefail
+
+EXTENSION_ID="com.layertool.panel"
+KEEP_FILES=(presets.md template.md)
+PAYLOAD_MARKER="__PAYLOAD_BELOW__"
+
+# ---------- 输出辅助 ----------
+info() { echo "[信息] $*"; }
+ok()   { echo "[成功] $*"; }
+warn() { echo "[警告] $*"; }
+err()  { echo "[错误] $*" >&2; }
+
+# ---------- 自解压 payload ----------
+PAYLOAD_LINE=$(awk -v m="$PAYLOAD_MARKER" '$0 == m { print NR; exit }' "$0")
+if [ -z "$PAYLOAD_LINE" ]; then
+  err "安装包数据缺失，请重新下载。"
+  exit 1
+fi
+
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+if ! tail -n +$((PAYLOAD_LINE + 1)) "$0" | base64 -d | tar xzf - -C "$TMP_DIR"; then
+  err "安装包数据解压失败，请重新下载。"
+  exit 1
+fi
+
+SRC_DIR="$TMP_DIR/$EXTENSION_ID"
+for d in CSXS dist doc; do
+  if [ ! -d "$SRC_DIR/$d" ]; then
+    err "安装包缺少 $d/ 目录，请重新下载。"
+    exit 1
+  fi
+done
+
+# ---------- 确定安装目标 ----------
+if [ -z "${HOME:-}" ]; then
+  err "无法确定 HOME 目录。"
+  exit 1
+fi
+EXTENSIONS_DIR="$HOME/Library/Application Support/Adobe/CEP/extensions"
+TARGET_DIR="$EXTENSIONS_DIR/$EXTENSION_ID"
+
+# ---------- 工具函数 ----------
+# 备份用户文件（dist/lib 下的 presets.md、template.md、presets/）
+backup_user_files() {
+  local src="$1" dest="$2"
+  mkdir -p "$dest"
+  local f
+  for f in "${KEEP_FILES[@]}"; do
+    if [ -f "$src/dist/lib/$f" ]; then
+      cp -p "$src/dist/lib/$f" "$dest/$f"
+    fi
+  done
+  if [ -d "$src/dist/lib/presets" ]; then
+    cp -R "$src/dist/lib/presets" "$dest/presets"
+  fi
+}
+
+# 恢复用户文件到目标 dist/lib
+restore_user_files() {
+  local src="$1" dest="$2"
+  local f
+  for f in "${KEEP_FILES[@]}"; do
+    if [ -f "$src/$f" ]; then
+      cp -p "$src/$f" "$dest/dist/lib/$f"
+    fi
+  done
+  if [ -d "$src/presets" ]; then
+    mkdir -p "$dest/dist/lib"
+    cp -R "$src/presets" "$dest/dist/lib/"
+  fi
+}
+
+# ---------- 检测 Photoshop（仅提示） ----------
+PS_COUNT=$(ls -d /Applications/Adobe\ Photoshop* 2>/dev/null | wc -l | tr -d ' ')
+if [ "$PS_COUNT" -gt 0 ]; then
+  info "检测到 $PS_COUNT 个 Photoshop 安装"
+else
+  warn "未检测到 Photoshop（仍将安装插件本体）"
+fi
+
+# ---------- 处理已存在的安装 ----------
+HAD_PRESETS=0
+BACKUP_TMP=""
+if [ -e "$TARGET_DIR" ] || [ -L "$TARGET_DIR" ]; then
+  if [ -L "$TARGET_DIR" ]; then
+    info "检测到目录链接，正在备份用户文件并移除链接..."
+  else
+    info "检测到已安装的版本，正在备份用户文件并移除..."
+  fi
+  if [ -d "$TARGET_DIR/dist/lib/presets" ]; then
+    HAD_PRESETS=1
+  fi
+  BACKUP_TMP=$(mktemp -d)
+  backup_user_files "$TARGET_DIR" "$BACKUP_TMP"
+  rm -rf "$TARGET_DIR"
+fi
+
+# 从卸载程序备份目录判断用户是否曾有 presets
+USER_BACKUP_DIR="$EXTENSIONS_DIR/${EXTENSION_ID}_user_files"
+if [ "$HAD_PRESETS" -eq 0 ] && [ -d "$USER_BACKUP_DIR/presets" ]; then
+  HAD_PRESETS=1
+fi
+
+# ---------- 复制插件文件 ----------
+mkdir -p "$TARGET_DIR"
+for d in CSXS dist doc; do
+  cp -R "$SRC_DIR/$d" "$TARGET_DIR/$d"
+done
+ok "插件文件复制完成"
+
+# ---------- 恢复用户文件 ----------
+if [ -n "$BACKUP_TMP" ] && [ -d "$BACKUP_TMP" ]; then
+  restore_user_files "$BACKUP_TMP" "$TARGET_DIR"
+  rm -rf "$BACKUP_TMP"
+  info "已恢复原安装的用户预设"
+fi
+
+if [ -d "$USER_BACKUP_DIR" ]; then
+  restore_user_files "$USER_BACKUP_DIR" "$TARGET_DIR"
+  rm -rf "$USER_BACKUP_DIR"
+  ok "已从卸载备份恢复用户预设"
+fi
+
+# 用户之前没有 presets → 删除安装包默认 presets（首次使用时自动创建）
+if [ "$HAD_PRESETS" -eq 0 ] && [ -d "$TARGET_DIR/dist/lib/presets" ]; then
+  rm -rf "$TARGET_DIR/dist/lib/presets"
+  info "用户之前无预设文件，已删除默认预设目录"
+fi
+
+# ---------- 开启 CEP 调试模式 ----------
+for ver in 6 7 8 9 10 11 12; do
+  defaults write "com.adobe.CSXS.$ver" PlayerDebugMode -integer 1 2>/dev/null
+done
+ok "已开启 CEP 调试模式 (CSXS 6-12)"
+
+echo ""
+echo "╔══════════════════════════════════════════════╗"
+echo "║             安装完成！                       ║"
+echo "╠══════════════════════════════════════════════╣"
+echo "║  请重启 Photoshop，然后打开：                ║"
+echo "║  窗口 → 扩展 → 图层处理工具                  ║"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+echo "按回车键退出..."
+if [ -t 0 ]; then
+  read
+fi
+exit 0
+
+__PAYLOAD_BELOW__

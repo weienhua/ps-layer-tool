@@ -4,7 +4,7 @@
  * 打包脚本
  * 1. 构建项目（npm run build）
  * 2. 生成 zip 安装包到 installer/
- * 3. 生成独立安装程序到 installer/
+ * 3. 生成独立安装程序到 installer/（Windows exe + macOS shell 脚本）
  */
 
 const { execSync } = require('child_process');
@@ -13,6 +13,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const INSTALLER_DIR = path.join(ROOT, 'installer');
+const EXTENSION_ID = 'com.layertool.panel';
 const VERSION = (process.env.VERSION || require(path.join(ROOT, 'package.json')).version).replace(/^v/, '');
 
 function log(msg) {
@@ -152,56 +153,67 @@ function buildInstaller() {
     console.error('[错误] Windows 卸载打包失败:', e.message);
   }
 
-  // macOS 打包（需要在 macOS 上执行）
-  if (process.platform === 'darwin') {
-    // 打包 macOS 安装程序
-    const pkgJsonInstaller = {
-      name: 'layer-tool-installer',
-      version: VERSION,
-      bin: 'install.js',
-      pkg: {
-        assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
-      },
-    };
-    fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonInstaller, null, 2));
-
-    log('正在打包 macOS 安装程序...');
-    try {
-      execSync(
-        `npx pkg . --targets node18-macos-x64 --output ../installer/com.layertool.panel-installer-macos`,
-        { cwd: tempDir, stdio: 'inherit' }
-      );
-      log('macOS 安装程序打包完成');
-    } catch (e) {
-      console.error('[错误] macOS 安装程序打包失败:', e.message);
-    }
-
-    // 打包 macOS 卸载程序
-    const pkgJsonUninstaller = {
-      name: 'layer-tool-uninstaller',
-      version: VERSION,
-      bin: 'uninstall.js',
-      pkg: {
-        assets: ['CSXS/**/*', 'dist/**/*', 'doc/**/*'],
-      },
-    };
-    fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkgJsonUninstaller, null, 2));
-
-    log('正在打包 macOS 卸载程序...');
-    try {
-      execSync(
-        `npx pkg . --targets node18-macos-x64 --output ../installer/com.layertool.panel-uninstaller-macos`,
-        { cwd: tempDir, stdio: 'inherit' }
-      );
-      log('macOS 卸载程序打包完成');
-    } catch (e) {
-      console.error('[错误] macOS 卸载程序打包失败:', e.message);
-    }
-  } else {
-    log('当前为 Windows 系统，macOS 版本需要在 macOS 上打包');
-  }
+  // macOS 安装/卸载不再使用 pkg 二进制（已停止维护、无 arm64 目标、Gatekeeper 拦截），
+  // 改为自解压 shell 脚本，由 buildMacShellInstaller() 单独生成
 
   // 清理临时目录
+  fs.rmSync(tempDir, { recursive: true, force: true });
+}
+
+/**
+ * 生成 macOS 自解压 shell 安装/卸载脚本
+ * - install.sh/.command：bash 头部 + __PAYLOAD_BELOW__ 标记行 + base64(tar.gz) payload
+ * - uninstall.sh/.command：纯脚本，无 payload
+ * 仅在 macOS 上执行（依赖 tar/base64 命令）
+ */
+function buildMacShellInstaller() {
+  log('正在打包 macOS shell 安装/卸载脚本...');
+
+  const tempDir = path.join(ROOT, '.installer-temp');
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  // 组装与 zip 相同的目录结构：com.layertool.panel/{CSXS,dist,doc}
+  const pluginDir = path.join(tempDir, EXTENSION_ID);
+  fs.mkdirSync(pluginDir, { recursive: true });
+  copyDirSync(path.join(ROOT, 'CSXS'), path.join(pluginDir, 'CSXS'));
+  copyDirSync(path.join(ROOT, 'dist'), path.join(pluginDir, 'dist'));
+  copyDirSync(path.join(ROOT, 'doc'), path.join(pluginDir, 'doc'));
+
+  // tar.gz payload
+  const payloadPath = path.join(tempDir, 'payload.tgz');
+  execSync(`cd '${tempDir}' && tar czf payload.tgz '${EXTENSION_ID}'`, { stdio: 'inherit' });
+
+  // base64 编码，每行 76 字符（与 awk/tail 自解压逻辑兼容）
+  const b64 = fs.readFileSync(payloadPath).toString('base64');
+  const lines = [];
+  for (let i = 0; i < b64.length; i += 76) {
+    lines.push(b64.slice(i, i + 76));
+  }
+  const payloadText = lines.join('\n') + '\n';
+
+  // 生成安装脚本：模板（含 __PAYLOAD_BELOW__ 标记行）+ payload
+  const installTemplate = fs.readFileSync(path.join(__dirname, 'templates', 'install.sh.template'), 'utf8');
+  const installSh = installTemplate.replace(/__VERSION__/g, VERSION) + payloadText;
+
+  const writeExecutable = (fileName, content) => {
+    const filePath = path.join(INSTALLER_DIR, fileName);
+    fs.writeFileSync(filePath, content);
+    fs.chmodSync(filePath, 0o755);
+    log(`已生成: ${fileName}`);
+  };
+
+  writeExecutable('com.layertool.panel-installer.sh', installSh);
+  writeExecutable('com.layertool.panel-installer.command', installSh);
+
+  // 卸载脚本（无 payload）
+  const uninstallTemplate = fs.readFileSync(path.join(__dirname, 'templates', 'uninstall.sh'), 'utf8');
+  const uninstallSh = uninstallTemplate.replace(/__VERSION__/g, VERSION);
+  writeExecutable('com.layertool.panel-uninstaller.sh', uninstallSh);
+  writeExecutable('com.layertool.panel-uninstaller.command', uninstallSh);
+
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
@@ -227,10 +239,17 @@ function main() {
   // 3. 生成 zip 安装包
   buildZip();
 
-  // 4. 生成独立安装程序
+  // 4. 生成独立安装程序（Windows exe，pkg 交叉编译）
   buildInstaller();
 
-  // 5. 输出结果
+  // 5. 生成 macOS 自解压 shell 安装/卸载脚本（需在 macOS 上执行）
+  if (process.platform === 'darwin') {
+    buildMacShellInstaller();
+  } else {
+    log(`当前为 ${process.platform} 系统，macOS shell 脚本需在 macOS 上打包`);
+  }
+
+  // 6. 输出结果
   console.log('');
   console.log('╔══════════════════════════════════════════════╗');
   console.log('║             打包完成！                       ║');
@@ -251,7 +270,8 @@ function main() {
   console.log('║                                              ║');
   console.log('║  使用说明:                                   ║');
   console.log('║    .zip - 手动解压到 CEP 扩展目录            ║');
-  console.log('║    .exe - 双击运行自动安装                    ║');
+  console.log('║    .exe - Windows 双击运行自动安装           ║');
+  console.log('║    .sh/.command - macOS 终端或双击运行       ║');
   console.log('╚══════════════════════════════════════════════╝');
   console.log('');
 }
