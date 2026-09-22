@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, "PingFang SC", sans-serif; font-size: 13px; line-height: 1.7; margin: 0; padding: 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  ul { margin: 6px 0 10px; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  .muted { color: #666; }
+  code { font-family: Menlo, monospace; background: #f2f2f2; padding: 0 3px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h2>卸载图层处理工具 __VERSION__</h2>
+<p>本安装包用于<strong>卸载</strong>已安装的 Photoshop CEP 面板插件，会删除：</p>
+<p class="muted"><code>~/Library/Application Support/Adobe/CEP/extensions/com.layertool.panel</code></p>
+<p>卸载前会自动：</p>
+<ul>
+  <li>把你的自定义文件备份到 <code>com.layertool.panel_user_files/</code>（<code>presets.md</code>、<code>template.md</code>、<code>presets/</code>）</li>
+  <li>下次安装本插件时自动恢复这些文件，无需手动拷贝</li>
+</ul>
+<p>卸载完成后请<strong>重启 Photoshop</strong>，扩展菜单中的插件入口才会消失。</p>
+<p class="muted">备份失败时会中止卸载以保护你的数据。</p>
+</body>
+</html>

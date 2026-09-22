@@ -77,8 +77,9 @@ Adobe Photoshop CEP 面板插件，兼容 PS 2019（v20.0）及以上版本。�
 │   ├── Windows.png            # Windows 安装示意图
 │   └── csxs.reg/              # Windows 注册表文件（PlayerDebugMode，CSXS 6-11）
 ├── scripts/                   # 打包与安装脚本
-│   ├── build-installer.js     # 打包入口（zip + Windows exe + macOS shell 脚本）
-│   ├── templates/             # macOS 自解压安装/卸载脚本模板
+│   ├── build-installer.js     # 打包入口（zip + Windows exe + macOS .pkg）
+│   ├── templates/macos-pkg/   # macOS 安装包模板（distribution XML + pre/postinstall + 界面 HTML）
+│   ├── verify-macos-pkg.sh    # macOS .pkg 结构 + 行为对齐校验
 │   ├── install.js / uninstall.js # Windows pkg 安装/卸载逻辑
 │   └── release.js             # 发布辅助脚本
 ├── test.jsx                   # 遗留 ExtendScript 测试脚本（参考用）
@@ -101,6 +102,7 @@ npm run dev:panel          # 仅面板 webpack watch（开发模式）
 npm run dev:jsx            # 仅宿主 webpack watch（开发模式）
 npm run clean              # rimraf dist installer
 npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
+npm run verify:macos-pkg   # macOS .pkg 结构与行为对齐校验（假 HOME 演练，不需要 root）
 ```
 
 ### 打包产物
@@ -109,10 +111,10 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 - `com.layertool.panel-vX.X.X.zip` — 跨平台手动安装包
 - `com.layertool.panel-installer.exe` — Windows 自动安装程序（pkg 打包）
 - `com.layertool.panel-uninstaller.exe` — Windows 卸载程序（pkg 打包）
-- `com.layertool.panel-installer.sh` / `.command` — macOS 自动安装脚本（自解压，终端运行或 Finder 双击）
-- `com.layertool.panel-uninstaller.sh` / `.command` — macOS 卸载脚本
+- `com.layertool.panel-installer.pkg` — macOS 自动安装包（Apple Installer，用户域安装，双击即装）
+- `com.layertool.panel-uninstaller.pkg` — macOS 卸载包
 
-Windows 安装程序用 `pkg` 打包（`scripts/build-installer.js`）；macOS 用自解压 shell 脚本：头部为 bash 逻辑，`__PAYLOAD_BELOW__` 标记行后内嵌 base64(tar.gz) 插件数据，运行时不依赖 Node，`bash xxx.sh` 不受 Gatekeeper 签名限制。`.command` 为 `.sh` 的逐字节副本（Finder 双击自动打开终端运行）。macOS 脚本仅在 macOS 上打包（依赖 tar/base64），模板位于 `scripts/templates/`。
+Windows 安装程序用 `pkg` 打包（`scripts/build-installer.js`，支持交叉编译）；macOS 用 Apple Installer 安装包（`pkgbuild` + `productbuild`）：payload（`CSXS/`、`dist/`、`doc/`）装到当前用户目录 `~/Library/Application Support/Adobe/CEP/extensions/`（distribution 只开 `enable_currentUserHome`，保证文件属主是用户，面板才能写预设），`preinstall`/`postinstall` 负责用户文件备份与恢复、属主纠正、开启 CEP 调试模式；卸载包是无 payload 组件（`--nopayload`，包 payload 只能新增/覆盖文件、无法删除，删除动作由 postinstall 执行）。双击即装、不需要终端也不需要执行权限。产物默认未签名（设置 `MACOS_INSTALLER_IDENTITY` 才走 `productsign`），仅在 macOS 上打包（依赖 macOS 自带工具链），模板位于 `scripts/templates/macos-pkg/`（`common.sh` 构建时内联到三个脚本，避免逻辑分叉）。
 
 ## 架构：两个隔离的执行上下文
 

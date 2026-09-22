@@ -102,10 +102,8 @@ jobs:
         run: |
           gh release upload ${{ github.ref_name }} \
             macos/com.layertool.panel-*.zip \
-            macos/com.layertool.panel-installer.sh \
-            macos/com.layertool.panel-installer.command \
-            macos/com.layertool.panel-uninstaller.sh \
-            macos/com.layertool.panel-uninstaller.command \
+            macos/com.layertool.panel-installer.pkg \
+            macos/com.layertool.panel-uninstaller.pkg \
             --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

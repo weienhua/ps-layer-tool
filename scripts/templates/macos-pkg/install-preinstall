@@ -1,0 +1,54 @@
+#!/bin/bash
+# ============================================================
+#  图层处理工具 — macOS 安装包 preinstall
+#
+#  职责（对齐原 install.sh 的「处理已存在的安装」段）:
+#    1. 解析目标用户与扩展目录
+#    2. 备份现有安装的用户文件（dist/lib/{presets.md,template.md,presets/}）
+#    3. 移除旧安装：符号链接只删链接（开发安装，源目录不受影响），
+#       目录则整目录删除，保证不残留旧版本文件
+#
+#  退出码: 非 0 → Installer 报「安装失败」并在落文件前中止
+# ============================================================
+
+set -u
+
+# __COMMON__
+
+info "$APP_NAME 安装准备（版本 __VERSION__）"
+
+if ! resolve_target_home; then
+  err "无法确定安装目标用户目录，安装已中止。"
+  exit 1
+fi
+
+info "安装目标: $TARGET_DIR"
+detect_photoshop
+
+if [ -L "$TARGET_DIR" ]; then
+  info "检测到目录链接（开发安装），正在备份用户文件并移除链接..."
+  if ! backup_user_files; then
+    err "备份用户文件失败，安装已中止以保护数据。"
+    exit 1
+  fi
+  if ! unlink "$TARGET_DIR"; then
+    err "移除目录链接失败: $TARGET_DIR"
+    exit 1
+  fi
+  ok "目录链接已移除（源目录未受影响）"
+elif [ -e "$TARGET_DIR" ]; then
+  info "检测到已安装的版本，正在备份用户文件并移除..."
+  if ! backup_user_files; then
+    err "备份用户文件失败，安装已中止以保护数据。"
+    exit 1
+  fi
+  if ! rm -rf "$TARGET_DIR"; then
+    err "移除旧安装失败: $TARGET_DIR"
+    exit 1
+  fi
+  ok "旧版本已移除"
+else
+  info "未检测到已安装的版本（全新安装）"
+fi
+
+exit 0

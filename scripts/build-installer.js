@@ -4,7 +4,9 @@
  * 打包脚本
  * 1. 构建项目（npm run build）
  * 2. 生成 zip 安装包到 installer/
- * 3. 生成独立安装程序到 installer/（Windows exe + macOS shell 脚本）
+ * 3. 生成独立安装程序到 installer/
+ *    - Windows: pkg 打包的可执行文件（.exe）
+ *    - macOS: Apple Installer 安装包（.pkg，用户域安装，双击即装、无需执行位）
  */
 
 const { execSync } = require('child_process');
@@ -153,68 +155,139 @@ function buildInstaller() {
     console.error('[错误] Windows 卸载打包失败:', e.message);
   }
 
-  // macOS 安装/卸载不再使用 pkg 二进制（已停止维护、无 arm64 目标、Gatekeeper 拦截），
-  // 改为自解压 shell 脚本，由 buildMacShellInstaller() 单独生成
+  // macOS 安装/卸载产物由 buildMacPkg() 生成：Apple Installer .pkg（用户域安装）。
+  // 不再使用 vercel/pkg 二进制（已停止维护、无 arm64 目标、未签名会被 Gatekeeper 拦截）。
 
   // 清理临时目录
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
-/**
- * 生成 macOS 自解压 shell 安装/卸载脚本
- * - install.sh/.command：bash 头部 + __PAYLOAD_BELOW__ 标记行 + base64(tar.gz) payload
- * - uninstall.sh/.command：纯脚本，无 payload
- * 仅在 macOS 上执行（依赖 tar/base64 命令）
- */
-function buildMacShellInstaller() {
-  log('正在打包 macOS shell 安装/卸载脚本...');
 
-  const tempDir = path.join(ROOT, '.installer-temp');
+/**
+ * 渲染 scripts/templates/macos-pkg/ 下的模板
+ * - __VERSION__ → 实际版本号
+ * - `# __COMMON__` → common.sh 全部内容（内联，避免三份脚本逻辑分叉）
+ * 注意: 用函数式 replace，避免 common.sh 里的 `$1` 等被当成替换模式
+ */
+function renderMacPkgTemplate(fileName, commonSource) {
+  const raw = fs.readFileSync(path.join(__dirname, 'templates', 'macos-pkg', fileName), 'utf8');
+  return raw
+    .replace(/__VERSION__/g, VERSION)
+    .replace('# __COMMON__', function () { return commonSource; });
+}
+
+/**
+ * 生成 macOS .pkg 安装包与卸载包（Apple Installer）
+ * - 安装包: payload（CSXS/dist/doc）+ preinstall/postinstall，用户域安装
+ * - 卸载包: --nopayload（payload 无法删除文件）+ postinstall 执行删除
+ * 安装路径：~/Library/Application Support/Adobe/CEP/extensions/（与 zip 手动安装一致）
+ * 仅在 macOS 上执行（依赖 pkgbuild / productbuild）
+ */
+function buildMacPkg() {
+  log('正在打包 macOS .pkg 安装/卸载包...');
+
+  const tempDir = path.join(ROOT, '.installer-temp', 'pkg');
   if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
   fs.mkdirSync(tempDir, { recursive: true });
 
-  // 组装与 zip 相同的目录结构：com.layertool.panel/{CSXS,dist,doc}
-  const pluginDir = path.join(tempDir, EXTENSION_ID);
+  const tplDir = path.join(__dirname, 'templates', 'macos-pkg');
+  const commonSource = fs.readFileSync(path.join(tplDir, 'common.sh'), 'utf8');
+
+  // 1. payload：与 zip / exe 同一套目录结构，另加用户家目录相对路径
+  //    install-location 用 "/" + 家目录相对路径（已实测：用户域下落到 ~/Library/...）
+  const pluginDir = path.join(
+    tempDir, 'root', 'Library', 'Application Support', 'Adobe', 'CEP', 'extensions', EXTENSION_ID
+  );
   fs.mkdirSync(pluginDir, { recursive: true });
   copyDirSync(path.join(ROOT, 'CSXS'), path.join(pluginDir, 'CSXS'));
   copyDirSync(path.join(ROOT, 'dist'), path.join(pluginDir, 'dist'));
   copyDirSync(path.join(ROOT, 'doc'), path.join(pluginDir, 'doc'));
 
-  // tar.gz payload
-  const payloadPath = path.join(tempDir, 'payload.tgz');
-  execSync(`cd '${tempDir}' && tar czf payload.tgz '${EXTENSION_ID}'`, { stdio: 'inherit' });
+  // 2. 包脚本（pkgbuild --scripts 目录里除脚本外不能有其它文件）
+  const installScriptsDir = path.join(tempDir, 'scripts-install');
+  const uninstallScriptsDir = path.join(tempDir, 'scripts-uninstall');
+  fs.mkdirSync(installScriptsDir, { recursive: true });
+  fs.mkdirSync(uninstallScriptsDir, { recursive: true });
 
-  // base64 编码，每行 76 字符（与 awk/tail 自解压逻辑兼容）
-  const b64 = fs.readFileSync(payloadPath).toString('base64');
-  const lines = [];
-  for (let i = 0; i < b64.length; i += 76) {
-    lines.push(b64.slice(i, i + 76));
-  }
-  const payloadText = lines.join('\n') + '\n';
-
-  // 生成安装脚本：模板（含 __PAYLOAD_BELOW__ 标记行）+ payload
-  const installTemplate = fs.readFileSync(path.join(__dirname, 'templates', 'install.sh.template'), 'utf8');
-  const installSh = installTemplate.replace(/__VERSION__/g, VERSION) + payloadText;
-
-  const writeExecutable = (fileName, content) => {
-    const filePath = path.join(INSTALLER_DIR, fileName);
-    fs.writeFileSync(filePath, content);
+  const writeScript = (dir, name, templateName) => {
+    const filePath = path.join(dir, name);
+    fs.writeFileSync(filePath, renderMacPkgTemplate(templateName, commonSource));
     fs.chmodSync(filePath, 0o755);
-    log(`已生成: ${fileName}`);
   };
+  writeScript(installScriptsDir, 'preinstall', 'install-preinstall');
+  writeScript(installScriptsDir, 'postinstall', 'install-postinstall');
+  writeScript(uninstallScriptsDir, 'postinstall', 'uninstall-postinstall');
 
-  writeExecutable('com.layertool.panel-installer.sh', installSh);
-  writeExecutable('com.layertool.panel-installer.command', installSh);
+  // 3. distribution XML 与安装器界面资源
+  const installDistPath = path.join(tempDir, 'install-distribution.xml');
+  const uninstallDistPath = path.join(tempDir, 'uninstall-distribution.xml');
+  fs.writeFileSync(installDistPath, renderMacPkgTemplate('install-distribution.xml', commonSource));
+  fs.writeFileSync(uninstallDistPath, renderMacPkgTemplate('uninstall-distribution.xml', commonSource));
 
-  // 卸载脚本（无 payload）
-  const uninstallTemplate = fs.readFileSync(path.join(__dirname, 'templates', 'uninstall.sh'), 'utf8');
-  const uninstallSh = uninstallTemplate.replace(/__VERSION__/g, VERSION);
-  writeExecutable('com.layertool.panel-uninstaller.sh', uninstallSh);
-  writeExecutable('com.layertool.panel-uninstaller.command', uninstallSh);
+  const resDir = path.join(tempDir, 'resources');
+  fs.mkdirSync(resDir, { recursive: true });
+  // 安装器界面资源：介绍页用 welcome（readme 会额外带「打印/存储」按钮）
+  ['install-welcome.html', 'install-conclusion.html', 'uninstall-welcome.html', 'uninstall-conclusion.html'].forEach((name) => {
+    fs.copyFileSync(path.join(tplDir, name), path.join(resDir, name));
+  });
+
+  const installComp = path.join(tempDir, 'install-comp.pkg');
+  const uninstallComp = path.join(tempDir, 'uninstall-comp.pkg');
+  const installPkg = path.join(INSTALLER_DIR, `${EXTENSION_ID}-installer.pkg`);
+  const uninstallPkg = path.join(INSTALLER_DIR, `${EXTENSION_ID}-uninstaller.pkg`);
+
+  try {
+    // 安装包：payload + preinstall/postinstall（脚本必须执行 → require-scripts="true"）
+    execSync(
+      `pkgbuild --root '${path.join(tempDir, 'root')}' --identifier '${EXTENSION_ID}' ` +
+      `--version '${VERSION}' --install-location '/' --scripts '${installScriptsDir}' '${installComp}'`,
+      { stdio: 'inherit' }
+    );
+    execSync(
+      `productbuild --distribution '${installDistPath}' --resources '${resDir}' ` +
+      `--package-path '${tempDir}' '${installPkg}'`,
+      { stdio: 'inherit' }
+    );
+    log(`macOS 安装包已生成: ${installPkg}`);
+
+    // 卸载包：无 payload，删除动作由 postinstall 完成
+    execSync(
+      `pkgbuild --nopayload --identifier '${EXTENSION_ID}.uninstaller' ` +
+      `--version '${VERSION}' --scripts '${uninstallScriptsDir}' '${uninstallComp}'`,
+      { stdio: 'inherit' }
+    );
+    execSync(
+      `productbuild --distribution '${uninstallDistPath}' --resources '${resDir}' ` +
+      `--package-path '${tempDir}' '${uninstallPkg}'`,
+      { stdio: 'inherit' }
+    );
+    log(`macOS 卸载包已生成: ${uninstallPkg}`);
+
+    // 可选签名：设置 MACOS_INSTALLER_IDENTITY 后自动 productsign（默认不签）
+    const identity = process.env.MACOS_INSTALLER_IDENTITY;
+    if (identity) {
+      [installPkg, uninstallPkg].forEach((pkgPath) => {
+        const signed = `${pkgPath}.signed`;
+        execSync(`productsign --sign '${identity}' --timestamp '${pkgPath}' '${signed}'`, { stdio: 'inherit' });
+        fs.renameSync(signed, pkgPath);
+      });
+      log(`已使用 Developer ID 签名: ${identity}`);
+    } else {
+      log('未设置 MACOS_INSTALLER_IDENTITY，产物未签名（属预期）');
+    }
+  } catch (e) {
+    console.error('[错误] macOS .pkg 打包失败:', e.message);
+  }
 
   fs.rmSync(tempDir, { recursive: true, force: true });
+  // 清掉空的 .installer-temp 父目录（非空或不存在时忽略）
+  try {
+    fs.rmdirSync(path.join(ROOT, '.installer-temp'));
+  } catch (e) {
+    // ignore
+  }
 }
 
 function main() {
@@ -236,17 +309,31 @@ function main() {
     fs.mkdirSync(INSTALLER_DIR, { recursive: true });
   }
 
+  // 2.1 清理已被 .pkg 取代的历史 macOS 自解压 shell 脚本
+  [
+    `${EXTENSION_ID}-installer.sh`,
+    `${EXTENSION_ID}-installer.command`,
+    `${EXTENSION_ID}-uninstaller.sh`,
+    `${EXTENSION_ID}-uninstaller.command`,
+  ].forEach((legacyName) => {
+    const legacyPath = path.join(INSTALLER_DIR, legacyName);
+    if (fs.existsSync(legacyPath)) {
+      fs.rmSync(legacyPath, { force: true });
+      log(`已移除历史产物: ${legacyName}`);
+    }
+  });
+
   // 3. 生成 zip 安装包
   buildZip();
 
-  // 4. 生成独立安装程序（Windows exe，pkg 交叉编译）
+  // 4. 生成 Windows 独立安装程序（pkg 交叉编译）
   buildInstaller();
 
-  // 5. 生成 macOS 自解压 shell 安装/卸载脚本（需在 macOS 上执行）
+  // 5. 生成 macOS .pkg 安装包与卸载包（需在 macOS 上执行）
   if (process.platform === 'darwin') {
-    buildMacShellInstaller();
+    buildMacPkg();
   } else {
-    log(`当前为 ${process.platform} 系统，macOS shell 脚本需在 macOS 上打包`);
+    log(`当前为 ${process.platform} 系统，macOS .pkg 安装包需在 macOS 上打包`);
   }
 
   // 6. 输出结果
@@ -270,8 +357,8 @@ function main() {
   console.log('║                                              ║');
   console.log('║  使用说明:                                   ║');
   console.log('║    .zip - 手动解压到 CEP 扩展目录            ║');
-  console.log('║    .exe - Windows 双击运行自动安装           ║');
-  console.log('║    .sh/.command - macOS 终端或双击运行       ║');
+  console.log('║    .exe - Windows 双击运行自动安装/卸载      ║');
+  console.log('║    .pkg - macOS 双击安装/卸载                ║');
   console.log('╚══════════════════════════════════════════════╝');
   console.log('');
 }

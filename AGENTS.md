@@ -17,6 +17,7 @@ npm run dev:panel          # 仅面板 watch 模式
 npm run dev:jsx            # 仅宿主 watch 模式
 npm run clean              # rimraf dist installer
 npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
+npm run verify:macos-pkg   # macOS .pkg 结构与行为对齐校验（假 HOME 演练，不需要 root）
 ```
 
 ## 项目架构

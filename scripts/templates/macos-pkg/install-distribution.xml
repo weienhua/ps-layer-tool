@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  图层处理工具 — macOS 安装包 distribution
+  由 scripts/build-installer.js 渲染：__VERSION__ → 实际版本号
+  关键点:
+    - domains 只开 currentUserHome：装到 ~/Library/... 且文件属主是用户，
+      面板才能写 dist/lib/presets/ 下的预设文件
+    - require-scripts="true"：脚本（用户文件备份/恢复、属主纠正、调试模式）必须执行
+    - rootVolumeOnly="true"：只允许装到启动卷，避免出现可更改安装位置的入口
+    - hostArchitectures 同时声明 x86_64/arm64：载荷是纯 JS/HTML，与架构无关
+    - 用 welcome 而非 readme：介绍页只展示说明文字，不出现「打印/存储」按钮
+-->
+<installer-gui-script minSpecVersion="1">
+  <title>图层处理工具 __VERSION__</title>
+  <organization>com.layertool.panel</organization>
+  <domains enable_anywhere="false" enable_currentUserHome="true" enable_localSystem="false"/>
+  <options customize="never" require-scripts="true" rootVolumeOnly="true" hostArchitectures="x86_64,arm64"/>
+  <welcome file="install-welcome.html" mime-type="text/html"/>
+  <conclusion file="install-conclusion.html" mime-type="text/html"/>
+  <choices-outline>
+    <line choice="default">
+      <line choice="com.layertool.panel"/>
+    </line>
+  </choices-outline>
+  <choice id="default"/>
+  <choice id="com.layertool.panel" visible="false">
+    <pkg-ref id="com.layertool.panel"/>
+  </choice>
+  <pkg-ref id="com.layertool.panel" version="__VERSION__" onConclusion="none">install-comp.pkg</pkg-ref>
+</installer-gui-script>

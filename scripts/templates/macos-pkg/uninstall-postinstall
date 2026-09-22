@@ -1,0 +1,63 @@
+#!/bin/bash
+# ============================================================
+#  图层处理工具 — macOS 卸载包 postinstall
+#
+#  职责（对齐原 uninstall.sh）:
+#    1. 备份用户文件到 ${EXTENSION_ID}_user_files/
+#       （presets.md、template.md、presets/；布局与 Windows 卸载程序一致，重装时自动恢复）
+#    2. 删除插件：符号链接只删链接，目录则整目录删除
+#    3. 备份失败即中止，绝不丢用户数据
+#
+#  说明: .pkg 的 payload 只能新增/覆盖文件、无法删除文件，
+#        所以卸载必须由本脚本执行。
+#  退出码: 非 0 → Installer 报「卸载失败」；未安装时按幂等处理返回 0
+# ============================================================
+
+set -u
+
+# __COMMON__
+
+info "$APP_NAME 卸载程序（版本 __VERSION__）"
+
+if ! resolve_target_home; then
+  err "无法确定目标用户目录，未执行任何删除操作。"
+  exit 0
+fi
+
+if [ ! -e "$TARGET_DIR" ] && [ ! -L "$TARGET_DIR" ]; then
+  warn "未检测到已安装的 $APP_NAME 插件，无需卸载"
+  exit 0
+fi
+
+info "目标: $TARGET_DIR"
+
+if ! backup_user_files; then
+  err "备份用户文件失败，已中止卸载以保护数据。"
+  exit 1
+fi
+
+# 备份目录的属主要正确，否则重装恢复出来的文件会是 root 属主、面板无法写入
+chown_user "$BACKUP_DIR"
+
+if [ -L "$TARGET_DIR" ]; then
+  # 符号链接（开发安装）：只删除链接本身，不影响源目录
+  if ! unlink "$TARGET_DIR"; then
+    err "移除目录链接失败"
+    exit 1
+  fi
+  ok "目录链接已移除（源目录未受影响）"
+else
+  if ! rm -rf "$TARGET_DIR"; then
+    err "删除插件目录失败: $TARGET_DIR"
+    exit 1
+  fi
+  ok "插件文件已删除"
+fi
+
+if [ -d "$BACKUP_DIR" ]; then
+  ok "用户文件备份保留在: $BACKUP_DIR"
+  info "再次安装时会自动恢复"
+fi
+
+ok "$APP_NAME 卸载完成"
+exit 0

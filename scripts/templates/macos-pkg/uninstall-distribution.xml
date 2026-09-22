@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  图层处理工具 — macOS 卸载包 distribution
+  由 scripts/build-installer.js 渲染：__VERSION__ → 实际版本号
+  说明: 卸载包是无载荷组件（包 payload 只能新增/覆盖文件，无法删除文件），
+        实际删除由 Scripts/postinstall 执行。
+  界面: welcome 用「卸载」语境说明；rootVolumeOnly="true" 避免出现可更改安装位置的入口。
+        注意 Installer 自带的「安装」按钮文案来自系统本地化，distribution XML 改不了。
+  注意: XML 注释内不能出现连续两个连字符，写命令行参数时请避开。
+-->
+<installer-gui-script minSpecVersion="1">
+  <title>图层处理工具 __VERSION__ 卸载程序</title>
+  <organization>com.layertool.panel</organization>
+  <domains enable_anywhere="false" enable_currentUserHome="true" enable_localSystem="false"/>
+  <options customize="never" require-scripts="true" rootVolumeOnly="true" hostArchitectures="x86_64,arm64"/>
+  <welcome file="uninstall-welcome.html" mime-type="text/html"/>
+  <conclusion file="uninstall-conclusion.html" mime-type="text/html"/>
+  <choices-outline>
+    <line choice="default">
+      <line choice="com.layertool.panel.uninstaller"/>
+    </line>
+  </choices-outline>
+  <choice id="default"/>
+  <choice id="com.layertool.panel.uninstaller" visible="false">
+    <pkg-ref id="com.layertool.panel.uninstaller"/>
+  </choice>
+  <pkg-ref id="com.layertool.panel.uninstaller" version="__VERSION__" onConclusion="none">uninstall-comp.pkg</pkg-ref>
+</installer-gui-script>

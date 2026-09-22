@@ -136,12 +136,7 @@
 下载安装程序，运行即可自动完成安装：
 
 - **Windows**: 下载 `com.layertool.panel-installer.exe`，双击运行
-- **macOS**: 下载 `com.layertool.panel-installer.sh`（终端运行）或 `com.layertool.panel-installer.command`（Finder 双击）：
-  ```bash
-  bash com.layertool.panel-installer.sh
-  # 或（脚本已带可执行权限）
-  ./com.layertool.panel-installer.sh
-  ```
+- **macOS**: 下载 `com.layertool.panel-installer.pkg`，双击运行（Apple 安装器，只需一次系统授权）
 
 安装程序会自动：
 1. 检测已安装的 Photoshop 版本
@@ -149,14 +144,11 @@
 3. 开启调试模式
 4. 保留用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录（如果存在）
 
-> 提示：macOS 下载的脚本若被 Gatekeeper 拦截（提示"无法验证开发者"），可右键 → 打开运行一次，或先执行 `xattr -d com.apple.quarantine` 清除隔离标记后重试。
+> 提示：macOS 安装包未签名（无 Apple 开发者证书）。若下载后被 Gatekeeper 拦截（提示"无法验证开发者"），可右键 → 打开，或先执行 `xattr -d com.apple.quarantine <文件名>` 再双击；也可终端执行 `installer -pkg <文件名> -target CurrentUserHomeDirectory`。
 
 **卸载方法**：
 - **Windows**: 双击运行 `com.layertool.panel-uninstaller.exe`
-- **macOS**: 终端运行 `com.layertool.panel-uninstaller.sh`，或双击 `com.layertool.panel-uninstaller.command`：
-  ```bash
-  bash com.layertool.panel-uninstaller.sh
-  ```
+- **macOS**: 双击运行 `com.layertool.panel-uninstaller.pkg`
 
 卸载时会自动备份用户自定义的 `presets.md`、`template.md` 文件和 `presets/` 目录到 `com.layertool.panel_user_files` 目录，下次安装时会自动恢复。
 
@@ -322,6 +314,7 @@ npm run dev:panel          # 仅面板 watch
 npm run dev:jsx            # 仅宿主 watch
 npm run clean              # 清理 dist 和 installer
 npm run package            # 生产模式构建 + 打包发布文件（zip + 安装程序）到 installer/
+npm run verify:macos-pkg   # macOS .pkg 结构与行为对齐校验（假 HOME 演练，不需要 root）
 ```
 
 ### 打包说明
@@ -333,10 +326,10 @@ npm run package            # 生产模式构建 + 打包发布文件（zip + 安
 | `com.layertool.panel-vX.X.X.zip` | 手动安装包 | 跨平台 |
 | `com.layertool.panel-installer.exe` | Windows 自动安装程序（pkg 打包） | Windows |
 | `com.layertool.panel-uninstaller.exe` | Windows 卸载程序（pkg 打包） | Windows |
-| `com.layertool.panel-installer.sh` / `.command` | macOS 自动安装脚本（自解压） | macOS |
-| `com.layertool.panel-uninstaller.sh` / `.command` | macOS 卸载脚本 | macOS |
+| `com.layertool.panel-installer.pkg` | macOS 自动安装包（Apple Installer，用户域安装） | macOS |
+| `com.layertool.panel-uninstaller.pkg` | macOS 卸载包 | macOS |
 
-**跨平台打包**：Windows 安装程序用 `pkg` 打包；macOS 用自解压 shell 脚本（脚本头部内嵌 base64 插件数据），无需 Node 运行时，`bash` 运行不受 Gatekeeper 签名限制，仅在 macOS 上打包。
+**跨平台打包**：Windows 安装程序用 `pkg` 打包成独立 `.exe`，支持交叉编译；macOS 用 Apple Installer 安装包（`pkgbuild` + `productbuild`）——payload 装到当前用户目录 `~/Library/Application Support/Adobe/CEP/extensions/`，`preinstall`/`postinstall` 负责用户文件备份与恢复、属主纠正、开启 CEP 调试模式；卸载包是无 payload 组件（包 payload 只能新增/覆盖文件，删除动作由脚本执行）。双击即装、不需要终端也不需要执行权限；产物默认未签名（设置 `MACOS_INSTALLER_IDENTITY` 环境变量即可 `productsign`），仅在 macOS 上打包。
 
 ### 模板变量参考
 

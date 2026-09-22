@@ -1,0 +1,63 @@
+#!/bin/bash
+# ============================================================
+#  图层处理工具 — macOS 安装包 postinstall
+#
+#  职责（对齐原 install.sh 的恢复用户文件 / 调试模式 / 完成提示段）:
+#    1. 恢复用户文件（BACKUP_DIR）—— 它既可能是 preinstall 刚写下的覆盖安装备份，
+#       也可能是上次卸载留下的备份，两者布局相同、路径相同
+#    2. 用户原先没有 presets/ 时，删掉安装包内的 presets/
+#       （dist/lib/presets 是运行时用户数据，不能用打包机的数据冒充用户数据）
+#    3. 纠正文件属主（root 安装场景），保证面板能写预设
+#    4. 开启 CEP 调试模式 CSXS 6-12
+#
+#  退出码: 非 0 → Installer 报「安装失败」
+# ============================================================
+
+set -u
+
+# __COMMON__
+
+info "$APP_NAME 安装收尾（版本 __VERSION__）"
+
+if ! resolve_target_home; then
+  err "无法确定安装目标用户目录，用户文件恢复与调试模式开启已跳过。"
+  exit 1
+fi
+
+# 「用户原先是否有预设」必须在清理备份之前判定：
+# 备份里有 presets/ 就说明恢复后会有用户数据，此时不能删除包内预设。
+HAD_PRESETS=0
+if [ -d "$BACKUP_DIR/presets" ]; then
+  HAD_PRESETS=1
+fi
+
+if [ -d "$BACKUP_DIR" ]; then
+  if ! restore_user_files "$BACKUP_DIR"; then
+    err "恢复用户文件失败，安装已中止。备份保留在: $BACKUP_DIR"
+    exit 1
+  fi
+  ok "已恢复原安装的用户文件"
+  rm -rf "$BACKUP_DIR"
+  info "已清理备份目录"
+fi
+
+if [ "$HAD_PRESETS" -eq 0 ] && [ -d "$TARGET_DIR/dist/lib/presets" ]; then
+  rm -rf "$TARGET_DIR/dist/lib/presets"
+  info "用户之前无预设文件，已删除默认预设目录"
+fi
+
+chown_user "$TARGET_DIR"
+
+enable_cep_debug_mode
+
+# 插件关键文件就位校验（缺失只提示，不阻断安装）
+for _p in "CSXS/manifest.xml" "dist/index.html" "dist/jsx/hostscript.js" "dist/lib/presets.md" "dist/lib/template.md"; do
+  if [ -f "$TARGET_DIR/$_p" ]; then
+    info "已就位: $_p"
+  else
+    warn "缺少文件: $_p，插件可能无法正常加载"
+  fi
+done
+
+ok "$APP_NAME __VERSION__ 安装完成"
+exit 0
